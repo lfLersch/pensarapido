@@ -486,10 +486,17 @@ socket.on('rodada:pergunta', (dados) => {
   $('pergunta-texto').textContent = dados.pergunta;
   $('mascara').textContent = dados.mascara || '';
 
-  // Perguntas de música mostram o trecho da letra em destaque.
+  // Perguntas de música mostram o trecho da letra em destaque, uma linha
+  // por vez — quebrar as linhas é o que faz o trecho parecer uma letra.
   const letra = $('letra');
-  letra.textContent = dados.letra || '';
-  letra.hidden = !dados.letra;
+  const linhas = Array.isArray(dados.letra) ? dados.letra : (dados.letra ? [dados.letra] : []);
+  letra.innerHTML = '';
+  for (const texto of linhas) {
+    const linha = criar('span', 'letra__linha');
+    linha.textContent = texto;
+    letra.appendChild(linha);
+  }
+  letra.hidden = linhas.length === 0;
 
   // Modo Escalada: painel com quantas respostas faltam.
   estado.necessarias = dados.necessarias || 1;

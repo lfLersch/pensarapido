@@ -204,34 +204,55 @@ apelido e o nome de registro é que vira variante aceita.
 
 ### Categoria Futebol
 
-**181 jogadores, todos com foto.** A lista cobre:
+**162 jogadores, todos com foto.** A lista cobre:
 
-- **todos os vencedores da Bola de Ouro masculina**, de Stanley Matthews (1956)
-  a Rodri (2024), passando por Di Stéfano, Cruyff, Platini, Ronaldo, Zidane,
-  Messi e Cristiano Ronaldo;
+- **os vencedores da Bola de Ouro masculina de 1981 para cá** — Rummenigge,
+  Platini, van Basten, Baggio, Ronaldo, Zidane, Figo, Ronaldinho, Kaká, Messi,
+  Cristiano Ronaldo, Modrić, Benzema, Rodri;
 - **todas as vencedoras da Bola de Ouro feminina** — Ada Hegerberg, Megan
   Rapinoe, Alexia Putellas e Aitana Bonmatí (enunciado *"Quem é esta jogadora?"*);
 - os nomes mais conhecidos da década de 2010, por seleção e por liga.
 
+Os vencedores até 1980 saíram de propósito: são fotos em preto e branco de
+jogadores que quase ninguém reconhece hoje, e a rodada morria sem acerto. Se
+quiser Cruyff, Beckenbauer, Yashin e companhia de volta, eles estão no histórico
+do git — o commit que os removeu diz quais foram.
+
 As fotos vêm do **Wikimedia Commons** (licença livre), buscadas pela API da
 Wikipédia e gravadas como URL em `questions.js` — nada é baixado para o projeto.
-Como são imagens de terceiros, dependem do Commons continuar no ar; o teste
-`npm run checar-imagens` percorre todas e avisa se alguma sair do ar.
+Como são imagens de terceiros, dependem do Commons continuar no ar; o comando
+`npm run checar-imagens` percorre todas e avisa se alguma sair.
 
 ### Categoria Música — perguntas de letra
 
 O campo `letra` mostra um trecho em destaque, e o enunciado decide o que se
 pergunta sobre ele — *"Qual é o nome desta música?"* ou *"Quem canta/gravou?"*.
 
-Os 18 trechos que vieram prontos são de **músicas em domínio público**
-(tradicionais, hinos antigos, canções do século XIX). **Não incluí letras de
-músicas protegidas por direito autoral** — para usar as atuais, cole o trecho
-você mesmo no bloco `LETRAS_MUSICA` de `questions.js`, no mesmo formato:
+**O trecho precisa ter no mínimo 4 linhas; de 4 a 8 é o ideal.** Com uma linha
+só o jogador quase não tem de onde tirar a resposta; passando de oito, o bloco
+toma a tela e sobra pouco espaço para a pergunta e o chat. Para conferir:
+
+```bash
+npm run checar-letras
+```
+
+Ele lista quais trechos ainda estão curtos e mostra o formato a preencher.
 
 ```js
-{ pergunta: 'Quem canta esta música?', letra: '…cole o trecho aqui…',
+{ pergunta: 'Quem canta esta música?',
+  letra: ['primeira linha',
+          'segunda linha',
+          'terceira linha',
+          'quarta linha'],
   resposta: 'Nome do artista', aceita: ['apelido'], dif: 40 }
 ```
+
+> **As 18 entradas que vieram prontas têm só uma linha cada e precisam ser
+> completadas.** Elas são de músicas em domínio público (tradicionais, hinos
+> antigos, canções do século XIX) — **eu não escrevo letras de música**, nem as
+> protegidas por direito autoral nem as livres, então os versos precisam ser
+> colados por você no bloco `LETRAS_MUSICA` de `questions.js`. O título e a
+> resposta de cada uma já estão lá; falta só o trecho.
 
 ### Criar uma categoria nova
 
@@ -248,7 +269,7 @@ npm test
 Cobre a régua de acerto/quase/chat (36 casos), a pontuação por atraso numa
 rodada com relógio controlado, o Modo Escalada da rodada 1 à 6 — incluindo a
 checagem de que nenhum item correto vaza para o chat — e a regra de nomes:
-percorre as 396 formas de nome dos 181 jogadores, confirma que todas valem como
+percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim
 que "Silva", "Ronaldo", "Müller", "Costa" e "Martínez" saíram das variantes).
 
@@ -258,7 +279,7 @@ As imagens ficam fora do `npm test` porque dependem da internet:
 npm run checar-imagens
 ```
 
-Percorre as 207 imagens do banco (fotos de jogadores e bandeiras) e lista as que
+Percorre as imagens do banco (fotos de jogadores e bandeiras) e lista as que
 saíram do ar. Vai devagar de propósito — o Wikimedia recusa cliente apressado.
 
 ## Limites atuais

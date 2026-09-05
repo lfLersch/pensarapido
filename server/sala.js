@@ -240,7 +240,10 @@ class Sala {
       id,
       pergunta: bruta.pergunta,
       imagem: bruta.imagem || null,
-      letra: bruta.letra || null,
+      // Aceita string ou lista; para a tela vai sempre lista de linhas.
+      letra: bruta.letra
+        ? (Array.isArray(bruta.letra) ? bruta.letra : [bruta.letra])
+        : null,
       resposta: bruta.resposta,
       aceita: bruta.aceita || [],
       itens: [{ oficial: bruta.resposta, variantes: bruta.aceita || [] }],

@@ -8,7 +8,8 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node testes/comparar.test.js && node testes/rodada.test.js && node testes/escalada.test.js && node testes/nomes.test.js",
-    "checar-imagens": "node testes/imagens.js"
+    "checar-imagens": "node testes/imagens.js",
+    "checar-letras": "node testes/letras.js"
   },
   "dependencies": {
     "express": "^4.19.2",
