@@ -30,7 +30,7 @@ Todo jogador começa digitando um **nickname** e escolhendo entre:
 | Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, Cinema & TV, História, Ciência, Games, **Mainstream** |
 | Tipo de jogo | **Modo Tempo** ou **Escalada** (Sobrevivência e Equipes aparecem como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
-| Tempo por pergunta | 15s / 20s / 30s (padrão) / 45s |
+| Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
 
 ### O chat é a resposta
 
@@ -63,13 +63,41 @@ Os limites ficam no topo de [`server/comparar.js`](server/comparar.js)
 
 ### Modo Tempo — pontuação
 
-- Quem **acerta primeiro** leva **10 pontos**.
-- A cada **2 segundos** depois desse primeiro acerto, vale **1 ponto a menos**:
-  2s depois dá 9, 4s depois dá 8, e assim por diante.
-- Um acerto nunca vale menos que **1 ponto**.
+A rodada tem **20 segundos**, e dois descontos se somam.
+
+**1. O relógio.** A rodada é fatiada em faixas de 5s, e a base cai 1 ponto por
+faixa:
+
+| Quando acertou | Base |
+| --- | --- |
+| 0 a 5s | 10 |
+| 5 a 10s | 9 |
+| 10 a 15s | 8 |
+| 15 a 20s | 7 |
+
+**2. A fila.** Cai mais **1 ponto para cada pessoa que acertou antes**. O
+primeiro não perde nada, o segundo perde 1, o terceiro perde 2, e assim por
+diante.
+
+Juntando os dois, a tabela de uma rodada fica assim:
+
+| Acertou em | 1º | 2º | 3º | 4º |
+| --- | --- | --- | --- | --- |
+| até 5s | 10 | 9 | 8 | 7 |
+| 5 a 10s | 9 | 8 | 7 | 6 |
+| 10 a 15s | 8 | 7 | 6 | 5 |
+| 15 a 20s | 7 | 6 | 5 | 4 |
+
+Ou seja: **quem acerta em terceiro depois de 15s leva 5 pontos** — a faixa vale
+7 e saem 2 de quem chegou na frente.
+
+- Um acerto nunca vale menos que **1 ponto**, por mais tarde e mais atrás que venha.
 - Não existe punição por errar: dá para tentar quantas vezes quiser até o tempo acabar.
 - A rodada fecha quando todos acertam ou quando o tempo acaba.
 - A partida acaba assim que alguém alcança a meta definida pelo líder.
+
+As faixas são de 5s independente da duração escolhida, então uma rodada de 30s
+simplesmente continua a escada: 10, 9, 8, 7, 6, 5.
 
 O relógio que vale é o do **servidor**, contado a partir do instante em que a
 pergunta foi enviada — o cronômetro da tela é só visual.
@@ -207,7 +235,7 @@ inventado é descartado.
 
 ## Banco de perguntas
 
-**418 perguntas em 11 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**787 perguntas em 12 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato

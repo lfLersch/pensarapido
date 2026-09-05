@@ -7,9 +7,9 @@ const dificuldade = require('./dificuldade');
 
 /* ---------------------------- Regras do jogo ---------------------------- */
 
-const PONTOS_MAX = 10;             // quem acerta primeiro leva 10
-const INTERVALO_PENALIDADE = 2000; // a cada 2s depois do primeiro, -1 ponto
-const PONTOS_MIN = 1;              // acertar sempre vale pelo menos 1
+const PONTOS_MAX = 10;        // base de quem responde na primeira faixa
+const MS_POR_FAIXA = 5000;    // a cada 5s de rodada, a base cai 1 ponto
+const PONTOS_MIN = 1;         // acertar sempre vale pelo menos 1
 
 const MS_REVELACAO = 2800;   // tela "categoria" antes da pergunta
 const MS_RESULTADO = 5000;       // tela de resultado quando o tempo acaba
@@ -32,7 +32,7 @@ const MODOS = [
     id: 'tempo',
     nome: 'Modo Tempo',
     icone: '⏱️',
-    descricao: 'Escreva a resposta no chat. Quem acerta primeiro leva 10 pontos; a cada 2s de atraso, 1 ponto a menos.',
+    descricao: 'Escreva a resposta no chat. A cada 5s de rodada a base cai 1 ponto (10, 9, 8, 7) e cai mais 1 para cada pessoa que acertou antes de você.',
     disponivel: true
   },
   {
@@ -79,12 +79,23 @@ function gerarCodigo() {
 
 /**
  * Pontuação do Modo Tempo.
- * @param {number|null} msDesdePrimeiro tempo entre o primeiro acerto e este; null se for o primeiro
+ *
+ * Dois descontos se somam:
+ *
+ *   1. o relógio — a rodada é fatiada em faixas de 5s e a base cai 1 por faixa;
+ *      numa rodada de 20s isso dá 10, 9, 8 e 7;
+ *   2. a fila — cai mais 1 ponto para cada pessoa que acertou antes.
+ *
+ * Exemplo: terceiro a acertar, aos 16s -> faixa de 15-20s vale 7, menos 2 de
+ * quem chegou na frente = 5 pontos.
+ *
+ * @param {number} msNaRodada  tempo desde que a pergunta apareceu
+ * @param {number} posicao     1 para o primeiro a acertar, 2 para o segundo...
  */
-function calcularPontos(msDesdePrimeiro) {
-  if (msDesdePrimeiro === null) return PONTOS_MAX;
-  const desconto = Math.floor(msDesdePrimeiro / INTERVALO_PENALIDADE);
-  return Math.max(PONTOS_MIN, PONTOS_MAX - desconto);
+function calcularPontos(msNaRodada, posicao) {
+  const faixa = Math.floor(Math.max(0, msNaRodada) / MS_POR_FAIXA);
+  const base = PONTOS_MAX - faixa;
+  return Math.max(PONTOS_MIN, base - (posicao - 1));
 }
 
 /** Índice de todas as perguntas, para o painel de dificuldades. */
@@ -445,10 +456,10 @@ class Sala {
 
     /* --- completou a rodada --- */
     const ms = agora - this.inicioPergunta;
-    const pontos = calcularPontos(this.primeiroAcertoEm === null ? null : agora - this.primeiroAcertoEm);
+    const posicao = this.acertos.size + 1;
+    const pontos = calcularPontos(ms, posicao);
     if (this.primeiroAcertoEm === null) this.primeiroAcertoEm = agora;
 
-    const posicao = this.acertos.size + 1;
     this.acertos.set(socketId, { ms, pontos, posicao });
     jogador.pontos += pontos;
     jogador.acertos += 1;

@@ -2,14 +2,14 @@
 
 /* Teste headless: uma rodada completa da Sala, com relógio controlado. */
 
-const { Sala } = require('../server/sala.js');
+const { Sala, calcularPontos } = require('../server/sala.js');
 
 const eventos = [];
 const sala = new Sala('TEST', {
   categorias: ['geografia'],
   modo: 'tempo',
   metaPontos: 20,
-  segundosPorPergunta: 30
+  segundosPorPergunta: 20
 }, (evento, dados) => eventos.push({ evento, dados }));
 
 sala.entrar('luiz', 'Luiz');
@@ -29,10 +29,11 @@ const certa = sala.perguntaAtual.resposta;
 const dateNowReal = Date.now;
 const emT = (ms) => { Date.now = () => t0 + ms; };
 
-emT(1500);  sala.palpitar('luiz', certa);            // 1º a acertar     -> 10
-emT(3400);  sala.palpitar('ana', certa);             // +1900ms          -> 10
-emT(5500);  sala.palpitar('bia', certa);             // +4000ms          ->  8
-emT(7000);  sala.palpitar('caio', 'sei la, chutei'); // virou conversa   ->  0
+// Faixa de 5s define a base (10, 9, 8, 7); desce mais 1 por quem acertou antes.
+emT(1500);  sala.palpitar('luiz', certa);            // 1º, faixa 0-5s   -> 10 - 0 = 10
+emT(3400);  sala.palpitar('ana', certa);             // 2º, faixa 0-5s   -> 10 - 1 =  9
+emT(5500);  sala.palpitar('bia', certa);             // 3º, faixa 5-10s  ->  9 - 2 =  7
+emT(7000);  sala.palpitar('caio', 'sei la, chutei'); // virou conversa   ->        0
 
 Date.now = dateNowReal;
 sala.encerrarRodada();
@@ -40,7 +41,7 @@ sala.limparTemporizador();
 
 const resultado = eventos.find((e) => e.evento === 'rodada:resultado').dados;
 
-const esperado = { Luiz: 10, Ana: 10, Bia: 8, Caio: 0 };
+const esperado = { Luiz: 10, Ana: 9, Bia: 7, Caio: 0 };
 let falhas = 0;
 
 console.log('Resposta certa:', resultado.resposta);
@@ -93,5 +94,41 @@ console.log('Acabou (meta 20)?', rodada2.acabou, '-> esperado true');
 if (rodada2.acabou !== true) falhas++;
 
 sala.destruir();
+
+/* ---------------------------------------------------------------- *
+ * A tabela de pontos do Modo Tempo, faixa por faixa.
+ * ---------------------------------------------------------------- */
+
+
+console.log('\nPontos por faixa de tempo e posição (rodada de 20s):\n');
+console.log('   tempo    1º   2º   3º   4º');
+for (const seg of [2, 7, 12, 17]) {
+  const linha = [1, 2, 3, 4].map((p) => String(calcularPontos(seg * 1000, p)).padStart(4));
+  console.log(`   ${String(seg + 's').padEnd(7)}${linha.join(' ')}`);
+}
+
+const casos = [
+  [2000,  1, 10, 'primeiro na faixa 0-5s'],
+  [7000,  1,  9, 'primeiro na faixa 5-10s'],
+  [12000, 1,  8, 'primeiro na faixa 10-15s'],
+  [17000, 1,  7, 'primeiro na faixa 15-20s'],
+  [16000, 3,  5, 'terceiro depois de 15s (o exemplo pedido)'],
+  [2000,  4,  7, 'quarto ainda na primeira faixa'],
+  [19000, 12, 1, 'último de uma sala cheia nunca fica abaixo de 1']
+];
+
+console.log('');
+for (const [ms, posicao, esperadoPts, comentario] of casos) {
+  const obtido = calcularPontos(ms, posicao);
+  const ok = obtido === esperadoPts;
+  if (!ok) falhas++;
+  console.log(
+    (ok ? 'ok   ' : 'FALHA'),
+    `${String(ms / 1000) + 's'} em ${posicao}º -> ${obtido} pts`.padEnd(28),
+    ok ? '' : `(esperado ${esperadoPts})`,
+    '·', comentario
+  );
+}
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
 process.exit(falhas ? 1 : 0);

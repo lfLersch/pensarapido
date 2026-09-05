@@ -17,7 +17,7 @@ const estado = {
     subs: new Set(),
     modo: 'tempo',
     metaPontos: 120,
-    segundosPorPergunta: 30
+    segundosPorPergunta: 20
   },
   acertou: false,
   necessarias: 1,   // Escalada: quantas respostas a rodada pede

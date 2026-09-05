@@ -109,7 +109,7 @@ function validarConfig(bruta) {
   }
 
   const segundos = Number(bruta.segundosPorPergunta);
-  const segundosPorPergunta = SEGUNDOS_PERMITIDOS.includes(segundos) ? segundos : 30;
+  const segundosPorPergunta = SEGUNDOS_PERMITIDOS.includes(segundos) ? segundos : 20;
 
   return { config: { categorias, subs, modo: modo.id, metaPontos, segundosPorPergunta } };
 }
