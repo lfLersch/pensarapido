@@ -12,8 +12,9 @@ const INTERVALO_PENALIDADE = 2000; // a cada 2s depois do primeiro, -1 ponto
 const PONTOS_MIN = 1;              // acertar sempre vale pelo menos 1
 
 const MS_REVELACAO = 2800;   // tela "categoria" antes da pergunta
-const MS_RESULTADO = 5000;   // tela de resultado entre rodadas
-const MS_APOS_ULTIMO = 1200; // respiro quando todos acertam antes do tempo
+const MS_RESULTADO = 5000;       // tela de resultado quando o tempo acaba
+const MS_RESULTADO_TODOS = 3000; // ... e quando todo mundo acertou antes
+const MS_APOS_ULTIMO = 0;        // acertou geral, fecha na hora: a contagem é na tela
 
 // Na Escalada a rodada cresce junto com o número de respostas pedidas.
 const MS_POR_RESPOSTA_EXTRA = 5000;
@@ -220,11 +221,21 @@ class Sala {
   /** Junta as perguntas das categorias escolhidas e embaralha. */
   montarFila() {
     const todas = [];
+    const subsEscolhidas = new Set(this.config.subs || []);
+
     for (const idCategoria of this.config.categorias) {
+      // Quais partes desta categoria foram marcadas? Nenhuma = a categoria toda.
+      const daCategoria = [...subsEscolhidas]
+        .filter((s) => s.startsWith(idCategoria + ':'))
+        .map((s) => s.slice(idCategoria.length + 1));
+      const filtrar = daCategoria.length > 0;
+
       for (const pergunta of QUESTOES[idCategoria] || []) {
+        if (filtrar && !daCategoria.includes(pergunta.sub)) continue;
         todas.push({ ...pergunta, categoria: idCategoria });
       }
     }
+
     this.fila = embaralhar(todas);
   }
 
@@ -489,6 +500,9 @@ class Sala {
   encerrarRodada() {
     if (this.estado !== 'pergunta') return;
     this.limparTemporizador();
+
+    // Se ninguém ficou de fora, a espera é mais curta.
+    const msResultado = this.todosAcertaram() ? MS_RESULTADO_TODOS : MS_RESULTADO;
     this.estado = 'resultado';
 
     const tempos = [...this.acertos.values()].map((a) => a.ms);
@@ -556,14 +570,14 @@ class Sala {
       },
       detalhes,
       placar: this.placar(),
-      duracaoMs: MS_RESULTADO,
+      duracaoMs: msResultado,
       acabou: vencedores.length > 0
     });
 
     this.agendar(() => {
       if (vencedores.length > 0) this.terminar();
       else this.proximaRodada();
-    }, MS_RESULTADO);
+    }, msResultado);
   }
 
   terminar() {

@@ -88,6 +88,18 @@ function validarConfig(bruta) {
     : [];
   if (categorias.length === 0) return { erro: 'Escolha pelo menos uma categoria.' };
 
+  // Subcategorias vêm como 'categoria:parte'; só valem as que existem de fato
+  // e cuja categoria foi marcada.
+  const subsValidas = new Set();
+  for (const categoria of CATEGORIAS) {
+    for (const sub of categoria.subs || []) subsValidas.add(`${categoria.id}:${sub.id}`);
+  }
+  const subs = Array.isArray(bruta.subs)
+    ? [...new Set(bruta.subs.filter(
+        (s) => subsValidas.has(s) && categorias.includes(String(s).split(':')[0])
+      ))]
+    : [];
+
   const modo = MODOS.find((m) => m.id === bruta.modo && m.disponivel);
   if (!modo) return { erro: 'Esse modo de jogo ainda não está disponível.' };
 
@@ -99,7 +111,7 @@ function validarConfig(bruta) {
   const segundos = Number(bruta.segundosPorPergunta);
   const segundosPorPergunta = SEGUNDOS_PERMITIDOS.includes(segundos) ? segundos : 30;
 
-  return { config: { categorias, modo: modo.id, metaPontos, segundosPorPergunta } };
+  return { config: { categorias, subs, modo: modo.id, metaPontos, segundosPorPergunta } };
 }
 
 /* -------------------------------- Socket.IO -------------------------------- */

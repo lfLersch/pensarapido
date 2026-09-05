@@ -26,12 +26,14 @@ const CATEGORIAS = [
   { id: 'matematica', nome: 'Matemática', icone: '🔢', cor: '#3b82f6' },
   { id: 'esportes', nome: 'Esportes', icone: '🏅', cor: '#f97316' },
   { id: 'futebol', nome: 'Futebol', icone: '⚽', cor: '#84cc16' },
-  { id: 'anime', nome: 'Anime', icone: '🍥', cor: '#ec4899' },
+  { id: 'anime', nome: 'Anime', icone: '🍥', cor: '#ec4899',
+    subs: [{ id: 'naruto', nome: 'Naruto', icone: '🌀' }] },
   { id: 'musica', nome: 'Música', icone: '🎵', cor: '#a855f7' },
   { id: 'cinema', nome: 'Cinema & TV', icone: '🎬', cor: '#eab308' },
   { id: 'historia', nome: 'História', icone: '📜', cor: '#d97706' },
   { id: 'ciencia', nome: 'Ciência', icone: '🔬', cor: '#06b6d4' },
-  { id: 'games', nome: 'Games', icone: '🎮', cor: '#8b5cf6' }
+  { id: 'games', nome: 'Games', icone: '🎮', cor: '#8b5cf6' },
+  { id: 'mainstream', nome: 'Mainstream', icone: '⭐', cor: '#f59e0b' }
 ];
 
 /* ------------------------------------------------------------------ *
@@ -172,7 +174,6 @@ const QUESTOES = {
   bandeiras: perguntasBandeiras,
 
   futebol: [
-    { pergunta: 'Quem é este jogador?', imagem: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/2015-02-06_Rummenigge_0370_%28cropped%29.JPG/500px-2015-02-06_Rummenigge_0370_%28cropped%29.JPG', resposta: 'Karl-Heinz Rummenigge', aceita: ['Rummenigge'], dif: 45 },
     { pergunta: 'Quem é este jogador?', imagem: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Paolo_Rossi_Vicenza.jpg/500px-Paolo_Rossi_Vicenza.jpg', resposta: 'Paolo Rossi', aceita: ['Rossi'], dif: 45 },
     { pergunta: 'Quem é este jogador?', imagem: 'https://upload.wikimedia.org/wikipedia/commons/6/66/Michel_Platini_2010_%28cropped%29.jpg', resposta: 'Michel Platini', aceita: ['Platini'], dif: 45 },
     { pergunta: 'Quem é este jogador?', imagem: 'https://upload.wikimedia.org/wikipedia/commons/8/80/Ihor_Belanov.jpeg', resposta: 'Igor Belanov', aceita: ['Belanov'], dif: 45 },
@@ -429,7 +430,26 @@ const QUESTOES = {
     { pergunta: 'Qual é o protagonista de Bleach?', resposta: 'Ichigo Kurosaki', aceita: ['Ichigo'], dif: 50 },
     { pergunta: 'Qual anime tem o vôlei como tema principal?', resposta: 'Haikyuu!!', dif: 50 },
     { pergunta: 'Quem é o professor mais forte da escola em Jujutsu Kaisen?', resposta: 'Satoru Gojo', aceita: ['Gojo'], dif: 50 },
-    { pergunta: 'Qual anime acompanha Light Yagami e o detetive L?', resposta: 'Death Note', dif: 50 }
+    { pergunta: 'Qual anime acompanha Light Yagami e o detetive L?', resposta: 'Death Note', dif: 50 },
+
+    { pergunta: 'Qual é o nome completo do protagonista de Naruto?', sub: 'naruto', resposta: 'Naruto Uzumaki', aceita: ['Uzumaki Naruto'], dif: 20 },
+    { pergunta: 'Qual criatura de nove caudas está selada dentro do Naruto?', sub: 'naruto', resposta: 'Kurama', aceita: ['Raposa de Nove Caudas', 'Kyuubi'], dif: 45 },
+    { pergunta: 'Quem é o sensei do Time 7?', sub: 'naruto', resposta: 'Kakashi Hatake', aceita: ['Kakashi'], dif: 30 },
+    { pergunta: 'Qual é o sonho do Naruto desde criança?', sub: 'naruto', resposta: 'Ser Hokage', aceita: ['Hokage', 'virar Hokage'], dif: 25 },
+    { pergunta: 'Quem é o melhor amigo e maior rival do Naruto?', sub: 'naruto', resposta: 'Sasuke Uchiha', aceita: ['Sasuke'], dif: 20 },
+    { pergunta: 'Qual é a vila do Naruto?', sub: 'naruto', resposta: 'Konoha', aceita: ['Vila Oculta da Folha', 'Vila da Folha'], dif: 30 },
+    { pergunta: 'Qual é a técnica em forma de esfera girando na mão que o Naruto aprende?', sub: 'naruto', resposta: 'Rasengan', dif: 35 },
+    { pergunta: 'A qual clã Sasuke pertence?', sub: 'naruto', resposta: 'Uchiha', aceita: ['Clã Uchiha'], dif: 35 },
+    { pergunta: 'Qual é o dojutsu de olhos vermelhos do clã Uchiha?', sub: 'naruto', resposta: 'Sharingan', dif: 35 },
+    { pergunta: 'Qual é o dojutsu de olhos claros do clã Hyuga?', sub: 'naruto', resposta: 'Byakugan', dif: 45 },
+    { pergunta: 'Quem é o Quarto Hokage e pai do Naruto?', sub: 'naruto', resposta: 'Minato Namikaze', aceita: ['Minato'], dif: 50 },
+    { pergunta: 'Com quem o Naruto se casa?', sub: 'naruto', resposta: 'Hinata Hyuga', aceita: ['Hinata'], dif: 35 },
+    { pergunta: 'Qual é o nome do filho do Naruto?', sub: 'naruto', resposta: 'Boruto', aceita: ['Boruto Uzumaki'], dif: 30 },
+    { pergunta: 'Qual dos Sannin treinou o Naruto?', sub: 'naruto', resposta: 'Jiraiya', aceita: ['Ero-sennin'], dif: 35 },
+    { pergunta: 'Qual organização usa manto preto com nuvens vermelhas?', sub: 'naruto', resposta: 'Akatsuki', dif: 35 },
+    { pergunta: 'Qual é a técnica clássica do Naruto que cria dezenas de cópias dele?', sub: 'naruto', resposta: 'Clones das Sombras', aceita: ['Kage Bunshin', 'Multiclones das Sombras'], dif: 35 },
+    { pergunta: 'Quem é a Quinta Hokage, conhecida como médica ninja?', sub: 'naruto', resposta: 'Tsunade', dif: 45 },
+    { pergunta: 'Qual sapo gigante o Naruto invoca?', sub: 'naruto', resposta: 'Gamabunta', dif: 55 }
   ],
 
   musica: [
@@ -480,7 +500,59 @@ const QUESTOES = {
     { pergunta: 'Quem dirigiu "Jurassic Park"?', resposta: 'Steven Spielberg', aceita: ['Spielberg'], dif: 40 },
     { pergunta: 'Qual série sul-coreana virou fenômeno com jogos infantis mortais?', resposta: 'Round 6', aceita: ['Squid Game'], dif: 40 },
     { pergunta: 'Quem interpreta Wolverine nos filmes dos X-Men?', resposta: 'Hugh Jackman', aceita: ['Jackman'], dif: 40 },
-    { pergunta: 'De qual filme é a frase "Vou fazer uma oferta que ele não poderá recusar"?', resposta: 'O Poderoso Chefão', aceita: ['Poderoso Chefão', 'The Godfather'], dif: 40 }
+    { pergunta: 'De qual filme é a frase "Vou fazer uma oferta que ele não poderá recusar"?', resposta: 'O Poderoso Chefão', aceita: ['Poderoso Chefão', 'The Godfather'], dif: 40 },
+
+    { pergunta: 'Qual é o navio do capitão Jack Sparrow?', resposta: 'Pérola Negra', aceita: ['Black Pearl', 'a Pérola Negra'], dif: 35 },
+    { pergunta: 'Em "Piratas do Caribe", quem é o capitão de rosto de polvo?', resposta: 'Davy Jones', dif: 45 },
+    { pergunta: 'Qual atriz interpreta Elizabeth Swann em "Piratas do Caribe"?', resposta: 'Keira Knightley', aceita: ['Knightley'], dif: 50 },
+    { pergunta: 'Em qual lua se passa o filme "Avatar"?', resposta: 'Pandora', dif: 35 },
+    { pergunta: 'Como se chama o povo azul de "Avatar"?', resposta: 'Na\'vi', aceita: ['Navi'], dif: 35 },
+    { pergunta: 'Qual mineral é cobiçado pelos humanos em "Avatar"?', resposta: 'Unobtainium', dif: 65 },
+    { pergunta: 'Qual é o codinome do agente James Bond?', resposta: '007', aceita: ['zero zero sete'], dif: 15 },
+    { pergunta: 'Qual ator estreou como James Bond em "Cassino Royale" (2006)?', resposta: 'Daniel Craig', aceita: ['Craig'], dif: 35 },
+    { pergunta: 'Qual foi o primeiro ator a viver James Bond no cinema?', resposta: 'Sean Connery', aceita: ['Connery'], dif: 45 },
+    { pergunta: 'Qual é o drinque clássico de James Bond?', resposta: 'Martini', aceita: ['vodka martini'], dif: 35 },
+    { pergunta: 'Quem interpreta Dominic Toretto em "Velozes e Furiosos"?', resposta: 'Vin Diesel', aceita: ['Diesel'], dif: 30 },
+    { pergunta: 'Qual ator viveu Brian O\'Conner em "Velozes e Furiosos"?', resposta: 'Paul Walker', aceita: ['Walker'], dif: 35 },
+    { pergunta: 'Qual carro preto é a marca registrada do Dom Toretto?', resposta: 'Dodge Charger', aceita: ['Charger'], dif: 50 },
+    { pergunta: 'Qual é o nome verdadeiro do Batman?', resposta: 'Bruce Wayne', aceita: ['Wayne'], dif: 15 },
+    { pergunta: 'Em qual cidade o Batman age?', resposta: 'Gotham', aceita: ['Gotham City'], dif: 20 },
+    { pergunta: 'Quem é o mordomo do Batman?', resposta: 'Alfred', aceita: ['Alfred Pennyworth'], dif: 25 },
+    { pergunta: 'Quem interpretou o Coringa em "O Cavaleiro das Trevas"?', resposta: 'Heath Ledger', aceita: ['Ledger'], dif: 30 },
+    { pergunta: 'Quem interpretou o Batman na trilogia de Christopher Nolan?', resposta: 'Christian Bale', aceita: ['Bale'], dif: 35 },
+    { pergunta: 'Quem interpretou o Batman em "The Batman" (2022)?', resposta: 'Robert Pattinson', aceita: ['Pattinson'], dif: 35 },
+    { pergunta: 'Qual é o nome verdadeiro do Capitão América?', resposta: 'Steve Rogers', aceita: ['Rogers'], dif: 25 },
+    { pergunta: 'Quem é o vilão de "Vingadores: Guerra Infinita"?', resposta: 'Thanos', dif: 20 },
+    { pergunta: 'Qual é o nome do martelo do Thor?', resposta: 'Mjolnir', dif: 35 },
+    { pergunta: 'Quem interpreta o Thor nos filmes da Marvel?', resposta: 'Chris Hemsworth', aceita: ['Hemsworth'], dif: 30 },
+    { pergunta: 'Qual é o nome verdadeiro do Homem-Aranha?', resposta: 'Peter Parker', aceita: ['Parker'], dif: 15 },
+    { pergunta: 'Quantas Joias do Infinito existem?', resposta: '6', aceita: ['seis'], dif: 40 },
+    { pergunta: 'Qual é o planeta natal do Superman?', resposta: 'Krypton', dif: 25 },
+    { pergunta: 'Qual é a fraqueza do Superman?', resposta: 'Kryptonita', dif: 20 },
+    { pergunta: 'Em qual cidade o Superman age?', resposta: 'Metrópolis', aceita: ['Metropolis'], dif: 35 },
+    { pergunta: 'Qual é o nome verdadeiro da Mulher-Maravilha?', resposta: 'Diana Prince', aceita: ['Diana'], dif: 40 },
+    { pergunta: 'Qual herói da Liga da Justiça é o mais veloz?', resposta: 'Flash', aceita: ['The Flash'], dif: 25 },
+    { pergunta: 'Quem interpreta Jack em "Titanic"?', resposta: 'Leonardo DiCaprio', aceita: ['DiCaprio', 'Leo DiCaprio'], dif: 20 },
+    { pergunta: 'Quem interpreta Rose em "Titanic"?', resposta: 'Kate Winslet', aceita: ['Winslet'], dif: 35 },
+    { pergunta: 'Qual é a música-tema de "Titanic"?', resposta: 'My Heart Will Go On', dif: 40 },
+    { pergunta: 'Em que ano o Titanic afundou?', resposta: '1912', dif: 35 },
+    { pergunta: 'Qual filme levou 11 Oscars em 1998, incluindo Melhor Filme?', resposta: 'Titanic', dif: 40 },
+    { pergunta: 'Quantos Oscars "O Senhor dos Anéis: O Retorno do Rei" venceu?', resposta: '11', aceita: ['onze'], dif: 55 },
+    { pergunta: 'Qual filme de Spielberg sobre o Holocausto venceu o Oscar de Melhor Filme?', resposta: 'A Lista de Schindler', aceita: ['Schindler\'s List', 'Lista de Schindler'], dif: 45 },
+    { pergunta: 'Qual filme com Hannibal Lecter venceu o Oscar de Melhor Filme?', resposta: 'O Silêncio dos Inocentes', aceita: ['Silêncio dos Inocentes'], dif: 45 },
+    { pergunta: 'Qual filme de multiversos venceu o Oscar de Melhor Filme em 2023?', resposta: 'Tudo em Todo Lugar ao Mesmo Tempo', aceita: ['Everything Everywhere All at Once'], dif: 50 },
+    { pergunta: 'Qual filme sobre o criador da bomba atômica venceu Melhor Filme em 2024?', resposta: 'Oppenheimer', dif: 30 },
+    { pergunta: 'Qual animação da Pixar sobre as emoções de uma menina venceu o Oscar?', resposta: 'Divertida Mente', aceita: ['Divertidamente', 'Inside Out'], dif: 40 },
+    { pergunta: 'Qual é o apelido de Walter White em "Breaking Bad"?', resposta: 'Heisenberg', dif: 35 },
+    { pergunta: 'Qual série alemã da Netflix envolve viagem no tempo na cidade de Winden?', resposta: 'Dark', dif: 45 },
+    { pergunta: 'Qual série acompanha a família Pritchett em formato de falso documentário?', resposta: 'Modern Family', dif: 45 },
+    { pergunta: 'Em qual série existe a disputa pelo Trono de Ferro?', resposta: 'Game of Thrones', aceita: ['A Guerra dos Tronos', 'GOT'], dif: 25 },
+    { pergunta: 'Qual série tem Ross, Rachel, Monica, Chandler, Joey e Phoebe?', resposta: 'Friends', dif: 20 },
+    { pergunta: 'Qual série médica tem Meredith Grey como protagonista?', resposta: 'Grey\'s Anatomy', aceita: ['Greys Anatomy', 'A Anatomia de Grey'], dif: 35 },
+    { pergunta: 'Qual série se passa no escritório de uma papelaria em Scranton?', resposta: 'The Office', aceita: ['O Escritório'], dif: 40 },
+    { pergunta: 'Qual série da Netflix acompanha uma prodígio do xadrez?', resposta: 'O Gambito da Rainha', aceita: ['The Queen\'s Gambit', 'Gambito da Rainha'], dif: 45 },
+    { pergunta: 'Qual série britânica acompanha uma gangue de Birmingham nos anos 1920?', resposta: 'Peaky Blinders', dif: 45 },
+    { pergunta: 'Qual série é o spin-off de "Breaking Bad" sobre um advogado?', resposta: 'Better Call Saul', dif: 40 }
   ],
 
   historia: [
@@ -556,6 +628,33 @@ const QUESTOES = {
     { pergunta: 'Qual série de jogos ficou famosa pela dificuldade e pela frase "Git Gud"?', resposta: 'Dark Souls', dif: 45 },
     { pergunta: 'Qual jogo de cartas colecionáveis digital é da Blizzard?', resposta: 'Hearthstone', dif: 60 },
     { pergunta: 'Qual estúdio criou a série Assassin\'s Creed?', resposta: 'Ubisoft', dif: 45 }
+  ],
+
+  mainstream: [
+    { pergunta: 'Qual empresa fabrica o iPhone?', resposta: 'Apple', dif: 10 },
+    { pergunta: 'Qual é o buscador mais usado do mundo?', resposta: 'Google', dif: 10 },
+    { pergunta: 'Qual rede social foi criada por Mark Zuckerberg?', resposta: 'Facebook', dif: 15 },
+    { pergunta: 'Qual aplicativo de vídeos curtos explodiu em 2020?', resposta: 'TikTok', dif: 15 },
+    { pergunta: 'Qual rede social do passarinho azul passou a se chamar X?', resposta: 'Twitter', dif: 20 },
+    { pergunta: 'Qual é a maior plataforma de vídeos do mundo?', resposta: 'YouTube', dif: 10 },
+    { pergunta: 'Qual serviço de streaming tem um "N" vermelho como logo?', resposta: 'Netflix', dif: 10 },
+    { pergunta: 'Qual é o aplicativo de mensagens mais usado no Brasil?', resposta: 'WhatsApp', dif: 10 },
+    { pergunta: 'Qual rede social de fotos tem uma câmera colorida como logo?', resposta: 'Instagram', dif: 12 },
+    { pergunta: 'Qual refrigerante é dono do slogan "Abra a felicidade"?', resposta: 'Coca-Cola', aceita: ['Coca'], dif: 20 },
+    { pergunta: 'Qual marca de tênis usa o símbolo do "swoosh"?', resposta: 'Nike', dif: 15 },
+    { pergunta: 'Qual rede de fast-food tem o palhaço Ronald como mascote?', resposta: 'McDonald\'s', aceita: ['McDonalds', 'Mc Donalds'], dif: 12 },
+    { pergunta: 'Qual energético tem dois touros no logo?', resposta: 'Red Bull', dif: 20 },
+    { pergunta: 'Qual montadora de carros elétricos é dirigida por Elon Musk?', resposta: 'Tesla', dif: 15 },
+    { pergunta: 'Quem fundou a Microsoft junto com Paul Allen?', resposta: 'Bill Gates', aceita: ['Gates'], dif: 20 },
+    { pergunta: 'Qual é a criptomoeda mais conhecida do mundo?', resposta: 'Bitcoin', dif: 20 },
+    { pergunta: 'Qual é o assistente de voz da Amazon?', resposta: 'Alexa', dif: 20 },
+    { pergunta: 'Qual é a enciclopédia colaborativa mais usada da internet?', resposta: 'Wikipédia', aceita: ['Wikipedia'], dif: 15 },
+    { pergunta: 'Qual é o esporte mais popular do mundo?', resposta: 'Futebol', dif: 10 },
+    { pergunta: 'Qual rato de luvas brancas é o símbolo da Disney?', resposta: 'Mickey Mouse', aceita: ['Mickey'], dif: 10 },
+    { pergunta: 'Qual princesa da Disney perde um sapatinho de cristal?', resposta: 'Cinderela', aceita: ['Cinderella'], dif: 15 },
+    { pergunta: 'Qual super-herói atira teias pelos pulsos?', resposta: 'Homem-Aranha', aceita: ['Spider-Man', 'Homem Aranha'], dif: 10 },
+    { pergunta: 'Qual bruxo tem óculos redondos e uma cicatriz na testa?', resposta: 'Harry Potter', aceita: ['Potter'], dif: 10 },
+    { pergunta: 'Qual é o boneco de neve de "Frozen"?', resposta: 'Olaf', dif: 25 }
   ]
 };
 

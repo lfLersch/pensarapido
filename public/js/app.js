@@ -14,6 +14,7 @@ const estado = {
   sala: null,           // estado público da sala
   escolhas: {
     categorias: new Set(),
+    subs: new Set(),
     modo: 'tempo',
     metaPontos: 120,
     segundosPorPergunta: 30
@@ -22,7 +23,8 @@ const estado = {
   necessarias: 1,   // Escalada: quantas respostas a rodada pede
   meusItens: [],    // Escalada: o que já respondi nesta rodada
   emRodada: false,
-  animacao: null
+  contagem: null,
+  urgencia: null,
 };
 
 /* ----------------------------- Atalhos ----------------------------- */
@@ -153,14 +155,47 @@ function montarCategorias() {
 
     item.addEventListener('click', () => {
       const marcada = estado.escolhas.categorias.has(categoria.id);
-      if (marcada) estado.escolhas.categorias.delete(categoria.id);
-      else estado.escolhas.categorias.add(categoria.id);
+      if (marcada) {
+        estado.escolhas.categorias.delete(categoria.id);
+        for (const s of [...estado.escolhas.subs]) {
+          if (s.startsWith(categoria.id + ':')) estado.escolhas.subs.delete(s);
+        }
+      } else {
+        estado.escolhas.categorias.add(categoria.id);
+      }
       item.classList.toggle('marcada', !marcada);
       item.setAttribute('aria-pressed', String(!marcada));
       atualizarResumo();
     });
 
     grade.appendChild(item);
+
+    // Categoria dividida em partes: cada uma vira um chip abaixo dela.
+    if (categoria.subs && categoria.subs.length) {
+      const caixa = criar('div', 'subcategorias');
+      caixa.dataset.de = categoria.id;
+
+      for (const sub of categoria.subs) {
+        const chip = criar('button', 'subchip');
+        chip.type = 'button';
+        chip.dataset.id = `${categoria.id}:${sub.id}`;
+        chip.innerHTML = `${sub.icone} ${sub.nome}`;
+        chip.title = `Só as perguntas de ${sub.nome} dentro de ${categoria.nome}`;
+
+        chip.addEventListener('click', () => {
+          const marcada = estado.escolhas.subs.has(chip.dataset.id);
+          if (marcada) estado.escolhas.subs.delete(chip.dataset.id);
+          else {
+            estado.escolhas.subs.add(chip.dataset.id);
+            estado.escolhas.categorias.add(categoria.id); // parte marcada exige a categoria
+          }
+          sincronizarCategorias();
+        });
+
+        caixa.appendChild(chip);
+      }
+      grade.appendChild(caixa);
+    }
   }
 
   // Começa com tudo marcado.
@@ -174,6 +209,18 @@ function sincronizarCategorias() {
     el.classList.toggle('marcada', marcada);
     el.setAttribute('aria-pressed', String(marcada));
   });
+
+  document.querySelectorAll('.subcategorias').forEach((caixa) => {
+    // Os chips só aparecem quando a categoria dona deles está marcada.
+    caixa.hidden = !estado.escolhas.categorias.has(caixa.dataset.de);
+  });
+
+  document.querySelectorAll('.subchip').forEach((chip) => {
+    const marcada = estado.escolhas.subs.has(chip.dataset.id);
+    chip.classList.toggle('marcada', marcada);
+    chip.setAttribute('aria-pressed', String(marcada));
+  });
+
   atualizarResumo();
 }
 
@@ -184,6 +231,7 @@ $('btn-todas-categorias').addEventListener('click', () => {
 
 $('btn-nenhuma-categoria').addEventListener('click', () => {
   estado.escolhas.categorias.clear();
+  estado.escolhas.subs.clear();
   sincronizarCategorias();
 });
 
@@ -301,6 +349,7 @@ $('btn-criar').addEventListener('click', () => {
 
   const config = {
     categorias: [...estado.escolhas.categorias],
+    subs: [...estado.escolhas.subs],
     modo: estado.escolhas.modo,
     metaPontos: estado.escolhas.metaPontos,
     segundosPorPergunta: estado.escolhas.segundosPorPergunta
@@ -407,42 +456,83 @@ function escapar(texto) {
   return div.innerHTML;
 }
 
-function pararAnimacao() {
-  if (estado.animacao) {
-    cancelAnimationFrame(estado.animacao);
-    estado.animacao = null;
-  }
+/**
+ * Esvazia uma barra no tempo pedido.
+ *
+ * Quem anima é o próprio navegador, por transition — assim a barra não depende
+ * de a aba estar pintando quadros.
+ */
+function animarBarra(barra, duracaoMs) {
+  barra.style.transition = 'none';
+  barra.style.transform = 'scaleX(1)';
+  void barra.offsetWidth; // força o navegador a aplicar o estado inicial
+  barra.style.transition = `transform ${duracaoMs}ms linear`;
+  barra.style.transform = 'scaleX(0)';
 }
 
 /**
- * Anima uma barra que esvazia e, opcionalmente, um contador em segundos.
+ * Conta os segundos que faltam dentro de um elemento.
+ *
+ * Em setInterval de propósito: em aba de fundo o navegador segura os quadros
+ * do rAF, mas continua chamando o intervalo (no pior caso, uma vez por
+ * segundo — que é exatamente a precisão de que um contador precisa).
  */
-function contarTempo(barra, duracaoMs, mostrarSegundos) {
-  pararAnimacao();
-  const inicio = performance.now();
+function contarSegundos(elemento, duracaoMs, aoZerar) {
+  pararContagem();
+  const fim = Date.now() + duracaoMs;
 
-  if (mostrarSegundos) {
-    $('cronometro-num').textContent = Math.ceil(duracaoMs / 1000);
-    cronometro.classList.remove('urgente');
-  }
-
-  const passo = (agora) => {
-    const restante = Math.max(0, duracaoMs - (agora - inicio));
-    barra.style.transform = `scaleX(${restante / duracaoMs})`;
-
-    if (mostrarSegundos) {
-      const segundos = Math.ceil(restante / 1000);
-      if ($('cronometro-num').textContent !== String(segundos)) {
-        $('cronometro-num').textContent = segundos;
-      }
-      cronometro.classList.toggle('urgente', segundos <= 5 && segundos > 0);
+  const escrever = () => {
+    const restante = Math.max(0, fim - Date.now());
+    const segundos = Math.ceil(restante / 1000);
+    if (elemento && elemento.textContent !== String(segundos)) {
+      elemento.textContent = segundos;
     }
-
-    if (restante > 0) estado.animacao = requestAnimationFrame(passo);
-    else estado.animacao = null;
+    if (restante <= 0) {
+      pararContagem();
+      if (aoZerar) aoZerar();
+    }
+    return segundos;
   };
 
-  estado.animacao = requestAnimationFrame(passo);
+  escrever();
+  estado.contagem = setInterval(escrever, 200);
+}
+
+function pararContagem() {
+  if (estado.contagem) {
+    clearInterval(estado.contagem);
+    estado.contagem = null;
+  }
+}
+
+/** Cronômetro da pergunta: barra + número + aviso de "acabando". */
+function contarTempo(barra, duracaoMs, mostrarSegundos) {
+  animarBarra(barra, duracaoMs);
+  if (!mostrarSegundos) return;
+
+  cronometro.classList.remove('urgente');
+  contarSegundos($('cronometro-num'), duracaoMs);
+
+  // O "urgente" acompanha o mesmo intervalo do número.
+  const fim = Date.now() + duracaoMs;
+  pararUrgencia();
+  estado.urgencia = setInterval(() => {
+    const segundos = Math.ceil(Math.max(0, fim - Date.now()) / 1000);
+    cronometro.classList.toggle('urgente', segundos <= 5 && segundos > 0);
+    if (segundos <= 0) pararUrgencia();
+  }, 200);
+}
+
+function pararUrgencia() {
+  if (estado.urgencia) {
+    clearInterval(estado.urgencia);
+    estado.urgencia = null;
+  }
+}
+
+function pararAnimacao() {
+  pararContagem();
+  pararUrgencia();
 }
 
 /* --------------------- 4a. Revelação da categoria --------------------- */
@@ -461,6 +551,7 @@ socket.on('rodada:categoria', (dados) => {
   $('revelacao-nome').style.color = '';
 
   contarTempo($('revelacao-barra'), dados.duracaoMs, false);
+  contarSegundos($('revelacao-num'), dados.duracaoMs);
 
   if (dados.placar) renderizarPlacar(dados.placar);
 });
@@ -527,6 +618,7 @@ socket.on('rodada:pergunta', (dados) => {
 
   mensagemSistema(`Rodada ${dados.rodada} · ${dados.categoria.nome}`);
 
+  pararContagem();
   contarTempo(barraTempo, dados.duracaoMs, true);
 });
 
@@ -694,6 +786,8 @@ socket.on('rodada:resultado', (dados) => {
   }
 
   $('resultado').hidden = false;
+  $('proxima').hidden = Boolean(dados.acabou);
+  if (!dados.acabou) contarSegundos($('resultado-num'), dados.duracaoMs);
   $('status-respostas').textContent = dados.acabou ? 'Alguém bateu a meta!' : '';
   inputChat.placeholder = 'Digite uma mensagem…';
 

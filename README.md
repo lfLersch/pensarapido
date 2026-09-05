@@ -27,7 +27,7 @@ Todo jogador começa digitando um **nickname** e escolhendo entre:
 
 | Ajuste | Opções |
 | --- | --- |
-| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime, Música, Cinema & TV, História, Ciência, Games |
+| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, Cinema & TV, História, Ciência, Games, **Mainstream** |
 | Tipo de jogo | **Modo Tempo** ou **Escalada** (Sobrevivência e Equipes aparecem como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / 20s / 30s (padrão) / 45s |
@@ -164,6 +164,46 @@ lobby → categoria → pergunta → resultado → (categoria… ou fim)
 ```
 
 O líder volta ao saguão pelo botão *Jogar de novo*, mantendo os jogadores.
+
+## Ritmo de uma rodada
+
+```
+categoria (2,8s)  ->  pergunta (30s)  ->  resultado  ->  próxima
+```
+
+Cada etapa mostra **quantos segundos faltam, em número**. A rodada não espera o
+relógio acabar: assim que **todo mundo acerta**, ela fecha na hora e o resultado
+conta **3 segundos** até a próxima pergunta. Quando o tempo acaba com gente sem
+acertar, o resultado fica **5 segundos** — quem errou precisa de mais tempo para
+ler a resposta.
+
+Os contadores rodam em `setInterval`, não em `requestAnimationFrame`: o
+navegador congela os quadros do rAF em aba de segundo plano, e o número parava
+no lugar até a pessoa voltar. As barras animam por `transition` do CSS, pelo
+mesmo motivo. O relógio que vale continua sendo o do servidor — o da tela é só
+para a pessoa se situar.
+
+## Subcategorias
+
+Uma categoria pode ser dividida em partes escolhidas separadamente. Hoje só
+**Anime → Naruto** usa isso, mas a máquina serve para qualquer uma:
+
+```js
+{ id: 'anime', nome: 'Anime', icone: '🍥', cor: '#ec4899',
+  subs: [{ id: 'naruto', nome: 'Naruto', icone: '🌀' }] }
+```
+
+As perguntas da parte levam o campo `sub`:
+
+```js
+{ pergunta: 'Qual é a vila do Naruto?', sub: 'naruto', resposta: 'Konoha', dif: 30 }
+```
+
+Na criação da sala, os chips das partes aparecem embaixo da categoria quando ela
+está marcada. **Marcar a categoria sem escolher parte nenhuma traz tudo**;
+escolhendo uma ou mais partes, só as perguntas delas entram no sorteio. Marcar
+uma parte marca a categoria junto, e o servidor revalida os dois — chip
+inventado é descartado.
 
 ## Banco de perguntas
 

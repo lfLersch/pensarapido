@@ -340,6 +340,37 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 .categoria.marcada .categoria__check { opacity: 1; }
 
+/* Partes de uma categoria (ex.: Naruto dentro de Anime) */
+
+.subcategorias {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: -4px 0 2px 14px;
+  padding-left: 12px;
+  border-left: 2px solid var(--borda);
+}
+
+.subchip {
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--texto-suave);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1.5px solid var(--borda);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all var(--transicao);
+}
+.subchip:hover { color: var(--texto); border-color: var(--borda-forte); }
+.subchip.marcada {
+  color: #fff;
+  background: rgba(124, 92, 255, 0.28);
+  border-color: var(--primaria);
+}
+
 /* Modos de jogo */
 
 .grade-modos {
@@ -831,6 +862,31 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   text-align: center;
   color: var(--texto-suave);
   min-height: 20px;
+}
+
+/* Contagem até a próxima pergunta */
+
+.conta-regressiva {
+  font-size: 30px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--texto-suave);
+}
+
+.proxima {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+.proxima b {
+  display: inline-block;
+  min-width: 1.2em;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--destaque);
 }
 
 /* Resultado da rodada */
