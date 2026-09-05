@@ -268,6 +268,7 @@ class Sala {
       id,
       pergunta: bruta.pergunta,
       imagem: bruta.imagem || null,
+      audio: bruta.audio || null,
       // Aceita string ou lista; para a tela vai sempre lista de linhas.
       letra: bruta.letra
         ? (Array.isArray(bruta.letra) ? bruta.letra : [bruta.letra])
@@ -316,6 +317,7 @@ class Sala {
       pergunta: enunciado,
       imagem: null,
       letra: null,
+      audio: null,
       resposta: null,
       aceita: [],
       itens: lista.respostas.map(itemDe),
@@ -371,6 +373,7 @@ class Sala {
       categoria: this.perguntaAtual.categoria,
       pergunta: this.perguntaAtual.pergunta,
       imagem: this.perguntaAtual.imagem,
+      audio: this.perguntaAtual.audio,
       letra: this.perguntaAtual.letra,
       necessarias: this.perguntaAtual.necessarias,
       // A resposta NUNCA vai junto — o servidor é quem confere.

@@ -765,6 +765,77 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: rgba(168, 85, 247, 0.55);
 }
 
+/* Tocador das perguntas de audio */
+
+.tocador {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 14px 18px;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: var(--raio);
+}
+
+.tocador__botao {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  font-size: 15px;
+  color: #fff;
+  background: linear-gradient(135deg, #a855f7, var(--primaria));
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform var(--transicao), box-shadow var(--transicao);
+}
+.tocador__botao:hover { transform: scale(1.06); }
+
+/* Autoplay bloqueado: o botao chama atencao para a pessoa tocar. */
+.tocador.travado .tocador__botao { animation: pulsarBotao 1.4s ease-in-out infinite; }
+@keyframes pulsarBotao {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.6); }
+  50%      { box-shadow: 0 0 0 12px rgba(168, 85, 247, 0); }
+}
+
+.tocador__onda {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  flex: 1;
+}
+.tocador__onda i {
+  flex: 1;
+  max-width: 5px;
+  height: 20%;
+  background: #a855f7;
+  border-radius: 99px;
+  opacity: 0.45;
+}
+/* As barras so mexem enquanto o audio esta tocando. */
+.tocador.tocando .tocador__onda i { opacity: 1; animation: onda 900ms ease-in-out infinite; }
+.tocador.tocando .tocador__onda i:nth-child(2) { animation-delay: 100ms; }
+.tocador.tocando .tocador__onda i:nth-child(3) { animation-delay: 200ms; }
+.tocador.tocando .tocador__onda i:nth-child(4) { animation-delay: 300ms; }
+.tocador.tocando .tocador__onda i:nth-child(5) { animation-delay: 150ms; }
+.tocador.tocando .tocador__onda i:nth-child(6) { animation-delay: 250ms; }
+.tocador.tocando .tocador__onda i:nth-child(7) { animation-delay:  50ms; }
+.tocador.tocando .tocador__onda i:nth-child(8) { animation-delay: 350ms; }
+.tocador.tocando .tocador__onda i:nth-child(9) { animation-delay: 200ms; }
+@keyframes onda {
+  0%, 100% { height: 20%; }
+  50%      { height: 100%; }
+}
+
+.tocador__aviso {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--destaque);
+  white-space: nowrap;
+}
+
 .pergunta__figura {
   margin: 0 0 20px;
   text-align: center;

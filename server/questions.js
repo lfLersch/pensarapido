@@ -10,6 +10,7 @@
  *     aceita:   outras formas válidas (opcional) — "Holanda" para "Paises Baixos",
  *     dif:      dificuldade inicial de 0 a 100 (opcional, padrão 40),
  *     imagem:   URL de uma imagem (opcional)
+ *     audio:    URL de um audio que toca junto com a pergunta (opcional)
  *   }
  *
  * Acentos, maiúsculas, pontuação e espaços são ignorados na comparação, e
@@ -33,7 +34,16 @@ const CATEGORIAS = [
   { id: 'historia', nome: 'Historia', icone: '📜', cor: '#d97706' },
   { id: 'ciencia', nome: 'Ciencia', icone: '🔬', cor: '#06b6d4' },
   { id: 'games', nome: 'Games', icone: '🎮', cor: '#8b5cf6' },
-  { id: 'mainstream', nome: 'Mainstream', icone: '⭐', cor: '#f59e0b' }
+  { id: 'mainstream', nome: 'Mainstream', icone: '⭐', cor: '#f59e0b' },
+  { id: 'animais', nome: 'Animais', icone: '🐾', cor: '#84cc16' },
+  { id: 'comidas', nome: 'Comidas', icone: '🍔', cor: '#fb7185',
+    subs: [
+      { id: 'frutas', nome: 'Frutas', icone: '🍎' },
+      { id: 'vegetais', nome: 'Vegetais', icone: '🥦' },
+      { id: 'frituras', nome: 'Frituras', icone: '🍟' },
+      { id: 'lanches', nome: 'Lanches', icone: '🍕' },
+      { id: 'pratos', nome: 'Pratos e doces', icone: '🍮' }
+    ] }
 ];
 
 /* ------------------------------------------------------------------ *
@@ -951,6 +961,96 @@ const QUESTOES = {
     { pergunta: 'Qual e a maior rede de fast-food de frango frito do mundo?', resposta: 'KFC', dif: 35 },
     { pergunta: 'Qual empresa de tenis usa o slogan "Just Do It"?', resposta: 'Nike', dif: 15 },
     { pergunta: 'Qual aplicativo de video chamada ficou famoso na pandemia?', resposta: 'Zoom', dif: 25 }
+  ],
+
+  animais: [
+    { pergunta: 'Qual e o maior animal terrestre?', resposta: 'Elefante', dif: 15 },
+    { pergunta: 'Qual ave nao voa e vive no gelo da Antartida?', resposta: 'Pinguim', dif: 15 },
+    { pergunta: 'Qual e o maior felino do mundo?', resposta: 'Tigre', dif: 35 },
+    { pergunta: 'Qual animal e chamado de "rei da selva"?', resposta: 'Leao', dif: 12 },
+    { pergunta: 'Quantas patas tem um inseto?', resposta: '6', aceita: ['seis'], dif: 30 },
+    { pergunta: 'Qual animal muda de cor para se camuflar?', resposta: 'Camaleao', dif: 20 },
+    { pergunta: 'Qual e o unico mamifero que poe ovos?', resposta: 'Ornitorrinco', dif: 45 },
+    { pergunta: 'Qual animal tem o pescoco mais longo?', resposta: 'Girafa', dif: 12 },
+    { pergunta: 'Qual animal e o simbolo do Canada?', resposta: 'Castor', dif: 50 },
+    { pergunta: 'Qual mamifero marinho e famoso pela inteligencia e vive em grupos?', resposta: 'Golfinho', dif: 20 },
+    { pergunta: 'Qual inseto produz mel?', resposta: 'Abelha', dif: 12 },
+    { pergunta: 'Qual e o maior tubarao do mundo?', resposta: 'Tubarao-baleia', aceita: ['tubarao baleia'], dif: 45 },
+    { pergunta: 'Qual mamifero dorme pendurado de cabeca para baixo?', resposta: 'Morcego', dif: 25 },
+    { pergunta: 'Qual e o filhote da vaca?', resposta: 'Bezerro', dif: 25 },
+    { pergunta: 'Qual e o filhote do cavalo?', resposta: 'Potro', dif: 35 },
+    { pergunta: 'Qual e o filhote da ovelha?', resposta: 'Cordeiro', dif: 30 },
+    { pergunta: 'Qual animal africano tem listras pretas e brancas?', resposta: 'Zebra', dif: 12 },
+    { pergunta: 'Qual e a maior ave do mundo?', resposta: 'Avestruz', dif: 30 },
+    { pergunta: 'Qual animal carrega o filhote numa bolsa na barriga?', resposta: 'Canguru', dif: 20 },
+    { pergunta: 'Quantos coracoes tem um polvo?', resposta: '3', aceita: ['tres'], dif: 60 },
+    { pergunta: 'Quantos bracos tem um polvo?', resposta: '8', aceita: ['oito'], dif: 20 },
+    { pergunta: 'Qual animal troca de pele periodicamente e rasteja?', resposta: 'Cobra', aceita: ['serpente'], dif: 25 },
+    { pergunta: 'Qual e o mamifero mais lento do mundo?', resposta: 'Preguica', dif: 25 },
+    { pergunta: 'Qual ave e simbolo da paz?', resposta: 'Pomba', dif: 25 },
+    { pergunta: 'Qual e o grupo de animais que amamenta os filhotes?', resposta: 'Mamiferos', dif: 20 },
+    { pergunta: 'Qual e o maior felino das Americas?', resposta: 'Onca-pintada', aceita: ['onca', 'onca pintada'], dif: 40 },
+    { pergunta: 'Qual animal e conhecido como "navio do deserto"?', resposta: 'Camelo', dif: 35 },
+    { pergunta: 'Quantas corcovas tem um dromedario?', resposta: '1', aceita: ['uma'], dif: 55 },
+    { pergunta: 'O girino e a fase jovem de qual animal?', resposta: 'Sapo', aceita: ['ra'], dif: 30 },
+    { pergunta: 'Qual ave e famosa por imitar a fala humana?', resposta: 'Papagaio', dif: 20 },
+    { pergunta: 'Qual e o maior primata do mundo?', resposta: 'Gorila', dif: 30 },
+    { pergunta: 'Qual e o maior roedor do mundo?', resposta: 'Capivara', dif: 40 },
+    { pergunta: 'Qual animal tem oito patas e tece teias?', resposta: 'Aranha', dif: 15 },
+    { pergunta: 'Qual animal africano tem risada caracteristica e vive em bandos?', resposta: 'Hiena', dif: 35 },
+    { pergunta: 'Qual e o animal mais rapido do mundo em mergulho?', resposta: 'Falcao-peregrino', aceita: ['falcao peregrino', 'falcao'], dif: 60 },
+    { pergunta: 'Qual e o maior animal do planeta, que vive no mar?', resposta: 'Baleia-azul', aceita: ['baleia azul'], dif: 25 },
+    { pergunta: 'Qual animal e famoso por construir represas nos rios?', resposta: 'Castor', dif: 45 },
+    { pergunta: 'Qual reptil tem casco e vive muitos anos?', resposta: 'Tartaruga', aceita: ['jabuti'], dif: 15 },
+    { pergunta: 'Qual animal domestico e conhecido como o melhor amigo do homem?', resposta: 'Cachorro', aceita: ['cao'], dif: 10 },
+    { pergunta: 'Qual inseto e responsavel por transmitir a dengue?', resposta: 'Aedes aegypti', aceita: ['mosquito da dengue', 'aedes'], dif: 40 }
+  ],
+
+  comidas: [
+    { pergunta: 'Qual fruta e amarela e curvada?', sub: 'frutas', resposta: 'Banana', dif: 10 },
+    { pergunta: 'Qual fruta e verde por fora e vermelha por dentro?', sub: 'frutas', resposta: 'Melancia', dif: 15 },
+    { pergunta: 'Qual fruta citrica e usada na caipirinha?', sub: 'frutas', resposta: 'Limao', dif: 20 },
+    { pergunta: 'Qual fruta e a base do vinho?', sub: 'frutas', resposta: 'Uva', dif: 15 },
+    { pergunta: 'Qual fruta amazonica roxa e servida na tigela?', sub: 'frutas', resposta: 'Acai', dif: 20 },
+    { pergunta: 'Qual fruta tem casca com espinhos e uma coroa de folhas?', sub: 'frutas', resposta: 'Abacaxi', dif: 20 },
+    { pergunta: 'Qual fruta e a base do guacamole?', sub: 'frutas', resposta: 'Abacate', dif: 30 },
+    { pergunta: 'Qual fruta citrica alaranjada e rica em vitamina C?', sub: 'frutas', resposta: 'Laranja', dif: 12 },
+    { pergunta: 'Qual fruta tropical tem polpa alaranjada e um caroco grande e chato?', sub: 'frutas', resposta: 'Manga', dif: 25 },
+    { pergunta: 'Qual fruta seca vem da uva desidratada?', sub: 'frutas', resposta: 'Uva-passa', aceita: ['uva passa', 'passa'], dif: 30 },
+    { pergunta: 'Qual fruta vermelha e pequena enfeita o bolo e o sundae?', sub: 'frutas', resposta: 'Cereja', dif: 25 },
+    { pergunta: 'Qual fruta e conhecida por ser a preferida dos macacos nos desenhos?', sub: 'frutas', resposta: 'Banana', dif: 15 },
+    { pergunta: 'Qual legume alaranjado o coelho adora?', sub: 'vegetais', resposta: 'Cenoura', dif: 12 },
+    { pergunta: 'Qual legume faz chorar na hora de cortar?', sub: 'vegetais', resposta: 'Cebola', dif: 15 },
+    { pergunta: 'Qual tuberculo e a base do pure?', sub: 'vegetais', resposta: 'Batata', dif: 15 },
+    { pergunta: 'Qual verdura verde deixava o Popeye forte?', sub: 'vegetais', resposta: 'Espinafre', dif: 25 },
+    { pergunta: 'Qual fruto vermelho e a base do molho de macarrao?', sub: 'vegetais', resposta: 'Tomate', dif: 15 },
+    { pergunta: 'Qual vegetal verde parece uma arvorezinha?', sub: 'vegetais', resposta: 'Brocolis', dif: 20 },
+    { pergunta: 'Qual tempero e famoso por espantar vampiros?', sub: 'vegetais', resposta: 'Alho', dif: 20 },
+    { pergunta: 'Qual verdura de folhas verdes e a base da salada?', sub: 'vegetais', resposta: 'Alface', dif: 15 },
+    { pergunta: 'Qual legume verde e comprido e usado em conserva?', sub: 'vegetais', resposta: 'Pepino', dif: 30 },
+    { pergunta: 'Qual vegetal roxo e usado na berinjela a parmegiana?', sub: 'vegetais', resposta: 'Berinjela', dif: 30 },
+    { pergunta: 'Qual salgado brasileiro tem formato de gota e recheio de frango?', sub: 'frituras', resposta: 'Coxinha', dif: 12 },
+    { pergunta: 'Qual salgado e uma massa fina frita e recheada?', sub: 'frituras', resposta: 'Pastel', dif: 15 },
+    { pergunta: 'Qual acompanhamento frito e o mais famoso do mundo?', sub: 'frituras', resposta: 'Batata frita', aceita: ['fritas'], dif: 12 },
+    { pergunta: 'Qual salgado mineiro e feito com polvilho e queijo?', sub: 'frituras', resposta: 'Pao de queijo', dif: 15 },
+    { pergunta: 'Qual bolinho frito e feito de massa de mandioca com carne seca?', sub: 'frituras', resposta: 'Bolinho de mandioca', aceita: ['bolinho de aipim'], dif: 50 },
+    { pergunta: 'Qual salgado baiano e frito no azeite de dende?', sub: 'frituras', resposta: 'Acaraje', dif: 35 },
+    { pergunta: 'Qual anel de cebola frito e servido como petisco?', sub: 'frituras', resposta: 'Onion rings', aceita: ['anel de cebola'], dif: 45 },
+    { pergunta: 'Qual lanche tem dois paes e um hamburguer no meio?', sub: 'lanches', resposta: 'Hamburguer', aceita: ['x-burguer', 'sanduiche'], dif: 12 },
+    { pergunta: 'Qual lanche italiano e redondo, com molho e queijo?', sub: 'lanches', resposta: 'Pizza', dif: 10 },
+    { pergunta: 'Qual lanche mexicano e enrolado numa tortilha?', sub: 'lanches', resposta: 'Burrito', dif: 40 },
+    { pergunta: 'Qual comida japonesa leva arroz e peixe cru?', sub: 'lanches', resposta: 'Sushi', dif: 20 },
+    { pergunta: 'Qual sanduiche americano leva salsicha comprida no pao?', sub: 'lanches', resposta: 'Cachorro-quente', aceita: ['hot dog', 'cachorro quente'], dif: 15 },
+    { pergunta: 'Qual massa italiana e comprida e fina?', sub: 'lanches', resposta: 'Espaguete', aceita: ['spaghetti'], dif: 25 },
+    { pergunta: 'Qual queijo italiano e o classico da pizza?', sub: 'lanches', resposta: 'Mussarela', aceita: ['muzzarela'], dif: 25 },
+    { pergunta: 'Qual prato brasileiro leva feijao preto com varias carnes?', sub: 'pratos', resposta: 'Feijoada', dif: 15 },
+    { pergunta: 'Qual doce brasileiro e feito de leite condensado com chocolate?', sub: 'pratos', resposta: 'Brigadeiro', dif: 12 },
+    { pergunta: 'Qual e o brigadeiro branco enrolado no coco?', sub: 'pratos', resposta: 'Beijinho', dif: 30 },
+    { pergunta: 'Qual doce de festa junina e feito de amendoim moido?', sub: 'pratos', resposta: 'Pacoca', dif: 25 },
+    { pergunta: 'Qual comida nordestina e feita de milho e cozida no vapor?', sub: 'pratos', resposta: 'Cuscuz', dif: 30 },
+    { pergunta: 'Qual doce e feito de leite fervido com acucar ate engrossar?', sub: 'pratos', resposta: 'Doce de leite', dif: 30 },
+    { pergunta: 'Qual sobremesa gelada e servida na casquinha?', sub: 'pratos', resposta: 'Sorvete', dif: 12 },
+    { pergunta: 'Qual bebida destilada brasileira vem da cana-de-acucar?', sub: 'pratos', resposta: 'Cachaca', aceita: ['pinga'], dif: 25 }
   ]
 };
 

@@ -604,6 +604,8 @@ socket.on('rodada:pergunta', (dados) => {
     atualizarEscalada();
   }
 
+  montarAudio(dados.audio);
+
   const figura = $('pergunta-figura');
   if (dados.imagem) {
     $('pergunta-imagem').src = dados.imagem;
@@ -645,6 +647,75 @@ function registrarItem(nome) {
   $('escalada-itens').appendChild(el);
   atualizarEscalada();
 }
+
+/* ------------------------------ Audio -------------------------------- */
+
+/**
+ * Prepara o tocador da rodada.
+ *
+ * Tenta tocar sozinho, mas o navegador recusa som automatico em pagina sem
+ * interacao recente. Quando recusa, o botao ganha destaque em vez de a
+ * pergunta ficar muda sem ninguem entender por que.
+ */
+function montarAudio(url) {
+  const caixa = $('tocador');
+  const player = $('tocador-audio');
+
+  pararAudio();
+
+  if (!url) {
+    caixa.hidden = true;
+    player.removeAttribute('src');
+    return;
+  }
+
+  caixa.hidden = false;
+  caixa.classList.remove('tocando', 'travado');
+  $('tocador-aviso').textContent = '';
+  player.src = url;
+  player.currentTime = 0;
+
+  player.play()
+    .then(() => marcarTocando(true))
+    .catch(() => {
+      // Autoplay bloqueado: quem toca e a pessoa.
+      caixa.classList.add('travado');
+      $('tocador-aviso').textContent = 'Toque para ouvir';
+    });
+}
+
+function marcarTocando(sim) {
+  $('tocador').classList.toggle('tocando', sim);
+  $('tocador-botao').innerHTML = sim ? '&#10074;&#10074;' : '&#9654;';
+}
+
+function pararAudio() {
+  const player = $('tocador-audio');
+  if (!player) return;
+  player.pause();
+  marcarTocando(false);
+}
+
+$('tocador-botao').addEventListener('click', () => {
+  const player = $('tocador-audio');
+  $('tocador').classList.remove('travado');
+  $('tocador-aviso').textContent = '';
+
+  if (player.paused) {
+    player.play().then(() => marcarTocando(true)).catch(() => {
+      $('tocador-aviso').textContent = 'Nao consegui tocar este audio';
+    });
+  } else {
+    player.pause();
+    marcarTocando(false);
+  }
+});
+
+$('tocador-audio').addEventListener('ended', () => marcarTocando(false));
+$('tocador-audio').addEventListener('error', () => {
+  $('tocador').classList.remove('tocando');
+  $('tocador-aviso').textContent = 'Audio indisponivel';
+});
 
 /* ------------------------------- Chat -------------------------------- */
 
@@ -746,6 +817,7 @@ socket.on('rodada:resultado', (dados) => {
   barraTempo.style.transform = 'scaleX(0)';
   cronometro.classList.remove('urgente');
   $('mascara').textContent = '';
+  pararAudio();
   $('escalada').hidden = true;
 
   $('resultado-certa').textContent = dados.resposta;
