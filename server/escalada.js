@@ -2213,6 +2213,110 @@ const LISTAS = [
       'Gabriel Jesus',
       ['Roberto Firmino', 'Firmino']
     ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores em destaque na decada de 2010',
+    tema: 'futebol', dif: 30,
+    respostas: [
+      ['Lionel Messi', 'Messi'],
+      ['Cristiano Ronaldo', 'CR7'],
+      'Neymar',
+      'Luis Suarez',
+      ['Andres Iniesta', 'Iniesta'],
+      'Xavi',
+      'Sergio Ramos',
+      ['Manuel Neuer', 'Neuer'],
+      'Thomas Muller',
+      ['Toni Kroos', 'Kroos'],
+      ['Luka Modric', 'Modric'],
+      ['Gareth Bale', 'Bale'],
+      ['Robert Lewandowski', 'Lewandowski'],
+      ['Eden Hazard', 'Hazard'],
+      ['Kevin De Bruyne', 'De Bruyne'],
+      ['Mohamed Salah', 'Salah'],
+      ['Sadio Mane', 'Mane'],
+      ['Antoine Griezmann', 'Griezmann'],
+      ['Paul Pogba', 'Pogba'],
+      ['Zlatan Ibrahimovic', 'Ibrahimovic'],
+      ['Arjen Robben', 'Robben'],
+      ['Andrea Pirlo', 'Pirlo'],
+      ['Gianluigi Buffon', 'Buffon'],
+      ['Sergio Aguero', 'Aguero'],
+      ['Edinson Cavani', 'Cavani'],
+      'James Rodriguez',
+      'Thiago Silva',
+      'Dani Alves',
+      'Marcelo',
+      'Casemiro'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores em destaque na decada de 2000',
+    tema: 'futebol', dif: 40,
+    respostas: [
+      'Ronaldinho',
+      'Ronaldo',
+      'Kaka',
+      ['Zinedine Zidane', 'Zidane'],
+      ['Thierry Henry', 'Henry'],
+      ['Andriy Shevchenko', 'Shevchenko'],
+      'Luis Figo',
+      'Roberto Carlos',
+      'Cafu',
+      'Rivaldo',
+      'Raul',
+      ['Paolo Maldini', 'Maldini'],
+      ['Francesco Totti', 'Totti'],
+      ['Steven Gerrard', 'Gerrard'],
+      ['Frank Lampard', 'Lampard'],
+      ['Didier Drogba', 'Drogba'],
+      'Samuel Etoo',
+      ['Wayne Rooney', 'Rooney'],
+      ['Iker Casillas', 'Casillas'],
+      'Deco',
+      'Adriano',
+      'Robinho'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores em destaque na decada de 1990',
+    tema: 'futebol', dif: 55,
+    respostas: [
+      'Romario',
+      'Bebeto',
+      'Ronaldo',
+      ['Roberto Baggio', 'Baggio'],
+      ['George Weah', 'Weah'],
+      ['Hristo Stoichkov', 'Stoichkov'],
+      ['Zinedine Zidane', 'Zidane'],
+      'Rivaldo',
+      'Dunga',
+      'Taffarel',
+      ['Gabriel Batistuta', 'Batistuta'],
+      'Marco van Basten',
+      ['Paolo Maldini', 'Maldini'],
+      ['Jurgen Klinsmann', 'Klinsmann'],
+      ['Matthias Sammer', 'Sammer'],
+      ['Davor Suker', 'Suker']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} campeoes da Copa do Mundo pelo Brasil em 2002',
+    tema: 'futebol', dif: 55,
+    respostas: [
+      'Ronaldo',
+      'Rivaldo',
+      'Ronaldinho',
+      'Cafu',
+      'Roberto Carlos',
+      'Marcos',
+      'Lucio',
+      'Edmilson',
+      'Gilberto Silva',
+      'Kleberson',
+      'Juninho Paulista',
+      'Denilson'
+    ]
   }
 ];
 
@@ -2320,6 +2424,91 @@ for (const [enunciadoFonte, rotulo, tema] of FONTES_POR_LETRA) {
       // encolhe e a pessoa precisa filtrar de cabeca.
       dif: 55,
       respostas: itens
+    });
+  }
+}
+
+
+/* ------------------------------------------------------------------ *
+ * "Terminam com a letra X" — mesma ideia do recorte pela primeira letra.
+ * ------------------------------------------------------------------ */
+
+function letraFinal(bruto) {
+  const nome = Array.isArray(bruto) ? bruto[0] : bruto;
+  const limpo = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z]/g, '');
+  return limpo.charAt(limpo.length - 1).toUpperCase();
+}
+
+for (const [enunciadoFonte, rotulo, tema] of FONTES_POR_LETRA) {
+  const fonte = LISTAS.find((l) => l.pergunta === enunciadoFonte);
+  if (!fonte) continue;
+
+  const porLetra = new Map();
+  for (const item of fonte.respostas) {
+    const letra = letraFinal(item);
+    if (!porLetra.has(letra)) porLetra.set(letra, []);
+    porLetra.get(letra).push(item);
+  }
+
+  for (const [letra, itens] of porLetra) {
+    if (itens.length < MINIMO_POR_LETRA) continue;
+    LISTAS.push({
+      pergunta: `Cite {n} ${rotulo} que terminam com a letra ${letra}`,
+      tema,
+      // Mais dificil que o recorte pela inicial: ninguem organiza vocabulario
+      // pela ultima letra.
+      dif: 65,
+      respostas: itens
+    });
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * "Com exatamente N letras".
+ *
+ * So vale para fonte de nome curto e de uma palavra so — contar as letras de
+ * "Republica Tcheca" nao e pergunta, e adivinhacao. Por isso a lista de fontes
+ * e separada, e entradas com espaco ou hifen ficam de fora.
+ * ------------------------------------------------------------------ */
+
+const FONTES_POR_TAMANHO = [
+  ['Cite {n} frutas', 'frutas', 'comidas'],
+  ['Cite {n} animais selvagens', 'animais', 'animais'],
+  ['Cite {n} cores', 'cores', 'gerais'],
+  ['Cite {n} paises da Europa', 'paises da Europa', 'geografia'],
+  ['Cite {n} paises da Asia', 'paises da Asia', 'geografia'],
+  ['Cite {n} pecas de roupa', 'pecas de roupa', 'objetos'],
+  ['Cite {n} objetos de uma casa', 'objetos de casa', 'objetos']
+];
+
+const MINIMO_POR_TAMANHO = 4;
+
+function umaPalavraSo(bruto) {
+  const nome = Array.isArray(bruto) ? bruto[0] : bruto;
+  return !/[\s-]/.test(nome.trim());
+}
+
+function quantasLetras(bruto) {
+  const nome = Array.isArray(bruto) ? bruto[0] : bruto;
+  return nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z]/g, '').length;
+}
+
+for (const [enunciadoFonte, rotulo, tema] of FONTES_POR_TAMANHO) {
+  const fonte = LISTAS.find((l) => l.pergunta === enunciadoFonte);
+  if (!fonte) continue;
+
+  const porTamanho = new Map();
+  for (const item of fonte.respostas.filter(umaPalavraSo)) {
+    const n = quantasLetras(item);
+    if (!porTamanho.has(n)) porTamanho.set(n, []);
+    porTamanho.get(n).push(item);
+  }
+
+  for (const [tamanho, itens] of porTamanho) {
+    if (itens.length < MINIMO_POR_TAMANHO) continue;
+    LISTAS.push({
+      pergunta: `Cite {n} ${rotulo} com exatamente ${tamanho} letras`,
+      tema, dif: 60, respostas: itens
     });
   }
 }
