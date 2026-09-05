@@ -1,0 +1,21 @@
+{
+  "name": "pensarapido",
+  "version": "1.0.0",
+  "description": "Jogo de perguntas e respostas multiplayer em tempo real",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node testes/comparar.test.js && node testes/rodada.test.js && node testes/escalada.test.js && node testes/nomes.test.js",
+    "checar-imagens": "node testes/imagens.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

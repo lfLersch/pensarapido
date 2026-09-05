@@ -1,0 +1,10 @@
+# Configuração para o Render (https://render.com) — plano free.
+# O Render lê este arquivo sozinho ao criar o serviço a partir do repositório.
+services:
+  - type: web
+    name: pensarapido
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/config

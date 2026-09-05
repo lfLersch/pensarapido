@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+
+# estatisticas de dificuldade: dados de execucao, nao vao para o repositorio
+server/dados/
