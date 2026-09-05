@@ -1503,6 +1503,357 @@ const LISTAS = [
       'Porto Velho',
       'Rio Branco'
     ]
+  },
+  {
+    pergunta: 'Cite {n} pontos turisticos do mundo',
+    tema: 'lugares', dif: 30,
+    respostas: [
+      'Torre Eiffel',
+      'Coliseu',
+      'Cristo Redentor',
+      'Muralha da China',
+      'Machu Picchu',
+      'Taj Mahal',
+      ['Piramides de Gize', 'piramides'],
+      'Estatua da Liberdade',
+      'Big Ben',
+      'Sagrada Familia',
+      'Torre de Pisa',
+      'Stonehenge',
+      'Partenon',
+      'Petra',
+      'Chichen Itza',
+      'Opera de Sydney',
+      'Times Square',
+      'Louvre'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} lugares famosos do Brasil',
+    tema: 'lugares', dif: 35,
+    respostas: [
+      'Cristo Redentor',
+      'Pao de Acucar',
+      'Cataratas do Iguacu',
+      ['Praia de Copacabana', 'Copacabana'],
+      'Lencois Maranhenses',
+      'Chapada Diamantina',
+      'Fernando de Noronha',
+      'Amazonia',
+      'Pantanal',
+      'Teatro Amazonas',
+      'Museu do Ipiranga',
+      'Congresso Nacional',
+      'Elevador Lacerda',
+      'Praia do Forte',
+      'Gramado',
+      'Bonito'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} das sete maravilhas do mundo moderno',
+    tema: 'lugares', dif: 45,
+    respostas: [
+      'Cristo Redentor',
+      'Muralha da China',
+      'Machu Picchu',
+      'Chichen Itza',
+      'Coliseu',
+      'Taj Mahal',
+      'Petra'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} tipos de lugar de uma cidade',
+    tema: 'lugares', dif: 15,
+    respostas: [
+      'Escola',
+      'Hospital',
+      'Mercado',
+      'Praca',
+      'Parque',
+      'Igreja',
+      'Banco',
+      'Farmacia',
+      'Padaria',
+      'Cinema',
+      'Shopping',
+      'Restaurante',
+      'Rodoviaria',
+      'Aeroporto',
+      'Biblioteca',
+      'Museu',
+      'Estadio',
+      'Delegacia'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} objetos de uma casa',
+    tema: 'objetos', dif: 12,
+    respostas: [
+      'Mesa',
+      'Cadeira',
+      'Sofa',
+      'Cama',
+      'Armario',
+      'Geladeira',
+      'Fogao',
+      ['Televisao', 'TV'],
+      'Espelho',
+      'Abajur',
+      'Tapete',
+      'Cortina',
+      'Ventilador',
+      'Microondas',
+      'Chuveiro',
+      'Vaso',
+      'Estante',
+      'Relogio'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} objetos de cozinha',
+    tema: 'objetos', dif: 20,
+    respostas: [
+      'Panela',
+      'Faca',
+      'Garfo',
+      'Colher',
+      'Prato',
+      'Copo',
+      'Xicara',
+      'Frigideira',
+      'Tabua',
+      'Liquidificador',
+      'Batedeira',
+      'Peneira',
+      'Concha',
+      'Ralador',
+      'Escorredor',
+      'Abridor',
+      'Espatula'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} itens de material escolar',
+    tema: 'objetos', dif: 15,
+    respostas: [
+      'Caderno',
+      'Lapis',
+      'Caneta',
+      'Borracha',
+      'Regua',
+      'Apontador',
+      'Mochila',
+      'Estojo',
+      'Tesoura',
+      'Cola',
+      'Compasso',
+      'Calculadora',
+      'Marca-texto',
+      'Giz',
+      'Pincel'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} ferramentas',
+    tema: 'objetos', dif: 35,
+    respostas: [
+      'Martelo',
+      'Chave de fenda',
+      'Alicate',
+      'Serrote',
+      'Furadeira',
+      'Chave inglesa',
+      'Trena',
+      'Nivel',
+      'Parafusadeira',
+      'Lixa',
+      'Formao',
+      'Marreta'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} modelos de carro populares no Brasil',
+    tema: 'mainstream', dif: 30,
+    respostas: [
+      'Gol',
+      'Uno',
+      'Palio',
+      'Corsa',
+      'Celta',
+      'Onix',
+      'HB20',
+      'Ka',
+      'Fiesta',
+      'Civic',
+      'Corolla',
+      'Sandero',
+      'Kwid',
+      'Mobi',
+      'Argo',
+      'Polo',
+      'Fusca',
+      'Strada',
+      'Saveiro',
+      'Hilux'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} marcas de carro de luxo',
+    tema: 'mainstream', dif: 40,
+    respostas: [
+      'Ferrari',
+      'Lamborghini',
+      'Porsche',
+      ['Rolls-Royce', 'Rolls Royce'],
+      'Bentley',
+      'Maserati',
+      'Aston Martin',
+      'Bugatti',
+      'McLaren',
+      'Jaguar',
+      ['Mercedes-Benz', 'Mercedes'],
+      'BMW'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} tipos de veiculo',
+    tema: 'objetos', dif: 15,
+    respostas: [
+      'Carro',
+      'Moto',
+      'Bicicleta',
+      'Onibus',
+      'Caminhao',
+      'Aviao',
+      'Navio',
+      'Trem',
+      'Helicoptero',
+      'Barco',
+      'Metro',
+      'Patinete',
+      'Van',
+      'Trator',
+      'Submarino'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} super-herois',
+    tema: 'cinema', dif: 20,
+    respostas: [
+      ['Superman', 'Super-Homem'],
+      'Batman',
+      ['Homem-Aranha', 'Homem Aranha'],
+      'Homem de Ferro',
+      'Capitao America',
+      'Thor',
+      'Hulk',
+      ['Mulher-Maravilha', 'Mulher Maravilha'],
+      'Flash',
+      'Aquaman',
+      'Pantera Negra',
+      'Wolverine',
+      'Deadpool',
+      'Doutor Estranho',
+      'Viuva Negra',
+      'Capita Marvel',
+      'Lanterna Verde',
+      'Ciborgue'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} viloes de quadrinhos',
+    tema: 'cinema', dif: 40,
+    respostas: [
+      ['Coringa', 'Joker'],
+      'Thanos',
+      'Lex Luthor',
+      'Duende Verde',
+      'Magneto',
+      'Loki',
+      'Venom',
+      'Pinguim',
+      'Doutor Destino',
+      'Ultron',
+      'Caveira Vermelha',
+      'Darkseid',
+      'Bane',
+      ['Arlequina', 'Harley Quinn'],
+      'Doutor Octopus'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} instrumentos de corda',
+    tema: 'musica', dif: 30,
+    respostas: [
+      'Violao',
+      'Guitarra',
+      'Violino',
+      'Violoncelo',
+      'Baixo',
+      'Harpa',
+      'Cavaquinho',
+      'Banjo',
+      'Viola',
+      'Ukulele',
+      'Contrabaixo',
+      'Bandolim'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} instrumentos de sopro',
+    tema: 'musica', dif: 40,
+    respostas: [
+      'Flauta',
+      'Saxofone',
+      'Trompete',
+      'Clarinete',
+      'Trombone',
+      'Tuba',
+      'Gaita',
+      'Oboe',
+      'Fagote',
+      'Trompa',
+      'Corneta'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} instrumentos de percussao',
+    tema: 'musica', dif: 40,
+    respostas: [
+      'Bateria',
+      'Tambor',
+      'Pandeiro',
+      'Triangulo',
+      'Zabumba',
+      'Surdo',
+      'Cuica',
+      'Atabaque',
+      'Bongo',
+      'Xilofone',
+      'Prato',
+      'Caixa',
+      'Agogo',
+      'Reco-reco'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} servicos de streaming',
+    tema: 'mainstream', dif: 25,
+    respostas: [
+      'Netflix',
+      ['Disney+', 'Disney Plus'],
+      ['Amazon Prime Video', 'Prime Video'],
+      ['HBO Max', 'Max'],
+      'Spotify',
+      'YouTube',
+      'Globoplay',
+      ['Apple TV+', 'Apple TV'],
+      ['Paramount+', 'Paramount'],
+      'Deezer',
+      'Crunchyroll'
+    ]
   }
 ];
 
