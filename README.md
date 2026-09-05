@@ -235,7 +235,7 @@ inventado é descartado.
 
 ## Banco de perguntas
 
-**787 perguntas em 12 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**769 perguntas em 12 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -296,31 +296,30 @@ Como são imagens de terceiros, dependem do Commons continuar no ar; o comando
 O campo `letra` mostra um trecho em destaque, e o enunciado decide o que se
 pergunta sobre ele — *"Qual é o nome desta música?"* ou *"Quem canta/gravou?"*.
 
-**O trecho precisa ter no mínimo 4 linhas; de 4 a 8 é o ideal.** Com uma linha
-só o jogador quase não tem de onde tirar a resposta; passando de oito, o bloco
-toma a tela e sobra pouco espaço para a pergunta e o chat. Para conferir:
+**O trecho precisa ter de 4 a 8 versos.** Com uma linha só o jogador não tem de
+onde tirar a resposta; passando de oito, o bloco toma a tela e sobra pouco
+espaço para a pergunta e o chat.
+
+> **No momento não há nenhuma pergunta de letra no ar.** As que existiam tinham
+> uma linha cada e foram retiradas. **Eu não escrevo letras de música** — nem as
+> protegidas por direito autoral nem as livres — então os versos precisam ser
+> colados por você. O bloco `LETRAS_MUSICA` em `questions.js` está lá, vazio,
+> com o formato documentado: é só preencher que elas voltam ao sorteio.
+
+```js
+{ pergunta: 'Quem canta esta música?',
+  letra: ['primeiro verso',
+          'segundo verso',
+          'terceiro verso',
+          'quarto verso'],
+  resposta: 'Nome do artista', aceita: ['apelido'], dif: 40 }
+```
+
+Depois de preencher, confira o tamanho:
 
 ```bash
 npm run checar-letras
 ```
-
-Ele lista quais trechos ainda estão curtos e mostra o formato a preencher.
-
-```js
-{ pergunta: 'Quem canta esta música?',
-  letra: ['primeira linha',
-          'segunda linha',
-          'terceira linha',
-          'quarta linha'],
-  resposta: 'Nome do artista', aceita: ['apelido'], dif: 40 }
-```
-
-> **As 18 entradas que vieram prontas têm só uma linha cada e precisam ser
-> completadas.** Elas são de músicas em domínio público (tradicionais, hinos
-> antigos, canções do século XIX) — **eu não escrevo letras de música**, nem as
-> protegidas por direito autoral nem as livres, então os versos precisam ser
-> colados por você no bloco `LETRAS_MUSICA` de `questions.js`. O título e a
-> resposta de cada uma já estão lá; falta só o trecho.
 
 ### Criar uma categoria nova
 

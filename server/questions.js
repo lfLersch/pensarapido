@@ -127,45 +127,24 @@ const perguntasBandeiras = BANDEIRAS.map(([iso, pais]) => ({
  * músicas protegidas por direito autoral.
  * ------------------------------------------------------------------ */
 const LETRAS_MUSICA = [
-  { pergunta: 'Qual é o nome desta música?', letra: ['Twinkle, twinkle, little star, how I wonder what you are'],
-    resposta: 'Twinkle Twinkle Little Star', aceita: ['Twinkle Little Star'], dif: 20 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Amazing grace, how sweet the sound'],
-    resposta: 'Amazing Grace', dif: 25 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Should auld acquaintance be forgot'],
-    resposta: 'Auld Lang Syne', dif: 60 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Dashing through the snow in a one-horse open sleigh'],
-    resposta: 'Jingle Bells', dif: 25 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Silent night, holy night'],
-    resposta: 'Silent Night', aceita: ['Noite Feliz'], dif: 25 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Row, row, row your boat, gently down the stream'],
-    resposta: 'Row Row Row Your Boat', dif: 30 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['My Bonnie lies over the ocean'],
-    resposta: 'My Bonnie Lies Over the Ocean', aceita: ['My Bonnie'], dif: 55 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Oh! Susanna, don\u2019t you cry for me'],
-    resposta: 'Oh Susanna', dif: 45 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Oh, give me a home where the buffalo roam'],
-    resposta: 'Home on the Range', dif: 60 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Oh Danny Boy, the pipes, the pipes are calling'],
-    resposta: 'Danny Boy', dif: 45 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Alas, my love, you do me wrong'],
-    resposta: 'Greensleeves', dif: 65 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Swing low, sweet chariot, coming for to carry me home'],
-    resposta: 'Swing Low Sweet Chariot', dif: 50 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Take me out to the ball game, take me out with the crowd'],
-    resposta: 'Take Me Out to the Ball Game', dif: 55 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Oh say, can you see, by the dawn\u2019s early light'],
-    resposta: 'The Star-Spangled Banner', aceita: ['Star Spangled Banner', 'hino dos Estados Unidos'], dif: 50 },
-  { pergunta: 'Qual é o nome desta música?', letra: ['Yankee Doodle went to town, a-riding on a pony'],
-    resposta: 'Yankee Doodle', dif: 45 },
-
-  { pergunta: 'Qual trompetista ficou famoso pela versão desta música?', letra: ['Oh, when the saints go marching in'],
-    resposta: 'Louis Armstrong', aceita: ['Armstrong'], dif: 55 },
-  { pergunta: 'Qual banda britânica gravou a versão mais famosa desta música, em 1964?',
-    letra: ['There is a house in New Orleans, they call the Rising Sun'],
-    resposta: 'The Animals', aceita: ['Animals'], dif: 60 },
-  { pergunta: 'Qual dupla americana popularizou esta canção tradicional em 1966?',
-    letra: ['Are you going to Scarborough Fair?'],
-    resposta: 'Simon & Garfunkel', aceita: ['Simon e Garfunkel', 'Simon and Garfunkel'], dif: 60 }
+  // Vazio de propósito.
+  //
+  // Uma pergunta de letra precisa de 4 a 8 versos para ser respondível — com
+  // uma linha só o jogador não tem de onde tirar a resposta. As que existiam
+  // aqui tinham uma linha cada e saíram do ar.
+  //
+  // Para trazer de volta, cole o trecho neste formato e rode
+  // `npm run checar-letras` para conferir o tamanho:
+  //
+  //   { pergunta: 'Qual é o nome desta música?',
+  //     letra: ['primeiro verso',
+  //             'segundo verso',
+  //             'terceiro verso',
+  //             'quarto verso'],
+  //     resposta: 'Nome da música', aceita: ['variante'], dif: 40 },
+  //
+  //   { pergunta: 'Quem canta esta música?', letra: [...],
+  //     resposta: 'Nome do artista', aceita: ['apelido'], dif: 40 }
 ];
 
 /* ------------------------------------------------------------------ */
