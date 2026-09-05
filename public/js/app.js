@@ -103,7 +103,7 @@ function entrarNaSala() {
   if (!nickname) return;
 
   const codigo = inputCodigo.value.trim();
-  if (codigo.length !== 4) return avisar('aviso-lobby', 'O código da sala tem 4 caracteres.');
+  if (codigo.length !== 4) return avisar('aviso-lobby', 'O codigo da sala tem 4 caracteres.');
 
   socket.emit('sala:entrar', { nickname, codigo }, (resposta) => {
     if (resposta.erro) return avisar('aviso-lobby', resposta.erro);
@@ -180,7 +180,7 @@ function montarCategorias() {
         chip.type = 'button';
         chip.dataset.id = `${categoria.id}:${sub.id}`;
         chip.innerHTML = `${sub.icone} ${sub.nome}`;
-        chip.title = `Só as perguntas de ${sub.nome} dentro de ${categoria.nome}`;
+        chip.title = `So as perguntas de ${sub.nome} dentro de ${categoria.nome}`;
 
         chip.addEventListener('click', () => {
           const marcada = estado.escolhas.subs.has(chip.dataset.id);
@@ -210,9 +210,11 @@ function sincronizarCategorias() {
     el.setAttribute('aria-pressed', String(marcada));
   });
 
+  // Os chips ficam sempre à vista: esconder quando a categoria estava
+  // desmarcada tornava impossível escolher só a parte (clicar em "Nenhuma"
+  // fazia o chip sumir). Clicar num chip marca a categoria dona junto.
   document.querySelectorAll('.subcategorias').forEach((caixa) => {
-    // Os chips só aparecem quando a categoria dona deles está marcada.
-    caixa.hidden = !estado.escolhas.categorias.has(caixa.dataset.de);
+    caixa.classList.toggle('apagada', !estado.escolhas.categorias.has(caixa.dataset.de));
   });
 
   document.querySelectorAll('.subchip').forEach((chip) => {
@@ -395,8 +397,8 @@ function renderizarSala() {
     const souEu = jogador.id === estado.eu?.id;
     item.innerHTML = `
       <span class="jogador__avatar">${jogador.avatar}</span>
-      <span class="jogador__nome">${escapar(jogador.nickname)}${souEu ? '<span class="jogador__voce">(você)</span>' : ''}</span>
-      ${jogador.lider ? '<span class="coroa">👑 Líder</span>' : ''}`;
+      <span class="jogador__nome">${escapar(jogador.nickname)}${souEu ? '<span class="jogador__voce">(voce)</span>' : ''}</span>
+      ${jogador.lider ? '<span class="coroa">👑 Lider</span>' : ''}`;
     lista.appendChild(item);
   }
 
@@ -436,6 +438,9 @@ function sairDaSala() {
 }
 
 $('btn-sair-sala').addEventListener('click', sairDaSala);
+$('btn-sair-jogo').addEventListener('click', () => {
+  if (confirm('Sair da sala e voltar ao inicio?')) sairDaSala();
+});
 $('btn-fim-sair').addEventListener('click', sairDaSala);
 
 /* =====================================================================
@@ -659,7 +664,7 @@ function mensagemSistema(texto, destaque = false) {
 /** Aviso que só quem escreveu enxerga — não vai para o chat de ninguém. */
 function avisoParticular(texto) {
   const el = criar('div', 'msg msg--privado');
-  el.innerHTML = `${escapar(texto)}<span class="msg__so-voce">só você está vendo isto</span>`;
+  el.innerHTML = `${escapar(texto)}<span class="msg__so-voce">so voce esta vendo isto</span>`;
   adicionarMensagem(el);
 
   formChat.classList.remove('quase');
@@ -699,13 +704,13 @@ formChat.addEventListener('submit', (evento) => {
     if (resposta.erro) return avisoParticular(resposta.erro);
 
     if (resposta.veredito === 'quase') {
-      avisoParticular('Quase! Confira a escrita — sua mensagem não foi para o chat.');
+      avisoParticular('Quase! Confira a escrita — sua mensagem nao foi para o chat.');
 
     } else if (resposta.veredito === 'bloqueado') {
-      avisoParticular('Segurei essa mensagem para não entregar a resposta.');
+      avisoParticular('Segurei essa mensagem para nao entregar a resposta.');
 
     } else if (resposta.veredito === 'repetido') {
-      avisoParticular(`Você já tinha dito "${resposta.item}". Tente outra.`);
+      avisoParticular(`Voce ja tinha dito "${resposta.item}". Tente outra.`);
 
     } else if (resposta.veredito === 'item') {
       // Acertou um item da lista, mas ainda falta responder mais.
@@ -715,14 +720,14 @@ formChat.addEventListener('submit', (evento) => {
     } else if (resposta.veredito === 'certo') {
       estado.acertou = true;
       if (resposta.item) registrarItem(resposta.item);
-      inputChat.placeholder = 'Acertou! Agora é só papo…';
+      inputChat.placeholder = 'Acertou! Agora e so papo…';
     }
   });
 });
 
 socket.on('rodada:acertou', (dados) => {
   $('status-respostas').textContent =
-    `${dados.totalAcertos} de ${dados.totalJogadores} já acertaram`;
+    `${dados.totalAcertos} de ${dados.totalJogadores} ja acertaram`;
 
   const item = document.querySelector(`.placar__item[data-id="${dados.jogadorId}"]`);
   if (item) {
@@ -749,13 +754,13 @@ socket.on('rodada:resultado', (dados) => {
   selo.style.setProperty('--cor-dif', dados.dificuldade.cor);
   selo.textContent = `${dados.dificuldade.nivel} · ${dados.dificuldade.valor}`;
   selo.title = 'Dificuldade da pergunta: sobe quando pouca gente acerta ou quando demoram muito. '
-             + 'Não altera a pontuação.';
+             + 'Nao altera a pontuacao.';
 
-  // Repertório aberto ("países da África") mostra uma amostra do que valia.
+  // Repertório aberto ("paises da Africa") mostra uma amostra do que valia.
   if (dados.listaParcial && dados.listaCompleta && dados.listaCompleta.length) {
     $('resultado-aceita').textContent = 'Algumas que valiam: ' + dados.listaCompleta.join(', ');
   } else if (dados.aceita && dados.aceita.length) {
-    $('resultado-aceita').textContent = 'Também valia: ' + dados.aceita.join(', ');
+    $('resultado-aceita').textContent = 'Tambem valia: ' + dados.aceita.join(', ');
   } else {
     $('resultado-aceita').textContent = '';
   }
@@ -765,7 +770,7 @@ socket.on('rodada:resultado', (dados) => {
 
   for (const detalhe of dados.detalhes) {
     const item = criar('li', 'resultado__item ' + (detalhe.acertou ? 'acertou' : 'errou'));
-    const tempo = detalhe.ms === null ? 'não acertou' : `${(detalhe.ms / 1000).toFixed(1)}s`;
+    const tempo = detalhe.ms === null ? 'nao acertou' : `${(detalhe.ms / 1000).toFixed(1)}s`;
 
     const pedia = detalhe.necessarias || 1;
     const conseguiu = detalhe.itens || [];
@@ -788,7 +793,7 @@ socket.on('rodada:resultado', (dados) => {
   $('resultado').hidden = false;
   $('proxima').hidden = Boolean(dados.acabou);
   if (!dados.acabou) contarSegundos($('resultado-num'), dados.duracaoMs);
-  $('status-respostas').textContent = dados.acabou ? 'Alguém bateu a meta!' : '';
+  $('status-respostas').textContent = dados.acabou ? 'Alguem bateu a meta!' : '';
   inputChat.placeholder = 'Digite uma mensagem…';
 
   renderizarPlacar(dados.placar);
@@ -907,7 +912,7 @@ socket.on('sala:saiu', ({ nickname }) => brindar(`${nickname} saiu da sala`));
 
 socket.on('disconnect', () => {
   pararAnimacao();
-  brindar('Conexão perdida. Recarregue a página.');
+  brindar('Conexao perdida. Recarregue a pagina.');
 });
 
 socket.on('connect', () => {
@@ -916,12 +921,12 @@ socket.on('connect', () => {
     estado.sala = null;
     estado.eu = null;
     mostrarTela('tela-lobby');
-    avisar('aviso-lobby', 'A conexão caiu e você saiu da sala. Entre de novo.');
+    avisar('aviso-lobby', 'A conexao caiu e voce saiu da sala. Entre de novo.');
   }
 });
 
 /* --------------------------------- Início --------------------------------- */
 
 carregarConfig().catch(() => {
-  avisar('aviso-lobby', 'Não consegui carregar as configurações. Recarregue a página.');
+  avisar('aviso-lobby', 'Nao consegui carregar as configuracoes. Recarregue a pagina.');
 });

@@ -122,8 +122,73 @@ sala.perguntaAtual = { necessarias: 6 };
 const t6 = sala.duracaoDaRodada();
 console.log('');
 conferir('rodada de 1 resposta dura 30s', t1, 30000);
-conferir('rodada de 6 respostas dura 55s', t6, 55000);
+conferir('rodada de 6 respostas dura 45s (5 extras x 3s)', t6, 45000);
 
 sala.destruir();
+
+/* ---------------------------------------------------------------- *
+ * Pontuacao: cada item vale 2, completar a lista da bonus.
+ * ---------------------------------------------------------------- */
+
+console.log('');
+{
+  const eventos = [];
+  const sala = new Sala('PONT', {
+    categorias: ['geografia'], subs: [], modo: 'escalada',
+    metaPontos: 200, segundosPorPergunta: 20
+  }, (evento, dados) => eventos.push({ evento, dados }));
+
+  sala.entrar('a', 'Ana');
+  sala.entrar('b', 'Bia');
+  sala.iniciar();
+  sala.limparTemporizador();
+
+  sala.rodada = 2;            // a proxima sera a rodada 3, que pede 3 respostas
+  sala.proximaRodada();
+  sala.limparTemporizador();
+  sala.mostrarPergunta();
+  sala.limparTemporizador();
+
+  const pergunta = sala.perguntaAtual;
+  const inicio = sala.inicioPergunta;
+  const dateNowReal = Date.now;
+
+  // O anti-spam recusa mensagens a menos de 350ms uma da outra, entao cada
+  // palpite acontece num instante proprio.
+  const dizer = (ms, quem, texto) => {
+    Date.now = () => inicio + ms;
+    return sala.palpitar(quem, texto);
+  };
+
+  const a1 = dizer(1000, 'a', pergunta.itens[0].oficial);
+  const a2 = dizer(3000, 'a', pergunta.itens[1].oficial);
+  const a3 = dizer(5000, 'a', pergunta.itens[2].oficial);
+  const b1 = dizer(7000, 'b', pergunta.itens[3].oficial);
+  Date.now = dateNowReal;
+
+  const pontosDe = (nome) => [...sala.jogadores.values()].find((j) => j.nickname === nome).pontos;
+
+  conferir('1o item da Ana conta como progresso', a1.veredito, 'item');
+  conferir('  e ja vale 2 pontos', a1.pontos, 2);
+  conferir('2o item tambem vale 2', a2.pontos, 2);
+  conferir('3o item fecha a lista', a3.veredito, 'certo');
+  conferir('  total da Ana = 3x2 + 5 de bonus', a3.pontos, 11);
+  conferir('placar da Ana', pontosDe('Ana'), 11);
+  conferir('Bia lembrou so 1 item', b1.veredito, 'item');
+  conferir('  e leva os 2 pontos dele, sem bonus', pontosDe('Bia'), 2);
+
+  sala.encerrarRodada();
+  sala.limparTemporizador();
+
+  const resultado = eventos.filter((e) => e.evento === 'rodada:resultado').pop().dados;
+  const ana = resultado.detalhes.find((d) => d.nickname === 'Ana');
+  const bia = resultado.detalhes.find((d) => d.nickname === 'Bia');
+
+  conferir('resultado mostra o bonus da Ana', ana.bonus, 5);
+  conferir('resultado mostra o que a Bia fez sem completar', bia.ganhou, 2);
+
+  sala.destruir();
+}
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
 process.exit(falhas ? 1 : 0);

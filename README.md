@@ -61,6 +61,17 @@ Os limites ficam no topo de [`server/comparar.js`](server/comparar.js)
 > como "quase". Numa resposta de 10 letras, 1 letra errada dá exatamente 10% e
 > cai no "quase". Para aceitar esse caso, troque `<` por `<=` em `LIMITE_CERTO`.
 
+### Acentos
+
+**O texto do jogo não usa acentos** — perguntas, respostas, categorias e a
+interface. Foi uma escolha de apresentação, aplicada de uma vez sobre todos os
+textos.
+
+Isso **não muda o que o jogador pode digitar**: a comparação sempre ignorou
+acento, maiúscula, pontuação e espaço. Quem escreve "Japão" acerta uma resposta
+gravada como "Japao", e vice-versa. Os comentários do código e este README
+seguem acentuados, porque são para quem lê o projeto, não para quem joga.
+
 ### Modo Tempo — pontuação
 
 A rodada tem **20 segundos**, e dois descontos se somam.
@@ -104,32 +115,25 @@ pergunta foi enviada — o cronômetro da tela é só visual.
 
 ### Modo Escalada
 
-Cada rodada pede **uma resposta a mais** que a anterior:
+Cada rodada pede uma resposta a mais que a anterior: 1 na primeira, 2 na
+segunda, 3 na terceira. A rodada ganha **3 segundos por resposta extra** — a de
+6 respostas dura 45s.
 
-| Rodada | Pede | Exemplo |
-| --- | --- | --- |
-| 1 | 1 resposta | *Qual é o gás mais abundante na atmosfera?* |
-| 2 | 2 respostas | *Quem foram os dois finalistas da Copa do Mundo de 2022?* |
-| 3 | 3 respostas | *Cite 3 jogadores de futebol cujo nome começa com a letra L* |
-| 4 | 4 respostas | *Cite 4 planetas do Sistema Solar* |
-| 5 | 5 respostas | *Cite 5 esportes olímpicos* |
-| 6 | 6 respostas | *Cite 6 países da África* |
+**Pontuação:** cada item lembrado vale **2 pontos**, e fechar a lista dá **+5 de
+bônus**. Quem lembra 3 de 4 leva 6; quem fecha as 4 leva 8 + 5 = 13. Progresso
+parcial conta, então ninguém sai de mãos vazias por ter parado a um item do fim.
 
-A rodada 1 usa uma pergunta comum do banco; da 2 em diante vêm as listas de
-[`server/escalada.js`](server/escalada.js). Há dois tipos:
+**Escolha da lista.** Cada lista tem um `tema`, e o sorteio faz duas coisas:
 
-- **conjunto fechado** (`fixo: true`) — a lista *é* a resposta. "Os finalistas da
-  Copa de 2022" são exatamente dois, então essa pergunta só aparece na rodada 2.
-- **repertório aberto** — "países da África" tem 48 itens; vale qualquer
-  combinação de respostas distintas do tamanho pedido.
+1. **não repete o tema da rodada anterior** — se a rodada 3 foi de geografia, a
+   rodada 4 procura outro assunto;
+2. **abre o leque conforme a rodada cresce.** O teto de tamanho é `n * 3 + 8`,
+   então a rodada de 2 respostas só pega listas de até 14 itens (assunto
+   fechado, tipo *esportes com bola*) e a de 12 aceita até 44 (*países da
+   Europa*). Assunto específico embaixo, genérico em cima.
 
-Enquanto você responde, cada item certo aparece só para você, num painel com o
-contador (`3 de 4`). **Itens corretos nunca vão ao chat global** — senão bastaria
-copiar do vizinho. Repetir um item que você já disse avisa e não conta.
-
-A pontuação é a mesma do Modo Tempo, contada de **quem completa a lista
-primeiro**: 10 pontos, −1 a cada 2s de atraso. A rodada ganha **+5s por resposta
-extra** (até 90s), senão 6 respostas em 30s seria injogável.
+São **61 listas** e mais de 800 itens, cobrindo futebol, geografia, música,
+cinema, anime, games, ciência, história, esportes e cultura pop.
 
 ### Durante a partida
 
@@ -235,7 +239,7 @@ inventado é descartado.
 
 ## Banco de perguntas
 
-**769 perguntas em 12 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**790 perguntas em 12 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato

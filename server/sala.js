@@ -11,13 +11,17 @@ const PONTOS_MAX = 10;        // base de quem responde na primeira faixa
 const MS_POR_FAIXA = 5000;    // a cada 5s de rodada, a base cai 1 ponto
 const PONTOS_MIN = 1;         // acertar sempre vale pelo menos 1
 
+// Escalada: cada item lembrado já vale ponto, e fechar a lista dá um empurrão.
+const PONTOS_POR_ITEM = 2;
+const BONUS_ESCALADA = 5;
+
 const MS_REVELACAO = 2800;   // tela "categoria" antes da pergunta
 const MS_RESULTADO = 5000;       // tela de resultado quando o tempo acaba
 const MS_RESULTADO_TODOS = 3000; // ... e quando todo mundo acertou antes
 const MS_APOS_ULTIMO = 0;        // acertou geral, fecha na hora: a contagem é na tela
 
 // Na Escalada a rodada cresce junto com o número de respostas pedidas.
-const MS_POR_RESPOSTA_EXTRA = 5000;
+const MS_POR_RESPOSTA_EXTRA = 3000;
 const MS_TETO_RODADA = 90000;
 
 const MAX_JOGADORES = 12;
@@ -31,20 +35,20 @@ const MODOS = [
   {
     id: 'tempo',
     nome: 'Modo Tempo',
-    icone: '⏱️',
-    descricao: 'Escreva a resposta no chat. A cada 5s de rodada a base cai 1 ponto (10, 9, 8, 7) e cai mais 1 para cada pessoa que acertou antes de você.',
+    icone: '⏱',
+    descricao: 'Escreva a resposta no chat. A cada 5s de rodada a base cai 1 ponto (10, 9, 8, 7) e cai mais 1 para cada pessoa que acertou antes de voce.',
     disponivel: true
   },
   {
     id: 'escalada',
     nome: 'Escalada',
     icone: '🧗',
-    descricao: 'Cada rodada pede uma resposta a mais: 1 na primeira, 2 na segunda, 3 na terceira… A pontuação é a mesma do Modo Tempo, contada de quem completa primeiro.',
+    descricao: 'Cada rodada pede uma resposta a mais: 1 na primeira, 2 na segunda, 3 na terceira… Cada item lembrado vale 2 pontos e fechar a lista da +5 de bonus.',
     disponivel: true
   },
   {
     id: 'sobrevivencia',
-    nome: 'Sobrevivência',
+    nome: 'Sobrevivencia',
     icone: '💀',
     descricao: 'Errou, saiu. Em breve.',
     disponivel: false
@@ -53,7 +57,7 @@ const MODOS = [
     id: 'equipes',
     nome: 'Equipes',
     icone: '🤝',
-    descricao: 'Dois times disputam a pontuação. Em breve.',
+    descricao: 'Dois times disputam a pontuacao. Em breve.',
     disponivel: false
   }
 ];
@@ -137,6 +141,8 @@ class Sala {
     this.primeiroAcertoEm = null;
     this.acertos = new Map();   // socketId -> { ms, pontos, posicao }
     this.progresso = new Map(); // Escalada: socketId -> Set(índices já ditos)
+    this.pontosRodada = new Map(); // socketId -> pontos feitos nesta rodada
+    this.ultimoTema = null;     // tema da rodada anterior, para não repetir
     this.jogadoresNaRodada = 0;
 
     this.fila = [];             // perguntas embaralhadas ainda não usadas
@@ -147,10 +153,10 @@ class Sala {
 
   entrar(socketId, nickname) {
     if (this.jogadores.size >= MAX_JOGADORES) {
-      return { erro: 'Esta sala já está cheia.' };
+      return { erro: 'Esta sala ja esta cheia.' };
     }
     if (this.estado !== 'lobby' && this.estado !== 'fim') {
-      return { erro: 'A partida já começou. Espere ela terminar.' };
+      return { erro: 'A partida ja comecou. Espere ela terminar.' };
     }
 
     const nomesUsados = new Set([...this.jogadores.values()].map((j) => j.nickname.toLowerCase()));
@@ -211,10 +217,10 @@ class Sala {
 
   iniciar() {
     if (this.estado !== 'lobby' && this.estado !== 'fim') {
-      return { erro: 'A partida já está em andamento.' };
+      return { erro: 'A partida ja esta em andamento.' };
     }
     if (this.jogadores.size < 1) {
-      return { erro: 'É preciso pelo menos um jogador.' };
+      return { erro: 'E preciso pelo menos um jogador.' };
     }
 
     for (const jogador of this.jogadores.values()) {
@@ -284,12 +290,12 @@ class Sala {
   perguntaEscalada(necessarias) {
     if (necessarias <= 1) return this.perguntaSimples();
 
-    const candidatas = paraRodada(necessarias);
+    const candidatas = paraRodada(necessarias, this.ultimoTema);
     // Sem lista do tamanho certo (rodadas muito altas), a escalada trava no
     // maior tamanho disponível em vez de quebrar a partida.
     if (candidatas.length === 0) {
       for (let n = necessarias - 1; n >= 2; n--) {
-        const menores = paraRodada(n);
+        const menores = paraRodada(n, this.ultimoTema);
         if (menores.length) return this.montarListaEscalada(menores, n);
       }
       return this.perguntaSimples();
@@ -301,6 +307,7 @@ class Sala {
   montarListaEscalada(candidatas, necessarias) {
     const lista = candidatas[Math.floor(Math.random() * candidatas.length)];
     const enunciado = lista.pergunta.replace('{n}', String(necessarias));
+    this.ultimoTema = lista.tema || null;
     const id = dificuldade.idDe('escalada', enunciado, String(necessarias));
     const difBase = lista.dif ?? 45;
 
@@ -331,6 +338,7 @@ class Sala {
 
     this.acertos = new Map();
     this.progresso = new Map();
+    this.pontosRodada = new Map();
     this.primeiroAcertoEm = null;
     this.estado = 'categoria';
 
@@ -383,7 +391,7 @@ class Sala {
    */
   palpitar(socketId, texto) {
     const jogador = this.jogadores.get(socketId);
-    if (!jogador) return { erro: 'Você não está nesta sala.' };
+    if (!jogador) return { erro: 'Voce nao esta nesta sala.' };
 
     const limpo = String(texto || '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEXTO);
     if (!limpo) return { erro: 'Escreva alguma coisa.' };
@@ -450,18 +458,42 @@ class Sala {
 
     // Ainda falta responder mais: confirma só para quem escreveu, para não
     // entregar o item aos outros.
+    // Na Escalada cada item lembrado já pontua, mesmo sem fechar a lista.
+    if (necessarias > 1) {
+      jogador.pontos += PONTOS_POR_ITEM;
+      this.pontosRodada.set(socketId, (this.pontosRodada.get(socketId) || 0) + PONTOS_POR_ITEM);
+    }
+
     if (jaTenho.size < necessarias) {
-      return { veredito: 'item', item: nomeItem, quantos: jaTenho.size, necessarias };
+      return {
+        veredito: 'item', item: nomeItem, pontos: PONTOS_POR_ITEM,
+        quantos: jaTenho.size, necessarias
+      };
     }
 
     /* --- completou a rodada --- */
     const ms = agora - this.inicioPergunta;
     const posicao = this.acertos.size + 1;
-    const pontos = calcularPontos(ms, posicao);
+
+    let pontos;
+    let bonus = 0;
+
+    if (necessarias > 1) {
+      // Escalada: os itens já foram pagos a 2 cada; fechar a lista dá o bônus.
+      bonus = BONUS_ESCALADA;
+      jogador.pontos += bonus;
+      this.pontosRodada.set(socketId, (this.pontosRodada.get(socketId) || 0) + bonus);
+      pontos = this.pontosRodada.get(socketId);
+    } else {
+      // Modo Tempo: faixa de 5s menos quem acertou antes.
+      pontos = calcularPontos(ms, posicao);
+      jogador.pontos += pontos;
+      this.pontosRodada.set(socketId, pontos);
+    }
+
     if (this.primeiroAcertoEm === null) this.primeiroAcertoEm = agora;
 
-    this.acertos.set(socketId, { ms, pontos, posicao });
-    jogador.pontos += pontos;
+    this.acertos.set(socketId, { ms, pontos, posicao, bonus });
     jogador.acertos += 1;
 
     this.emitir('chat:mensagem', {
@@ -537,7 +569,8 @@ class Sala {
         avatar: jogador.avatar,
         acertou: Boolean(acerto),
         posicao: acerto ? acerto.posicao : null,
-        ganhou: acerto ? acerto.pontos : 0,
+        ganhou: this.pontosRodada.get(jogador.id) || 0,
+        bonus: acerto && acerto.bonus ? acerto.bonus : 0,
         ms: acerto ? acerto.ms : null,
         total: jogador.pontos,
         // Escalada: o que a pessoa conseguiu lembrar, mesmo sem completar.
@@ -551,7 +584,7 @@ class Sala {
     const vencedores = [...this.jogadores.values()].filter((j) => j.pontos >= this.config.metaPontos);
 
     // Como revelar depende do tipo: uma resposta só, um conjunto fechado
-    // ("os 8 campeões do mundo") ou um repertório aberto ("países da África").
+    // ("os 8 campeoes do mundo") ou um repertório aberto ("paises da Africa").
     let textoResposta;
     let listaCompleta = [];
 
@@ -562,7 +595,7 @@ class Sala {
       textoResposta = listaCompleta.join(', ');
     } else {
       listaCompleta = embaralhar(pergunta.itens.map((i) => i.oficial)).slice(0, 12);
-      textoResposta = `qualquer ${pergunta.necessarias} de ${pergunta.itens.length} possíveis`;
+      textoResposta = `qualquer ${pergunta.necessarias} de ${pergunta.itens.length} possiveis`;
     }
 
     this.avisar(`A resposta era: ${textoResposta}`, true);
@@ -610,6 +643,7 @@ class Sala {
     this.perguntaAtual = null;
     this.acertos = new Map();
     this.progresso = new Map();
+    this.pontosRodada = new Map();
     for (const jogador of this.jogadores.values()) {
       jogador.pontos = 0;
       jogador.acertos = 0;

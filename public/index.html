@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>PensaRápido</title>
+  <title>PensaRapido</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -13,12 +13,12 @@
 <body>
   <div class="fundo" aria-hidden="true"><span></span><span></span><span></span></div>
 
-  <!-- ======================= 1. SAGUÃO ======================= -->
+  <!-- ======================= 1. SAGUAO ======================= -->
   <section class="tela ativa" id="tela-lobby">
     <div class="caixa caixa--estreita">
       <header class="marca">
         <div class="marca__icone">🧠</div>
-        <h1 class="marca__nome">Pensa<span>Rápido</span></h1>
+        <h1 class="marca__nome">Pensa<span>Rapido</span></h1>
         <p class="marca__sub">Quem responde primeiro, pontua mais.</p>
       </header>
 
@@ -39,7 +39,7 @@
 
       <div class="entrar-painel" id="painel-entrar" hidden>
         <label class="campo">
-          <span class="campo__rotulo">Código da sala</span>
+          <span class="campo__rotulo">Codigo da sala</span>
           <input id="input-codigo" type="text" maxlength="4" autocomplete="off"
                  placeholder="ABCD" spellcheck="false" class="campo__codigo" />
         </label>
@@ -50,7 +50,7 @@
     </div>
   </section>
 
-  <!-- ======================= 2. CONFIGURAÇÃO ======================= -->
+  <!-- ======================= 2. CONFIGURACAO ======================= -->
   <section class="tela" id="tela-config">
     <div class="caixa caixa--larga">
       <div class="topo-tela">
@@ -69,7 +69,7 @@
             <button class="link" id="btn-nenhuma-categoria">Nenhuma</button>
           </div>
         </div>
-        <p class="bloco__dica">As perguntas são sorteadas entre as categorias marcadas.</p>
+        <p class="bloco__dica">As perguntas sao sorteadas entre as categorias marcadas.</p>
         <div class="grade-categorias" id="grade-categorias"></div>
       </div>
 
@@ -79,8 +79,8 @@
       </div>
 
       <div class="bloco">
-        <h3 class="bloco__titulo">Pontuação para vencer</h3>
-        <p class="bloco__dica">O primeiro que chegar nessa pontuação leva a partida.</p>
+        <h3 class="bloco__titulo">Pontuacao para vencer</h3>
+        <p class="bloco__dica">O primeiro que chegar nessa pontuacao leva a partida.</p>
         <div class="meta">
           <div class="meta__opcoes" id="meta-opcoes"></div>
           <label class="campo campo--inline">
@@ -111,7 +111,7 @@
   <section class="tela" id="tela-sala">
     <div class="caixa caixa--media">
       <div class="codigo-sala">
-        <span class="codigo-sala__rotulo">Código da sala</span>
+        <span class="codigo-sala__rotulo">Codigo da sala</span>
         <button class="codigo-sala__valor" id="codigo-valor" title="Clique para copiar">
           <span id="codigo-texto">----</span>
           <span class="codigo-sala__copiar">⧉</span>
@@ -136,14 +136,14 @@
         <button class="btn btn--primario btn--grande" id="btn-iniciar">
           <span class="btn__icone">🚀</span> Iniciar jogo
         </button>
-        <p class="espera" id="texto-espera" hidden>Aguardando o líder iniciar…</p>
+        <p class="espera" id="texto-espera" hidden>Aguardando o lider iniciar…</p>
       </div>
     </div>
   </section>
 
   <!-- ======================= 4. JOGO ======================= -->
   <section class="tela tela--jogo" id="tela-jogo">
-    <!-- 4a. Revelação da categoria -->
+    <!-- 4a. Revelacao da categoria -->
     <div class="revelacao" id="revelacao" hidden>
       <span class="revelacao__rodada" id="revelacao-rodada">Rodada 1</span>
       <div class="revelacao__icone" id="revelacao-icone">🚩</div>
@@ -160,7 +160,12 @@
           <span class="etiqueta">Rodada <b id="jogo-rodada">1</b></span>
           <span class="etiqueta">Meta <b id="jogo-meta">120</b></span>
         </div>
-        <div class="cronometro" id="cronometro"><span id="cronometro-num">30</span></div>
+        <div class="jogo__canto">
+          <div class="cronometro" id="cronometro"><span id="cronometro-num">20</span></div>
+          <button class="btn btn--fantasma btn--sair" id="btn-sair-jogo" title="Sair da sala">
+            Sair
+          </button>
+        </div>
       </header>
 
       <div class="jogo__corpo">
@@ -182,7 +187,7 @@
           <div class="escalada" id="escalada" hidden>
             <div class="escalada__topo">
               <span class="escalada__contador" id="escalada-contador">0 de 3</span>
-              <span class="escalada__dica">suas respostas — só você vê</span>
+              <span class="escalada__dica">suas respostas — so voce ve</span>
             </div>
             <ul class="escalada__itens" id="escalada-itens"></ul>
           </div>
@@ -197,7 +202,7 @@
               <span class="selo-dificuldade" id="selo-dificuldade"></span>
             </div>
             <p class="proxima" id="proxima">
-              Próxima pergunta em <b id="resultado-num">3</b>s
+              Proxima pergunta em <b id="resultado-num">3</b>s
             </p>
             <p class="resultado__aceita" id="resultado-aceita"></p>
             <ul class="resultado__lista" id="resultado-lista"></ul>
@@ -239,11 +244,11 @@
       <ol class="placar__lista placar__lista--final" id="fim-lista"></ol>
 
       <div class="sala__acoes">
-        <button class="btn btn--fantasma" id="btn-fim-sair">Voltar ao início</button>
+        <button class="btn btn--fantasma" id="btn-fim-sair">Voltar ao inicio</button>
         <button class="btn btn--primario btn--grande" id="btn-novo-jogo">
           <span class="btn__icone">🔁</span> Jogar de novo
         </button>
-        <p class="espera" id="fim-espera" hidden>Aguardando o líder…</p>
+        <p class="espera" id="fim-espera" hidden>Aguardando o lider…</p>
       </div>
     </div>
   </section>

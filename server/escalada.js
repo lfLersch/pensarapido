@@ -9,7 +9,7 @@
  *
  * Formato:
  *   {
- *     pergunta: 'Cite {n} países da África',  // {n} vira o número da rodada
+ *     pergunta: 'Cite {n} paises da Africa',  // {n} vira o número da rodada
  *     respostas: [...],                       // cada item: 'Nome' ou ['Nome', 'variante', ...]
  *     minimo: 3,                              // (opcional) só entra a partir dessa rodada
  *     fixo: true,                             // (opcional) exige TODOS os itens da lista
@@ -26,26 +26,26 @@ const LISTAS = [
   /* ---------------------- conjuntos fechados ---------------------- */
   {
     pergunta: 'Quem foram os dois finalistas da Copa do Mundo de 2022?',
-    fixo: true, dif: 30,
-    respostas: ['Argentina', ['França', 'Franca']]
+    fixo: true, tema: 'futebol', dif: 30,
+    respostas: ['Argentina', ['Franca', 'Franca']]
   },
   {
-    pergunta: 'Quais são os três estados da região Sul do Brasil?',
-    fixo: true, dif: 35,
+    pergunta: 'Quais sao os tres estados da regiao Sul do Brasil?',
+    fixo: true, tema: 'geografia', dif: 35,
     respostas: [
-      ['Paraná', 'PR'],
+      ['Parana', 'PR'],
       ['Santa Catarina', 'SC'],
       ['Rio Grande do Sul', 'RS']
     ]
   },
   {
-    pergunta: 'Quais são as quatro estações do ano?',
-    fixo: true, dif: 20,
-    respostas: ['Primavera', 'Verão', 'Outono', 'Inverno']
+    pergunta: 'Quais sao as quatro estacoes do ano?',
+    fixo: true, tema: 'gerais', dif: 20,
+    respostas: ['Primavera', 'Verao', 'Outono', 'Inverno']
   },
   {
     pergunta: 'Quem foram os quatro integrantes dos Beatles?',
-    fixo: true, dif: 55,
+    fixo: true, tema: 'musica', dif: 55,
     respostas: [
       ['John Lennon', 'Lennon', 'John'],
       ['Paul McCartney', 'McCartney', 'Paul'],
@@ -54,209 +54,242 @@ const LISTAS = [
     ]
   },
   {
-    pergunta: 'Quais são as quatro cores da bandeira do Brasil?',
-    fixo: true, dif: 25,
+    pergunta: 'Quais sao as quatro cores da bandeira do Brasil?',
+    fixo: true, tema: 'gerais', dif: 25,
     respostas: ['Verde', 'Amarelo', 'Azul', 'Branco']
   },
   {
-    pergunta: 'Quais são os cinco continentes representados nos anéis olímpicos?',
-    fixo: true, dif: 60,
+    pergunta: 'Quais sao os cinco continentes representados nos aneis olimpicos?',
+    fixo: true, tema: 'esportes', dif: 60,
     respostas: [
-      ['África', 'Africa'], ['América', 'America'], ['Ásia', 'Asia'],
+      ['Africa', 'Africa'], ['America', 'America'], ['Asia', 'Asia'],
       ['Europa'], ['Oceania']
     ]
   },
   {
-    pergunta: 'Quais são as seis cordas de um violão, da mais grave para a mais aguda?',
-    fixo: true, dif: 70,
-    respostas: ['Mi', 'Lá', 'Ré', 'Sol', 'Si', ['Mi agudo', 'Mizinho']]
+    pergunta: 'Quais sao as seis cordas de um violao, da mais grave para a mais aguda?',
+    fixo: true, tema: 'musica', dif: 70,
+    respostas: ['Mi', 'La', 'Re', 'Sol', 'Si', ['Mi agudo', 'Mizinho']]
   },
   {
-    pergunta: 'Quais são os sete pecados capitais?',
-    fixo: true, dif: 60,
+    pergunta: 'Quais sao os sete pecados capitais?',
+    fixo: true, tema: 'gerais', dif: 60,
     respostas: [
-      ['Soberba', 'Orgulho'], ['Avareza', 'Ganância'], ['Luxúria'],
-      ['Ira', 'Raiva'], ['Gula'], ['Inveja'], ['Preguiça']
+      ['Soberba', 'Orgulho'], ['Avareza', 'Ganancia'], ['Luxuria'],
+      ['Ira', 'Raiva'], ['Gula'], ['Inveja'], ['Preguica']
     ]
   },
   {
-    pergunta: 'Cite as oito seleções que já venceram a Copa do Mundo.',
-    fixo: true, dif: 75,
+    pergunta: 'Cite as oito selecoes que ja venceram a Copa do Mundo.',
+    fixo: true, tema: 'futebol', dif: 75,
     respostas: [
-      'Brasil', ['Alemanha', 'Alemanha Ocidental'], 'Itália', 'Argentina',
-      ['França', 'Franca'], 'Uruguai', 'Inglaterra', 'Espanha'
+      'Brasil', ['Alemanha', 'Alemanha Ocidental'], 'Italia', 'Argentina',
+      ['Franca', 'Franca'], 'Uruguai', 'Inglaterra', 'Espanha'
     ]
   },
   {
-    pergunta: 'Cite os dez países que fazem fronteira com o Brasil.',
-    fixo: true, dif: 80,
+    pergunta: 'Cite os dez paises que fazem fronteira com o Brasil.',
+    fixo: true, tema: 'geografia', dif: 80,
     respostas: [
-      'Argentina', 'Uruguai', 'Paraguai', 'Bolívia', 'Peru', 'Colômbia',
-      'Venezuela', 'Guiana', 'Suriname', ['Guiana Francesa', 'França']
+      'Argentina', 'Uruguai', 'Paraguai', 'Bolivia', 'Peru', 'Colombia',
+      'Venezuela', 'Guiana', 'Suriname', ['Guiana Francesa', 'Franca']
     ]
   },
 
   /* ---------------------- repertórios abertos ---------------------- */
   {
     pergunta: 'Cite {n} planetas do Sistema Solar',
-    minimo: 2, dif: 30,
+    minimo: 2, tema: 'ciencia', dif: 30,
     respostas: [
-      ['Mercúrio', 'Mercurio'], ['Vênus', 'Venus'], 'Terra', 'Marte',
-      ['Júpiter', 'Jupiter'], 'Saturno', 'Urano', 'Netuno'
+      ['Mercurio', 'Mercurio'], ['Venus', 'Venus'], 'Terra', 'Marte',
+      ['Jupiter', 'Jupiter'], 'Saturno', 'Urano', 'Netuno'
     ]
   },
   {
-    pergunta: 'Cite {n} países da América do Sul',
-    minimo: 2, dif: 35,
+    pergunta: 'Cite {n} paises da America do Sul',
+    minimo: 2, tema: 'geografia', dif: 35,
     respostas: [
-      'Brasil', 'Argentina', 'Chile', 'Uruguai', 'Paraguai', ['Bolívia', 'Bolivia'],
-      'Peru', 'Equador', ['Colômbia', 'Colombia'], 'Venezuela', 'Guiana', 'Suriname'
+      'Brasil', 'Argentina', 'Chile', 'Uruguai', 'Paraguai', ['Bolivia', 'Bolivia'],
+      'Peru', 'Equador', ['Colombia', 'Colombia'], 'Venezuela', 'Guiana', 'Suriname'
     ]
   },
   {
-    pergunta: 'Cite {n} países da África',
-    minimo: 3, dif: 50,
+    pergunta: 'Cite {n} paises da Africa',
+    minimo: 3, tema: 'geografia', dif: 50,
     respostas: [
-      ['Nigéria', 'Nigeria'], 'Egito', ['África do Sul', 'Africa do Sul'],
-      ['Quênia', 'Quenia'], ['Etiópia', 'Etiopia'], 'Gana', 'Marrocos',
-      ['Argélia', 'Argelia'], 'Angola', ['Moçambique', 'Mocambique'],
-      ['Tanzânia', 'Tanzania'], 'Uganda', 'Senegal', ['Camarões', 'Camaroes'],
-      'Costa do Marfim', ['Tunísia', 'Tunisia'], ['Líbia', 'Libia'], ['Sudão', 'Sudao'],
-      ['Zimbábue', 'Zimbabue'], ['Zâmbia', 'Zambia'], ['Namíbia', 'Namibia'],
-      'Botsuana', 'Madagascar', 'Mali', ['Somália', 'Somalia'], 'Ruanda',
-      'Burundi', ['Chade', 'Tchade'], ['Níger', 'Niger'], 'Benim', 'Togo',
-      ['Guiné', 'Guine'], 'Serra Leoa', ['Libéria', 'Liberia'], ['Gabão', 'Gabao'],
-      'Malawi', 'Lesoto', ['Mauritânia', 'Mauritania'], 'Eritreia', 'Djibuti',
-      'Burkina Faso', 'Cabo Verde', ['Gâmbia', 'Gambia'], ['Guiné-Bissau', 'Guine Bissau'],
-      ['São Tomé e Príncipe', 'Sao Tome'], ['Sudão do Sul', 'Sudao do Sul'],
-      ['República Centro-Africana', 'Republica Centro Africana'], 'Congo'
+      ['Nigeria', 'Nigeria'], 'Egito', ['Africa do Sul', 'Africa do Sul'],
+      ['Quenia', 'Quenia'], ['Etiopia', 'Etiopia'], 'Gana', 'Marrocos',
+      ['Argelia', 'Argelia'], 'Angola', ['Mocambique', 'Mocambique'],
+      ['Tanzania', 'Tanzania'], 'Uganda', 'Senegal', ['Camaroes', 'Camaroes'],
+      'Costa do Marfim', ['Tunisia', 'Tunisia'], ['Libia', 'Libia'], ['Sudao', 'Sudao'],
+      ['Zimbabue', 'Zimbabue'], ['Zambia', 'Zambia'], ['Namibia', 'Namibia'],
+      'Botsuana', 'Madagascar', 'Mali', ['Somalia', 'Somalia'], 'Ruanda',
+      'Burundi', ['Chade', 'Tchade'], ['Niger', 'Niger'], 'Benim', 'Togo',
+      ['Guine', 'Guine'], 'Serra Leoa', ['Liberia', 'Liberia'], ['Gabao', 'Gabao'],
+      'Malawi', 'Lesoto', ['Mauritania', 'Mauritania'], 'Eritreia', 'Djibuti',
+      'Burkina Faso', 'Cabo Verde', ['Gambia', 'Gambia'], ['Guine-Bissau', 'Guine Bissau'],
+      ['Sao Tome e Principe', 'Sao Tome'], ['Sudao do Sul', 'Sudao do Sul'],
+      ['Republica Centro-Africana', 'Republica Centro Africana'], 'Congo'
     ]
   },
   {
-    pergunta: 'Cite {n} países da Europa',
-    minimo: 3, dif: 45,
+    pergunta: 'Cite {n} paises da Europa',
+    minimo: 3, tema: 'geografia', dif: 45,
     respostas: [
-      'Portugal', 'Espanha', ['França', 'Franca'], ['Itália', 'Italia'], 'Alemanha',
-      ['Reino Unido', 'Inglaterra'], 'Irlanda', ['Países Baixos', 'Holanda'],
-      ['Bélgica', 'Belgica'], 'Luxemburgo', ['Suíça', 'Suica'], ['Áustria', 'Austria'],
-      'Dinamarca', ['Suécia', 'Suecia'], 'Noruega', ['Finlândia', 'Finlandia'],
-      ['Islândia', 'Islandia'], ['Polônia', 'Polonia'], ['República Tcheca', 'Tchequia'],
-      ['Eslováquia', 'Eslovaquia'], 'Hungria', ['Romênia', 'Romenia'],
-      ['Bulgária', 'Bulgaria'], ['Grécia', 'Grecia'], ['Croácia', 'Croacia'],
-      ['Sérvia', 'Servia'], ['Eslovênia', 'Eslovenia'], ['Bósnia', 'Bosnia'],
-      'Montenegro', ['Macedônia do Norte', 'Macedonia'], ['Albânia', 'Albania'],
-      ['Ucrânia', 'Ucrania'], ['Bielorrússia', 'Bielorrussia'], ['Rússia', 'Russia'],
-      ['Lituânia', 'Lituania'], ['Letônia', 'Letonia'], ['Estônia', 'Estonia'],
-      ['Moldávia', 'Moldavia'], 'Malta', 'Chipre', 'Andorra', ['Mônaco', 'Monaco'],
+      'Portugal', 'Espanha', ['Franca', 'Franca'], ['Italia', 'Italia'], 'Alemanha',
+      ['Reino Unido', 'Inglaterra'], 'Irlanda', ['Paises Baixos', 'Holanda'],
+      ['Belgica', 'Belgica'], 'Luxemburgo', ['Suica', 'Suica'], ['Austria', 'Austria'],
+      'Dinamarca', ['Suecia', 'Suecia'], 'Noruega', ['Finlandia', 'Finlandia'],
+      ['Islandia', 'Islandia'], ['Polonia', 'Polonia'], ['Republica Tcheca', 'Tchequia'],
+      ['Eslovaquia', 'Eslovaquia'], 'Hungria', ['Romenia', 'Romenia'],
+      ['Bulgaria', 'Bulgaria'], ['Grecia', 'Grecia'], ['Croacia', 'Croacia'],
+      ['Servia', 'Servia'], ['Eslovenia', 'Eslovenia'], ['Bosnia', 'Bosnia'],
+      'Montenegro', ['Macedonia do Norte', 'Macedonia'], ['Albania', 'Albania'],
+      ['Ucrania', 'Ucrania'], ['Bielorrussia', 'Bielorrussia'], ['Russia', 'Russia'],
+      ['Lituania', 'Lituania'], ['Letonia', 'Letonia'], ['Estonia', 'Estonia'],
+      ['Moldavia', 'Moldavia'], 'Malta', 'Chipre', 'Andorra', ['Monaco', 'Monaco'],
       'San Marino', 'Liechtenstein', ['Vaticano', 'Cidade do Vaticano']
     ]
   },
   {
     pergunta: 'Cite {n} estados brasileiros',
-    minimo: 3, dif: 40,
+    minimo: 3, tema: 'geografia', dif: 40,
     respostas: [
-      ['Acre', 'AC'], ['Alagoas', 'AL'], ['Amapá', 'AP'], ['Amazonas', 'AM'],
-      ['Bahia', 'BA'], ['Ceará', 'CE'], ['Espírito Santo', 'ES'], ['Goiás', 'GO'],
-      ['Maranhão', 'MA'], ['Mato Grosso', 'MT'], ['Mato Grosso do Sul', 'MS'],
-      ['Minas Gerais', 'MG'], ['Pará', 'PA'], ['Paraíba', 'PB'], ['Paraná', 'PR'],
-      ['Pernambuco', 'PE'], ['Piauí', 'PI'], ['Rio de Janeiro', 'RJ'],
-      ['Rio Grande do Norte', 'RN'], ['Rio Grande do Sul', 'RS'], ['Rondônia', 'RO'],
-      ['Roraima', 'RR'], ['Santa Catarina', 'SC'], ['São Paulo', 'SP'],
+      ['Acre', 'AC'], ['Alagoas', 'AL'], ['Amapa', 'AP'], ['Amazonas', 'AM'],
+      ['Bahia', 'BA'], ['Ceara', 'CE'], ['Espirito Santo', 'ES'], ['Goias', 'GO'],
+      ['Maranhao', 'MA'], ['Mato Grosso', 'MT'], ['Mato Grosso do Sul', 'MS'],
+      ['Minas Gerais', 'MG'], ['Para', 'PA'], ['Paraiba', 'PB'], ['Parana', 'PR'],
+      ['Pernambuco', 'PE'], ['Piaui', 'PI'], ['Rio de Janeiro', 'RJ'],
+      ['Rio Grande do Norte', 'RN'], ['Rio Grande do Sul', 'RS'], ['Rondonia', 'RO'],
+      ['Roraima', 'RR'], ['Santa Catarina', 'SC'], ['Sao Paulo', 'SP'],
       ['Sergipe', 'SE'], ['Tocantins', 'TO'], ['Distrito Federal', 'DF']
     ]
   },
   {
-    pergunta: 'Cite {n} esportes olímpicos',
-    minimo: 3, dif: 40,
+    pergunta: 'Cite {n} esportes olimpicos',
+    minimo: 3, tema: 'esportes', dif: 40,
     respostas: [
-      'Atletismo', ['Natação', 'Natacao'], ['Ginástica', 'Ginastica'], ['Judô', 'Judo'],
-      ['Vôlei', 'Volei', 'Voleibol'], 'Basquete', 'Futebol', 'Handebol', 'Boxe',
-      'Esgrima', 'Ciclismo', 'Remo', 'Canoagem', ['Tênis', 'Tenis'],
-      ['Tênis de mesa', 'Tenis de mesa'], 'Badminton', 'Vela', 'Tiro com arco',
+      'Atletismo', ['Natacao', 'Natacao'], ['Ginastica', 'Ginastica'], ['Judo', 'Judo'],
+      ['Volei', 'Volei', 'Voleibol'], 'Basquete', 'Futebol', 'Handebol', 'Boxe',
+      'Esgrima', 'Ciclismo', 'Remo', 'Canoagem', ['Tenis', 'Tenis'],
+      ['Tenis de mesa', 'Tenis de mesa'], 'Badminton', 'Vela', 'Tiro com arco',
       'Halterofilismo', ['Luta', 'Wrestling'], 'Taekwondo', 'Triatlo', 'Hipismo',
       'Golfe', 'Rugby', 'Surfe', 'Skate', 'Escalada', 'Pentatlo moderno',
-      ['Polo aquático', 'Polo aquatico'], 'Saltos ornamentais', 'Nado artístico',
-      ['Hóquei', 'Hoquei'], ['Karatê', 'Karate'], 'Beisebol', 'Softbol', 'Breaking'
+      ['Polo aquatico', 'Polo aquatico'], 'Saltos ornamentais', 'Nado artistico',
+      ['Hoquei', 'Hoquei'], ['Karate', 'Karate'], 'Beisebol', 'Softbol', 'Breaking'
     ]
   },
   {
-    pergunta: 'Cite {n} jogadores de futebol cujo nome começa com a letra L',
-    minimo: 2, dif: 55,
+    pergunta: 'Cite {n} jogadores de futebol cujo nome comeca com a letra L',
+    minimo: 2, tema: 'futebol', dif: 55,
     respostas: [
-      ['Lionel Messi', 'Messi'], ['Luka Modrić', 'Modric', 'Luka Modric'],
-      ['Lewandowski', 'Robert Lewandowski'], ['Luis Suárez', 'Luis Suarez'],
-      ['Lothar Matthäus', 'Lothar Matthaus'], ['Lampard', 'Frank Lampard'],
+      ['Lionel Messi', 'Messi'], ['Luka Modric', 'Modric', 'Luka Modric'],
+      ['Lewandowski', 'Robert Lewandowski'], ['Luis Suarez', 'Luis Suarez'],
+      ['Lothar Matthaus', 'Lothar Matthaus'], ['Lampard', 'Frank Lampard'],
       ['Lahm', 'Philipp Lahm'], ['Lloris', 'Hugo Lloris'],
-      ['Lukaku', 'Romelu Lukaku'], ['Lautaro Martínez', 'Lautaro'],
-      ['Leonardo Bonucci', 'Bonucci'], ['Leroy Sané', 'Leroy Sane'],
-      ['Luís Figo', 'Luis Figo', 'Figo'], ['Lorenzo Insigne', 'Insigne'],
-      ['Lucas Moura'], ['Lisandro Martínez', 'Lisandro'], ['Luis Díaz', 'Luis Diaz'],
+      ['Lukaku', 'Romelu Lukaku'], ['Lautaro Martinez', 'Lautaro'],
+      ['Leonardo Bonucci', 'Bonucci'], ['Leroy Sane', 'Leroy Sane'],
+      ['Luis Figo', 'Luis Figo', 'Figo'], ['Lorenzo Insigne', 'Insigne'],
+      ['Lucas Moura'], ['Lisandro Martinez', 'Lisandro'], ['Luis Diaz', 'Luis Diaz'],
       ['Lamine Yamal', 'Yamal'], ['Leandro Paredes'], ['Laurent Blanc']
     ]
   },
   {
-    pergunta: 'Cite {n} signos do zodíaco',
-    minimo: 2, dif: 35,
+    pergunta: 'Cite {n} signos do zodiaco',
+    minimo: 2, tema: 'gerais', dif: 35,
     respostas: [
-      ['Áries', 'Aries'], 'Touro', ['Gêmeos', 'Gemeos'], ['Câncer', 'Cancer'],
-      ['Leão', 'Leao'], 'Virgem', 'Libra', ['Escorpião', 'Escorpiao'],
-      ['Sagitário', 'Sagitario'], ['Capricórnio', 'Capricornio'],
-      ['Aquário', 'Aquario'], 'Peixes'
+      ['Aries', 'Aries'], 'Touro', ['Gemeos', 'Gemeos'], ['Cancer', 'Cancer'],
+      ['Leao', 'Leao'], 'Virgem', 'Libra', ['Escorpiao', 'Escorpiao'],
+      ['Sagitario', 'Sagitario'], ['Capricornio', 'Capricornio'],
+      ['Aquario', 'Aquario'], 'Peixes'
     ]
   },
   {
-    pergunta: 'Cite {n} cores do arco-íris',
-    minimo: 2, dif: 30,
+    pergunta: 'Cite {n} cores do arco-iris',
+    minimo: 2, tema: 'gerais', dif: 30,
     respostas: ['Vermelho', 'Laranja', 'Amarelo', 'Verde', 'Azul', 'Anil', 'Violeta']
   },
   {
     pergunta: 'Cite {n} meses do ano',
-    minimo: 2, dif: 20,
+    minimo: 2, tema: 'gerais', dif: 20,
     respostas: [
-      'Janeiro', 'Fevereiro', ['Março', 'Marco'], 'Abril', 'Maio', 'Junho',
+      'Janeiro', 'Fevereiro', ['Marco', 'Marco'], 'Abril', 'Maio', 'Junho',
       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
     ]
   },
   {
     pergunta: 'Cite {n} clubes brasileiros de futebol',
-    minimo: 2, dif: 30,
+    tema: 'futebol', dif: 25,
     respostas: [
-      'Flamengo', 'Palmeiras', ['Corinthians', 'Corintians'], ['São Paulo', 'Sao Paulo'],
-      'Santos', ['Grêmio', 'Gremio'], ['Internacional', 'Inter'],
-      'Cruzeiro', ['Atlético Mineiro', 'Atletico Mineiro', 'Galo'], 'Botafogo',
-      'Fluminense', 'Vasco', 'Bahia', 'Fortaleza',
-      ['Athletico Paranaense', 'Atletico Paranaense'], 'Bragantino',
-      ['Sport', 'Sport Recife'], ['Náutico', 'Nautico'], 'Goiás', 'Coritiba',
-      ['Vitória', 'Vitoria'], ['Ceará', 'Ceara'], ['Juventude'], ['Criciúma', 'Criciuma']
+      ['Flamengo', 'Mengao', 'CRF'],
+      ['Palmeiras', 'Verdao', 'Porco'],
+      ['Corinthians', 'Timao'],
+      ['Sao Paulo', 'Tricolor Paulista', 'SPFC'],
+      ['Santos', 'Peixe'],
+      ['Gremio', 'Imortal Tricolor'],
+      ['Internacional', 'Inter', 'Colorado'],
+      ['Cruzeiro', 'Raposa'],
+      ['Atletico Mineiro', 'Atletico-MG', 'Galo'],
+      ['Botafogo', 'Fogao', 'Glorioso'],
+      ['Fluminense', 'Flu', 'Tricolor Carioca'],
+      ['Vasco da Gama', 'Vasco', 'Gigante da Colina'],
+      ['Bahia', 'Esquadrao de Aco'],
+      ['Fortaleza', 'Leao do Pici'],
+      ['Athletico Paranaense', 'Athletico-PR', 'Furacao'],
+      ['Red Bull Bragantino', 'Bragantino', 'Massa Bruta'],
+      ['Sport Recife', 'Sport', 'Leao da Ilha'],
+      ['Nautico', 'Timbu'],
+      ['Goias', 'Esmeraldino'],
+      ['Coritiba', 'Coxa', 'Coxa Branca'],
+      ['Vitoria', 'Leao da Barra'],
+      ['Ceara', 'Vozao'],
+      ['Juventude', 'Ju'],
+      ['Criciuma', 'Tigre'],
+      ['America Mineiro', 'America-MG', 'Coelho'],
+      ['Atletico Goianiense', 'Atletico-GO', 'Dragao'],
+      ['Cuiaba', 'Dourado'],
+      ['Chapecoense', 'Chape'],
+      ['Ponte Preta', 'Macaca'],
+      ['Guarani', 'Bugre'],
+      ['Avai', 'Leao da Ilha de Santa Catarina'],
+      ['Figueirense', 'Figueira'],
+      ['Paysandu', 'Papao'],
+      ['Remo', 'Leao Azul'],
+      ['Santa Cruz', 'Cobra Coral'],
+      ['Portuguesa', 'Lusa'],
+      ['Mirassol', 'Leao'],
+      ['Novorizontino', 'Tigre do Vale'],
+      ['Operario', 'Fantasma'],
+      ['Sampaio Correa', 'Bolivia Querida']
     ]
   },
   {
-    pergunta: 'Cite {n} elementos químicos',
-    minimo: 2, dif: 45,
+    pergunta: 'Cite {n} elementos quimicos',
+    minimo: 2, tema: 'ciencia', dif: 45,
     respostas: [
-      ['Hidrogênio', 'Hidrogenio'], ['Hélio', 'Helio'], ['Lítio', 'Litio'],
-      ['Carbono'], ['Nitrogênio', 'Nitrogenio'], ['Oxigênio', 'Oxigenio'],
-      ['Flúor', 'Fluor'], ['Sódio', 'Sodio'], ['Magnésio', 'Magnesio'],
-      ['Alumínio', 'Aluminio'], ['Silício', 'Silicio'], ['Fósforo', 'Fosforo'],
-      'Enxofre', 'Cloro', ['Potássio', 'Potassio'], ['Cálcio', 'Calcio'],
-      'Ferro', 'Cobre', 'Zinco', 'Prata', 'Ouro', ['Mercúrio', 'Mercurio'],
-      'Chumbo', ['Urânio', 'Uranio'], ['Neônio', 'Neonio'], ['Titânio', 'Titanio'],
-      ['Níquel', 'Niquel'], ['Estanho'], ['Bário', 'Bario'], ['Iodo']
+      ['Hidrogenio', 'Hidrogenio'], ['Helio', 'Helio'], ['Litio', 'Litio'],
+      ['Carbono'], ['Nitrogenio', 'Nitrogenio'], ['Oxigenio', 'Oxigenio'],
+      ['Fluor', 'Fluor'], ['Sodio', 'Sodio'], ['Magnesio', 'Magnesio'],
+      ['Aluminio', 'Aluminio'], ['Silicio', 'Silicio'], ['Fosforo', 'Fosforo'],
+      'Enxofre', 'Cloro', ['Potassio', 'Potassio'], ['Calcio', 'Calcio'],
+      'Ferro', 'Cobre', 'Zinco', 'Prata', 'Ouro', ['Mercurio', 'Mercurio'],
+      'Chumbo', ['Uranio', 'Uranio'], ['Neonio', 'Neonio'], ['Titanio', 'Titanio'],
+      ['Niquel', 'Niquel'], ['Estanho'], ['Bario', 'Bario'], ['Iodo']
     ]
   },
   {
     pergunta: 'Cite {n} instrumentos musicais',
-    minimo: 2, dif: 25,
+    minimo: 2, tema: 'musica', dif: 25,
     respostas: [
-      ['Violão', 'Violao'], 'Guitarra', 'Piano', 'Bateria', 'Baixo', 'Violino',
+      ['Violao', 'Violao'], 'Guitarra', 'Piano', 'Bateria', 'Baixo', 'Violino',
       'Flauta', ['Saxofone', 'Sax'], 'Trompete', 'Violoncelo', 'Harpa', 'Clarinete',
-      ['Acordeão', 'Acordeao', 'Sanfona'], 'Pandeiro', ['Cavaquinho'], 'Trombone',
-      ['Órgão', 'Orgao'], 'Ukulele', ['Berimbau'], ['Tuba'], ['Oboé', 'Oboe']
+      ['Acordeao', 'Acordeao', 'Sanfona'], 'Pandeiro', ['Cavaquinho'], 'Trombone',
+      ['Orgao', 'Orgao'], 'Ukulele', ['Berimbau'], ['Tuba'], ['Oboe', 'Oboe']
     ]
   },
   {
     pergunta: 'Cite {n} personagens de One Piece',
-    minimo: 2, dif: 60,
+    minimo: 2, tema: 'anime', dif: 60,
     respostas: [
       ['Monkey D. Luffy', 'Luffy'], ['Roronoa Zoro', 'Zoro'], 'Nami', 'Usopp',
       ['Sanji'], ['Tony Tony Chopper', 'Chopper'], ['Nico Robin', 'Robin'],
@@ -267,37 +300,785 @@ const LISTAS = [
   },
   {
     pergunta: 'Cite {n} filmes da Marvel',
-    minimo: 2, dif: 40,
+    minimo: 2, tema: 'cinema', dif: 40,
     respostas: [
       ['Homem de Ferro', 'Iron Man'], ['Vingadores', 'Avengers'],
-      ['Capitão América', 'Capitao America'], ['Thor'], ['Hulk'],
-      ['Guardiões da Galáxia', 'Guardioes da Galaxia'], ['Pantera Negra', 'Black Panther'],
+      ['Capitao America', 'Capitao America'], ['Thor'], ['Hulk'],
+      ['Guardioes da Galaxia', 'Guardioes da Galaxia'], ['Pantera Negra', 'Black Panther'],
       ['Doutor Estranho', 'Doutor Strange'], ['Homem-Formiga', 'Homem Formiga'],
-      ['Capitã Marvel', 'Capita Marvel'], ['Homem-Aranha', 'Homem Aranha', 'Spider-Man'],
+      ['Capita Marvel', 'Capita Marvel'], ['Homem-Aranha', 'Homem Aranha', 'Spider-Man'],
       ['Ultimato', 'Endgame'], ['Guerra Infinita', 'Infinity War'],
       ['Eternos', 'Eternals'], ['Shang-Chi', 'Shang Chi'], ['Deadpool'],
-      ['Viúva Negra', 'Viuva Negra'], ['Wandavision']
+      ['Viuva Negra', 'Viuva Negra'], ['Wandavision']
     ]
   },
   {
-    pergunta: 'Cite {n} capitais de países da América do Sul',
-    minimo: 2, dif: 55,
+    pergunta: 'Cite {n} capitais de paises da America do Sul',
+    minimo: 2, tema: 'geografia', dif: 55,
     respostas: [
-      ['Brasília', 'Brasilia'], 'Buenos Aires', 'Santiago', 'Montevidéu',
-      ['Assunção', 'Assuncao'], ['La Paz'], 'Lima', 'Quito', ['Bogotá', 'Bogota'],
+      ['Brasilia', 'Brasilia'], 'Buenos Aires', 'Santiago', 'Montevideu',
+      ['Assuncao', 'Assuncao'], ['La Paz'], 'Lima', 'Quito', ['Bogota', 'Bogota'],
       'Caracas', 'Georgetown', 'Paramaribo'
     ]
   },
   {
-    pergunta: 'Cite {n} bandas de rock',
-    minimo: 2, dif: 35,
+    pergunta: 'Cite {n} bandas de rock internacionais',
+    tema: 'musica', dif: 30,
     respostas: [
-      ['Queen'], ['The Beatles', 'Beatles'], ['Led Zeppelin'], ['Pink Floyd'],
-      ['The Rolling Stones', 'Rolling Stones'], ['Nirvana'], ['Metallica'],
-      ['AC/DC', 'ACDC'], ['Guns N Roses', 'Guns and Roses'], ['U2'],
-      ['Radiohead'], ['Coldplay'], ['Red Hot Chili Peppers', 'RHCP'],
-      ['Pearl Jam'], ['Black Sabbath'], ['Iron Maiden'], ['The Who'],
-      ['Legião Urbana', 'Legiao Urbana'], ['Titãs', 'Titas'], ['Capital Inicial']
+      'Queen',
+      ['The Beatles', 'Beatles'],
+      'Led Zeppelin',
+      'Pink Floyd',
+      ['The Rolling Stones', 'Rolling Stones'],
+      'Nirvana',
+      'Metallica',
+      ['AC/DC', 'ACDC'],
+      ['Guns N\' Roses', 'Guns and Roses', 'Guns'],
+      'U2',
+      'Radiohead',
+      'Coldplay',
+      ['Red Hot Chili Peppers', 'RHCP'],
+      'Pearl Jam',
+      'Black Sabbath',
+      'Iron Maiden',
+      'The Who',
+      'Oasis',
+      'Linkin Park',
+      'Green Day',
+      'The Doors',
+      'Deep Purple',
+      'Aerosmith',
+      'Foo Fighters',
+      'Arctic Monkeys',
+      'Muse',
+      'The Killers',
+      'Imagine Dragons',
+      ['Blink-182', 'Blink 182'],
+      'System of a Down',
+      'Slipknot',
+      'Rammstein',
+      'Scorpions',
+      'Kiss',
+      'The Police',
+      'Genesis',
+      'Dire Straits',
+      'Bon Jovi',
+      'Maroon 5',
+      'Paramore'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} bandas brasileiras',
+    tema: 'musica', dif: 35,
+    respostas: [
+      ['Legiao Urbana', 'Legiao'],
+      'Titas',
+      'Capital Inicial',
+      ['Barao Vermelho', 'Barao'],
+      ['Paralamas do Sucesso', 'Paralamas'],
+      ['Engenheiros do Hawaii', 'Engenheiros'],
+      'Skank',
+      'Jota Quest',
+      'O Rappa',
+      ['Charlie Brown Jr', 'Charlie Brown Junior', 'CBJR'],
+      'Raimundos',
+      'Sepultura',
+      'Angra',
+      ['Cansei de Ser Sexy', 'CSS'],
+      'Los Hermanos',
+      ['Nando Reis e os Infernais', 'Nando Reis'],
+      'Pitty',
+      'Detonautas',
+      ['NX Zero', 'NXZero'],
+      'Fresno',
+      ['CPM 22', 'CPM22'],
+      ['Ira!', 'Ira'],
+      'Kid Abelha',
+      ['Ultraje a Rigor', 'Ultraje'],
+      'Blitz',
+      'RPM',
+      'Cidade Negra',
+      'Natiruts',
+      'Tribalistas',
+      ['Mamonas Assassinas', 'Mamonas']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} herois da Marvel',
+    tema: 'cinema', dif: 25,
+    respostas: [
+      ['Homem de Ferro', 'Iron Man'],
+      'Capitao America',
+      'Thor',
+      'Hulk',
+      ['Viuva Negra', 'Black Widow'],
+      ['Gaviao Arqueiro', 'Hawkeye'],
+      ['Homem-Aranha', 'Homem Aranha', 'Spider-Man'],
+      ['Doutor Estranho', 'Doutor Strange'],
+      ['Pantera Negra', 'Black Panther'],
+      'Capita Marvel',
+      ['Feiticeira Escarlate', 'Wanda'],
+      'Visao',
+      'Wolverine',
+      'Deadpool',
+      ['Homem-Formiga', 'Homem Formiga', 'Ant-Man'],
+      'Groot',
+      ['Rocket Raccoon', 'Rocket'],
+      ['Star-Lord', 'Star Lord'],
+      'Falcao',
+      ['Soldado Invernal', 'Bucky']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} herois da DC',
+    tema: 'cinema', dif: 35,
+    respostas: [
+      ['Superman', 'Super-Homem'],
+      'Batman',
+      ['Mulher-Maravilha', 'Mulher Maravilha'],
+      'Flash',
+      'Aquaman',
+      'Lanterna Verde',
+      ['Ciborgue', 'Cyborg'],
+      'Robin',
+      'Batgirl',
+      ['Arqueiro Verde', 'Arrow'],
+      'Shazam',
+      'Supergirl',
+      'Nightwing',
+      ['Mulher-Gato', 'Mulher Gato', 'Catwoman'],
+      'Constantine',
+      'Zatanna'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} viloes da DC',
+    tema: 'cinema', dif: 45,
+    respostas: [
+      ['Coringa', 'Joker'],
+      'Lex Luthor',
+      'Pinguim',
+      ['Charada', 'Riddler'],
+      ['Duas-Caras', 'Duas Caras'],
+      'Espantalho',
+      'Bane',
+      'Hera Venenosa',
+      ['Arlequina', 'Harley Quinn'],
+      'Darkseid',
+      'Deathstroke',
+      'Ra\'s al Ghul'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} filmes da saga Star Wars',
+    tema: 'cinema', dif: 50,
+    respostas: [
+      ['Uma Nova Esperanca', 'Star Wars Episodio IV'],
+      'O Imperio Contra-Ataca',
+      'O Retorno de Jedi',
+      'A Ameaca Fantasma',
+      'Ataque dos Clones',
+      'A Vinganca dos Sith',
+      'O Despertar da Forca',
+      'Os Ultimos Jedi',
+      'A Ascensao Skywalker',
+      'Rogue One',
+      'Han Solo'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} series famosas da Netflix',
+    tema: 'cinema', dif: 35,
+    respostas: [
+      'Stranger Things',
+      ['La Casa de Papel', 'Casa de Papel'],
+      'Dark',
+      ['Round 6', 'Squid Game'],
+      'The Crown',
+      'Black Mirror',
+      'O Gambito da Rainha',
+      'Narcos',
+      'Ozark',
+      'Bridgerton',
+      ['Wandinha', 'Wednesday'],
+      'You',
+      'Lupin',
+      'Sex Education',
+      'Elite',
+      '3%'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} animes famosos',
+    tema: 'anime', dif: 30,
+    respostas: [
+      'Naruto',
+      'One Piece',
+      'Dragon Ball',
+      'Bleach',
+      ['Attack on Titan', 'Shingeki no Kyojin'],
+      'Death Note',
+      ['Demon Slayer', 'Kimetsu no Yaiba'],
+      'Jujutsu Kaisen',
+      ['My Hero Academia', 'Boku no Hero'],
+      'Fullmetal Alchemist',
+      'Hunter x Hunter',
+      'Tokyo Ghoul',
+      ['Sword Art Online', 'SAO'],
+      'One Punch Man',
+      'Cavaleiros do Zodiaco',
+      'Yu Yu Hakusho',
+      ['Pokemon', 'Pokemon'],
+      'Evangelion',
+      'Cowboy Bebop',
+      'Haikyuu'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Naruto',
+    tema: 'anime', dif: 40,
+    respostas: [
+      ['Naruto', 'Naruto Uzumaki'],
+      ['Sasuke', 'Sasuke Uchiha'],
+      ['Sakura', 'Sakura Haruno'],
+      ['Kakashi', 'Kakashi Hatake'],
+      'Hinata',
+      'Shikamaru',
+      'Rock Lee',
+      'Neji',
+      'Gaara',
+      'Itachi',
+      'Jiraiya',
+      'Tsunade',
+      'Orochimaru',
+      'Madara',
+      'Obito',
+      ['Pain', 'Nagato'],
+      'Kiba',
+      'Choji',
+      'Ino',
+      'Minato'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Dragon Ball',
+    tema: 'anime', dif: 40,
+    respostas: [
+      'Goku',
+      'Vegeta',
+      'Gohan',
+      'Piccolo',
+      'Bulma',
+      ['Krilin', 'Kuririn'],
+      'Trunks',
+      ['Freeza', 'Frieza'],
+      'Cell',
+      ['Majin Boo', 'Buu'],
+      ['Mestre Kame', 'Roshi'],
+      ['Chi-Chi', 'Chichi'],
+      'Beerus',
+      'Whis',
+      'Yamcha',
+      'Tenshinhan'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogos da Nintendo',
+    tema: 'games', dif: 40,
+    respostas: [
+      'Super Mario',
+      ['The Legend of Zelda', 'Zelda'],
+      'Mario Kart',
+      ['Pokemon', 'Pokemon'],
+      'Metroid',
+      'Donkey Kong',
+      ['Super Smash Bros', 'Smash Bros'],
+      'Animal Crossing',
+      'Splatoon',
+      'Kirby',
+      'Fire Emblem',
+      'Star Fox',
+      'Pikmin',
+      ['Luigi\'s Mansion', 'Luigis Mansion'],
+      'Wii Sports'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} consoles de videogame',
+    tema: 'games', dif: 35,
+    respostas: [
+      'PlayStation',
+      'Xbox',
+      ['Nintendo Switch', 'Switch'],
+      ['Nintendo 64', 'N64'],
+      ['Super Nintendo', 'SNES'],
+      ['Mega Drive', 'Genesis'],
+      'Master System',
+      'Game Boy',
+      'Nintendo DS',
+      'Wii',
+      'GameCube',
+      ['PlayStation 2', 'PS2'],
+      'Dreamcast',
+      ['Atari 2600', 'Atari'],
+      'PSP',
+      ['Nintendo 3DS', '3DS']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} presidentes do Brasil',
+    tema: 'historia', dif: 40,
+    respostas: [
+      ['Getulio Vargas', 'Getulio'],
+      ['Juscelino Kubitschek', 'JK'],
+      ['Joao Goulart', 'Jango'],
+      'Janio Quadros',
+      ['Fernando Collor', 'Collor'],
+      ['Itamar Franco', 'Itamar'],
+      ['Fernando Henrique Cardoso', 'FHC'],
+      ['Lula', 'Luiz Inacio Lula da Silva'],
+      ['Dilma Rousseff', 'Dilma'],
+      ['Michel Temer', 'Temer'],
+      ['Jair Bolsonaro', 'Bolsonaro'],
+      ['Deodoro da Fonseca', 'Deodoro'],
+      'Floriano Peixoto',
+      'Castelo Branco'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} orgaos do corpo humano',
+    tema: 'ciencia', dif: 30,
+    respostas: [
+      'Coracao',
+      'Pulmao',
+      'Figado',
+      'Rim',
+      'Estomago',
+      'Intestino',
+      'Cerebro',
+      'Pancreas',
+      'Baco',
+      'Bexiga',
+      'Pele',
+      'Esofago',
+      'Vesicula',
+      'Utero',
+      'Tireoide'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} paises da Asia',
+    tema: 'geografia', dif: 30,
+    respostas: [
+      'China',
+      'Japao',
+      'India',
+      'Coreia do Sul',
+      'Coreia do Norte',
+      'Tailandia',
+      'Vietna',
+      'Indonesia',
+      'Filipinas',
+      'Malasia',
+      'Cingapura',
+      'Paquistao',
+      'Bangladesh',
+      'Nepal',
+      'Mongolia',
+      'Camboja',
+      'Laos',
+      'Mianmar',
+      'Sri Lanka',
+      'Cazaquistao',
+      'Ira',
+      'Iraque',
+      'Arabia Saudita',
+      'Israel',
+      'Turquia'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} capitais europeias',
+    tema: 'geografia', dif: 40,
+    respostas: [
+      'Lisboa',
+      'Madri',
+      'Paris',
+      'Londres',
+      'Roma',
+      'Berlim',
+      'Viena',
+      'Bruxelas',
+      'Amsterda',
+      'Estocolmo',
+      'Oslo',
+      'Copenhague',
+      'Helsinque',
+      'Dublin',
+      'Atenas',
+      'Varsovia',
+      'Praga',
+      'Budapeste',
+      'Bucareste',
+      'Moscou',
+      'Berna',
+      'Zagreb'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} marcas de carro',
+    tema: 'mainstream', dif: 25,
+    respostas: [
+      ['Volkswagen', 'VW'],
+      'Fiat',
+      'Chevrolet',
+      'Ford',
+      'Toyota',
+      'Honda',
+      'Hyundai',
+      'Renault',
+      'Nissan',
+      'Peugeot',
+      ['Citroen', 'Citroen'],
+      'BMW',
+      ['Mercedes-Benz', 'Mercedes'],
+      'Audi',
+      'Ferrari',
+      'Porsche',
+      'Lamborghini',
+      'Jeep',
+      'Volvo',
+      'Kia',
+      'Mitsubishi',
+      'Tesla'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} redes sociais ou aplicativos famosos',
+    tema: 'mainstream', dif: 20,
+    respostas: [
+      'Instagram',
+      'WhatsApp',
+      'Facebook',
+      'TikTok',
+      ['Twitter', 'X'],
+      'YouTube',
+      'LinkedIn',
+      'Snapchat',
+      'Telegram',
+      'Pinterest',
+      'Reddit',
+      'Discord',
+      'Twitch',
+      'Spotify',
+      'Netflix',
+      'Uber'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} generos musicais',
+    tema: 'musica', dif: 25,
+    respostas: [
+      'Rock',
+      'Pop',
+      'Samba',
+      'Sertanejo',
+      'Funk',
+      'Forro',
+      'MPB',
+      'Pagode',
+      'Rap',
+      'Hip Hop',
+      'Jazz',
+      'Blues',
+      'Reggae',
+      'Country',
+      'Eletronica',
+      'Bossa Nova',
+      'Axe',
+      ['Heavy Metal', 'Metal'],
+      'Punk',
+      'Classica'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} pratos tipicos brasileiros',
+    tema: 'mainstream', dif: 30,
+    respostas: [
+      'Feijoada',
+      'Moqueca',
+      'Acaraje',
+      'Pao de queijo',
+      'Coxinha',
+      'Brigadeiro',
+      'Vatapa',
+      'Tapioca',
+      'Baiao de dois',
+      'Churrasco',
+      'Farofa',
+      'Bobo de camarao',
+      'Escondidinho',
+      'Pastel',
+      'Cuscuz',
+      'Acai'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} times de futebol europeus',
+    tema: 'futebol', dif: 30,
+    respostas: [
+      'Real Madrid',
+      'Barcelona',
+      'Manchester United',
+      'Manchester City',
+      'Liverpool',
+      'Chelsea',
+      'Arsenal',
+      'Tottenham',
+      ['Bayern de Munique', 'Bayern'],
+      ['Borussia Dortmund', 'Dortmund'],
+      'Juventus',
+      'Milan',
+      ['Inter de Milao', 'Inter de Milao', 'Internazionale'],
+      'Napoli',
+      'Roma',
+      ['Paris Saint-Germain', 'PSG'],
+      'Ajax',
+      'Porto',
+      'Benfica',
+      'Sporting',
+      ['Atletico de Madrid', 'Atletico Madrid']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} esportes jogados com bola',
+    tema: 'esportes', dif: 25,
+    respostas: [
+      'Futebol',
+      'Basquete',
+      ['Volei', 'Volei'],
+      'Handebol',
+      'Tenis',
+      'Golfe',
+      'Rugby',
+      'Beisebol',
+      'Futsal',
+      'Polo aquatico',
+      'Boliche',
+      ['Tenis de mesa', 'Ping pong']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} esportes de luta',
+    tema: 'esportes', dif: 35,
+    respostas: [
+      'Boxe',
+      'Judo',
+      'Karate',
+      ['Jiu-jitsu', 'Jiu jitsu'],
+      'Muay thai',
+      'Taekwondo',
+      ['Luta livre', 'Wrestling'],
+      'MMA',
+      'Capoeira',
+      'Esgrima',
+      ['Sumo', 'Sumo']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} esportes aquaticos',
+    tema: 'esportes', dif: 40,
+    respostas: [
+      'Natacao',
+      ['Surfe', 'Surf'],
+      'Polo aquatico',
+      'Remo',
+      'Canoagem',
+      'Vela',
+      'Mergulho',
+      'Nado sincronizado',
+      'Saltos ornamentais',
+      'Stand up paddle'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} posicoes do futebol',
+    tema: 'futebol', dif: 25,
+    respostas: [
+      'Goleiro',
+      'Zagueiro',
+      'Lateral',
+      'Volante',
+      ['Meia', 'Meio-campista'],
+      'Atacante',
+      'Ponta',
+      'Centroavante'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Harry Potter',
+    tema: 'cinema', dif: 30,
+    respostas: [
+      ['Harry Potter', 'Harry'],
+      ['Hermione', 'Hermione Granger'],
+      ['Rony', 'Ron', 'Rony Weasley'],
+      'Dumbledore',
+      'Snape',
+      'Voldemort',
+      'Hagrid',
+      ['Draco Malfoy', 'Draco', 'Malfoy'],
+      ['Sirius Black', 'Sirius'],
+      'McGonagall',
+      'Dobby',
+      ['Luna Lovegood', 'Luna']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} filmes de super-heroi',
+    tema: 'cinema', dif: 25,
+    respostas: [
+      ['Vingadores', 'Os Vingadores'],
+      'Homem de Ferro',
+      'Batman',
+      'Superman',
+      ['Homem-Aranha', 'Homem Aranha'],
+      'Pantera Negra',
+      ['Mulher-Maravilha', 'Mulher Maravilha'],
+      'Thor',
+      'Capitao America',
+      'Deadpool',
+      'Aquaman',
+      'Liga da Justica',
+      'Coringa',
+      'Logan'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Pokemon',
+    tema: 'anime', dif: 35,
+    respostas: [
+      'Pikachu',
+      'Charizard',
+      'Bulbasaur',
+      'Squirtle',
+      'Charmander',
+      'Mewtwo',
+      'Mew',
+      'Eevee',
+      'Snorlax',
+      'Gengar',
+      'Jigglypuff',
+      'Psyduck'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogos de tiro',
+    tema: 'games', dif: 35,
+    respostas: [
+      ['Counter-Strike', 'CS'],
+      ['Call of Duty', 'COD'],
+      'Valorant',
+      'Overwatch',
+      'Battlefield',
+      'Doom',
+      'Halo',
+      'Rainbow Six',
+      ['Apex Legends', 'Apex'],
+      'Fortnite',
+      'PUBG'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} planetas rochosos ou gasosos do Sistema Solar',
+    tema: 'ciencia', dif: 25,
+    respostas: [
+      'Mercurio',
+      'Venus',
+      'Terra',
+      'Marte',
+      'Jupiter',
+      'Saturno',
+      'Urano',
+      'Netuno'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} sentidos do corpo humano',
+    tema: 'ciencia', dif: 20,
+    respostas: [
+      'Visao',
+      'Audicao',
+      'Olfato',
+      'Paladar',
+      'Tato'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cantores brasileiros',
+    tema: 'musica', dif: 35,
+    respostas: [
+      ['Caetano Veloso', 'Caetano'],
+      'Gilberto Gil',
+      ['Chico Buarque', 'Chico'],
+      'Roberto Carlos',
+      ['Elis Regina', 'Elis'],
+      'Cazuza',
+      'Renato Russo',
+      ['Ivete Sangalo', 'Ivete'],
+      'Anitta',
+      'Marisa Monte',
+      'Djavan',
+      'Alcione',
+      'Gal Costa',
+      'Milton Nascimento'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} capitais do Nordeste brasileiro',
+    tema: 'geografia', dif: 40,
+    respostas: [
+      'Salvador',
+      'Recife',
+      'Fortaleza',
+      'Natal',
+      'Joao Pessoa',
+      'Maceio',
+      'Aracaju',
+      'Teresina',
+      'Sao Luis'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} imperadores ou presidentes que governaram o Brasil no seculo XX',
+    tema: 'historia', dif: 55,
+    respostas: [
+      ['Getulio Vargas', 'Getulio'],
+      ['Juscelino Kubitschek', 'JK'],
+      ['Joao Goulart', 'Jango'],
+      'Janio Quadros',
+      'Castelo Branco',
+      ['Ernesto Geisel', 'Geisel'],
+      ['Joao Figueiredo', 'Figueiredo'],
+      ['Jose Sarney', 'Sarney'],
+      ['Fernando Collor', 'Collor'],
+      ['Itamar Franco', 'Itamar'],
+      ['Fernando Henrique Cardoso', 'FHC']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} marcas de celular',
+    tema: 'mainstream', dif: 25,
+    respostas: [
+      ['Apple', 'iPhone'],
+      'Samsung',
+      'Motorola',
+      'Xiaomi',
+      'LG',
+      'Nokia',
+      'Huawei',
+      'Sony',
+      'Asus',
+      'Realme'
     ]
   }
 ];
@@ -308,11 +1089,38 @@ const LISTAS = [
  * - `fixo`: só serve se a lista tiver exatamente `n` itens.
  * - aberta: serve se tiver itens suficientes e já tiver passado o `minimo`.
  */
-function paraRodada(n) {
-  return LISTAS.filter((lista) => {
+/**
+ * Quanto a rodada aceita de lista genérica.
+ *
+ * Rodada curta pede assunto fechado ("esportes com bola", 12 itens); rodada
+ * longa não tem escolha e precisa de repertório grande ("paises da Europa",
+ * 45 itens). O teto cresce junto com o número de respostas pedidas.
+ */
+function tetoDeTamanho(n) {
+  return n * 3 + 8;
+}
+
+/**
+ * Listas que servem para uma rodada de `n` respostas.
+ *
+ * @param {number} n         quantas respostas a rodada pede
+ * @param {string} [evitar]  tema da rodada anterior, para não repetir assunto
+ */
+function paraRodada(n, evitar) {
+  const cabem = LISTAS.filter((lista) => {
     if (lista.fixo) return lista.respostas.length === n;
     return lista.respostas.length >= n && (lista.minimo || 1) <= n;
   });
+  if (cabem.length === 0) return [];
+
+  // 1. tira o tema da rodada anterior — a não ser que não sobre nada.
+  const semRepetir = evitar ? cabem.filter((l) => l.tema !== evitar) : cabem;
+  const base = semRepetir.length ? semRepetir : cabem;
+
+  // 2. prefere o assunto mais fechado que a rodada comporta.
+  const teto = tetoDeTamanho(n);
+  const especificas = base.filter((l) => l.respostas.length <= teto);
+  return especificas.length ? especificas : base;
 }
 
 /** Normaliza um item para { oficial, variantes }. */
@@ -321,4 +1129,4 @@ function itemDe(bruto) {
   return { oficial: formas[0], variantes: formas.slice(1) };
 }
 
-module.exports = { LISTAS, paraRodada, itemDe };
+module.exports = { LISTAS, paraRodada, itemDe, tetoDeTamanho };
