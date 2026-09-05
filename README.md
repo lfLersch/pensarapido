@@ -127,10 +127,16 @@ parcial conta, então ninguém sai de mãos vazias por ter parado a um item do f
 
 1. **não repete o tema da rodada anterior** — se a rodada 3 foi de geografia, a
    rodada 4 procura outro assunto;
-2. **abre o leque conforme a rodada cresce.** O teto de tamanho é `n * 3 + 8`,
-   então a rodada de 2 respostas só pega listas de até 14 itens (assunto
-   fechado, tipo *esportes com bola*) e a de 12 aceita até 44 (*países da
-   Europa*). Assunto específico embaixo, genérico em cima.
+2. **prefere o assunto fechado nas rodadas curtas.** O teto de tamanho é
+   `n * 3 + 8`: na rodada de 2 respostas ele fica em 14 itens, e na de 12 sobe
+   para 44. A ideia é pedir *esportes com bola* quando faltam 2 respostas e
+   *esportes olímpicos* quando faltam 12 — específico embaixo, genérico em cima.
+
+   **O teto é preferência, não muro.** Como filtro rígido ele travava a
+   variedade: na rodada de 2 só *capitais da América do Sul* (12 itens) passava,
+   e *capitais europeias* (22) nunca aparecia. Agora as listas dentro do teto
+   entram três vezes no bolo do sorteio e as demais uma vez — as fechadas
+   continuam mais prováveis, sem tirar as outras do jogo.
 
 São **61 listas** e mais de 800 itens, cobrindo futebol, geografia, música,
 cinema, anime, games, ciência, história, esportes e cultura pop.
@@ -239,7 +245,7 @@ inventado é descartado.
 
 ## Banco de perguntas
 
-**790 perguntas em 12 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**1244 perguntas em 14 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato

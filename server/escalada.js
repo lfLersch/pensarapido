@@ -1392,6 +1392,117 @@ const LISTAS = [
       'Edo Tensei',
       ['Sexy Jutsu', 'jutsu sexy']
     ]
+  },
+  {
+    pergunta: 'Cite {n} capitais da Asia',
+    tema: 'geografia', dif: 45,
+    respostas: [
+      'Toquio',
+      'Pequim',
+      'Seul',
+      'Nova Delhi',
+      'Bangcoc',
+      'Hanoi',
+      'Jacarta',
+      'Manila',
+      'Kuala Lumpur',
+      'Singapura',
+      'Islamabade',
+      'Cabul',
+      'Teera',
+      'Bagda',
+      'Riade',
+      'Ancara'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} capitais da Africa',
+    tema: 'geografia', dif: 60,
+    respostas: [
+      'Cairo',
+      'Pretoria',
+      'Nairobi',
+      'Abuja',
+      'Argel',
+      'Rabat',
+      'Tunis',
+      'Adis Abeba',
+      'Acra',
+      'Dacar',
+      'Luanda',
+      'Maputo',
+      'Harare',
+      'Kampala',
+      'Tripoli'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} capitais mundiais',
+    tema: 'geografia', dif: 30,
+    respostas: [
+      'Brasilia',
+      'Washington',
+      'Londres',
+      'Paris',
+      'Berlim',
+      'Roma',
+      'Madri',
+      'Lisboa',
+      'Moscou',
+      'Pequim',
+      'Toquio',
+      'Camberra',
+      'Ottawa',
+      'Cidade do Mexico',
+      'Buenos Aires',
+      'Santiago',
+      'Lima',
+      'Bogota',
+      'Cairo',
+      'Nova Delhi',
+      'Seul',
+      'Atenas',
+      'Viena',
+      'Estocolmo',
+      'Oslo',
+      'Dublin',
+      'Varsovia',
+      'Praga',
+      'Amsterda',
+      'Bruxelas'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} capitais de estados brasileiros',
+    tema: 'geografia', dif: 30,
+    respostas: [
+      'Sao Paulo',
+      'Rio de Janeiro',
+      'Belo Horizonte',
+      'Salvador',
+      'Fortaleza',
+      'Recife',
+      'Porto Alegre',
+      'Curitiba',
+      'Manaus',
+      'Belem',
+      'Goiania',
+      'Florianopolis',
+      'Vitoria',
+      'Natal',
+      'Joao Pessoa',
+      'Maceio',
+      'Aracaju',
+      'Teresina',
+      'Sao Luis',
+      'Cuiaba',
+      'Campo Grande',
+      'Palmas',
+      'Macapa',
+      'Boa Vista',
+      'Porto Velho',
+      'Rio Branco'
+    ]
   }
 ];
 
@@ -1408,6 +1519,8 @@ const LISTAS = [
  * longa não tem escolha e precisa de repertório grande ("paises da Europa",
  * 45 itens). O teto cresce junto com o número de respostas pedidas.
  */
+const PESO_ESPECIFICA = 3; // quantas vezes a lista fechada entra no sorteio
+
 function tetoDeTamanho(n) {
   return n * 3 + 8;
 }
@@ -1429,10 +1542,18 @@ function paraRodada(n, evitar) {
   const semRepetir = evitar ? cabem.filter((l) => l.tema !== evitar) : cabem;
   const base = semRepetir.length ? semRepetir : cabem;
 
-  // 2. prefere o assunto mais fechado que a rodada comporta.
+  // 2. prefere o assunto mais fechado que a rodada comporta — mas sem barrar
+  //    o resto. Como muro, o teto deixava a rodada de 2 sempre na mesma lista:
+  //    "capitais da America do Sul" (12 itens) passava e "capitais europeias"
+  //    (22) nao. Agora as especificas entram repetidas no bolo do sorteio, o
+  //    que as torna mais provaveis sem tirar as outras do jogo.
   const teto = tetoDeTamanho(n);
-  const especificas = base.filter((l) => l.respostas.length <= teto);
-  return especificas.length ? especificas : base;
+  const bolo = [];
+  for (const lista of base) {
+    const vezes = lista.respostas.length <= teto ? PESO_ESPECIFICA : 1;
+    for (let i = 0; i < vezes; i++) bolo.push(lista);
+  }
+  return bolo;
 }
 
 /** Normaliza um item para { oficial, variantes }. */
