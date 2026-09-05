@@ -245,7 +245,7 @@ inventado é descartado.
 
 ## Banco de perguntas
 
-**1316 perguntas em 15 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**1565 perguntas em 16 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
