@@ -17,5 +17,8 @@
   "license": "MIT",
   "engines": {
     "node": ">=18"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
   }
 }
