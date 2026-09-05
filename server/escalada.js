@@ -1937,6 +1937,282 @@ const LISTAS = [
       'Hugo e Guilherme',
       'George Henrique e Rodrigo'
     ]
+  },
+  {
+    pergunta: 'Cite {n} frutas',
+    tema: 'comidas', dif: 15,
+    respostas: [
+      'Banana',
+      'Maca',
+      'Laranja',
+      'Uva',
+      'Morango',
+      'Abacaxi',
+      'Manga',
+      'Melancia',
+      'Melao',
+      'Mamao',
+      'Pera',
+      'Pessego',
+      'Ameixa',
+      'Abacate',
+      'Goiaba',
+      'Caju',
+      'Acerola',
+      'Maracuja',
+      'Limao',
+      'Tangerina',
+      'Kiwi',
+      'Figo',
+      'Framboesa',
+      'Amora',
+      'Cereja',
+      'Coco',
+      'Jabuticaba',
+      'Pitanga',
+      'Caqui',
+      'Graviola'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores que passaram pelo Barcelona',
+    tema: 'futebol', dif: 40,
+    respostas: [
+      ['Lionel Messi', 'Messi'],
+      'Xavi',
+      ['Andres Iniesta', 'Iniesta'],
+      ['Carles Puyol', 'Puyol'],
+      ['Gerard Pique', 'Pique'],
+      'Neymar',
+      'Luis Suarez',
+      'Ronaldinho',
+      'Ronaldo',
+      'Rivaldo',
+      'Dani Alves',
+      ['Sergio Busquets', 'Busquets'],
+      'Samuel Etoo',
+      'Thierry Henry',
+      ['Zlatan Ibrahimovic', 'Ibrahimovic'],
+      ['Philippe Coutinho', 'Coutinho'],
+      ['Ivan Rakitic', 'Rakitic'],
+      'Frenkie de Jong',
+      'Luis Figo',
+      ['Cesc Fabregas', 'Fabregas']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores que passaram pelo Real Madrid',
+    tema: 'futebol', dif: 40,
+    respostas: [
+      ['Cristiano Ronaldo', 'CR7'],
+      ['Zinedine Zidane', 'Zidane'],
+      'Sergio Ramos',
+      ['Iker Casillas', 'Casillas'],
+      ['Karim Benzema', 'Benzema'],
+      ['Luka Modric', 'Modric'],
+      ['Toni Kroos', 'Kroos'],
+      ['Gareth Bale', 'Bale'],
+      'Marcelo',
+      ['Raphael Varane', 'Varane'],
+      'Kaka',
+      'Luis Figo',
+      'Ronaldo',
+      'Isco',
+      ['Marco Asensio', 'Asensio'],
+      'Keylor Navas',
+      'Casemiro',
+      'James Rodriguez',
+      'Alfredo Di Stefano'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores que passaram pelo Milan',
+    tema: 'futebol', dif: 50,
+    respostas: [
+      'Kaka',
+      ['Paolo Maldini', 'Maldini'],
+      ['Andrea Pirlo', 'Pirlo'],
+      ['Marco van Basten', 'van Basten'],
+      ['Ruud Gullit', 'Gullit'],
+      'Ronaldinho',
+      'Ronaldo',
+      ['Zlatan Ibrahimovic', 'Ibrahimovic'],
+      ['Clarence Seedorf', 'Seedorf'],
+      ['Filippo Inzaghi', 'Inzaghi'],
+      'Thiago Silva',
+      ['Alessandro Nesta', 'Nesta'],
+      'Rivaldo',
+      'Cafu',
+      ['Andriy Shevchenko', 'Shevchenko']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores que passaram pelo Flamengo',
+    tema: 'futebol', dif: 45,
+    respostas: [
+      'Zico',
+      'Romario',
+      'Ronaldinho',
+      'Adriano',
+      ['Gabriel Barbosa', 'Gabigol'],
+      'Bruno Henrique',
+      'Everton Ribeiro',
+      'Diego Alves',
+      'Filipe Luis',
+      'Rafinha',
+      'Arrascaeta',
+      'Vitinho',
+      ['Diego Ribas', 'Diego'],
+      'Julio Cesar',
+      'Petkovic'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores que passaram pelo Santos',
+    tema: 'futebol', dif: 50,
+    respostas: [
+      'Pele',
+      'Neymar',
+      'Robinho',
+      'Diego',
+      'Elano',
+      'Ganso',
+      ['Gabriel Barbosa', 'Gabigol'],
+      'Rodrygo',
+      'Alex',
+      'Giovanni',
+      'Ze Roberto',
+      'Leo',
+      'Coutinho',
+      'Pepe'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} clubes onde Cristiano Ronaldo jogou',
+    tema: 'futebol', dif: 40,
+    respostas: [
+      'Sporting',
+      'Manchester United',
+      'Real Madrid',
+      'Juventus',
+      ['Al-Nassr', 'Al Nassr']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} clubes onde Neymar jogou',
+    tema: 'futebol', dif: 35,
+    respostas: [
+      'Santos',
+      'Barcelona',
+      ['Paris Saint-Germain', 'PSG'],
+      ['Al-Hilal', 'Al Hilal']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} clubes onde Zlatan Ibrahimovic jogou',
+    tema: 'futebol', dif: 60,
+    respostas: [
+      'Ajax',
+      'Juventus',
+      ['Inter de Milao', 'Inter'],
+      'Barcelona',
+      'Milan',
+      ['Paris Saint-Germain', 'PSG'],
+      'Manchester United',
+      'LA Galaxy',
+      'Malmo'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} clubes onde Ronaldo Fenomeno jogou',
+    tema: 'futebol', dif: 55,
+    respostas: [
+      'Cruzeiro',
+      'PSV',
+      'Barcelona',
+      ['Inter de Milao', 'Inter'],
+      'Real Madrid',
+      'Milan',
+      'Corinthians'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores nascidos na Argentina',
+    tema: 'futebol', dif: 35,
+    respostas: [
+      ['Lionel Messi', 'Messi'],
+      ['Diego Maradona', 'Maradona'],
+      ['Sergio Aguero', 'Aguero'],
+      ['Angel Di Maria', 'Di Maria'],
+      ['Gonzalo Higuain', 'Higuain'],
+      ['Javier Mascherano', 'Mascherano'],
+      ['Paulo Dybala', 'Dybala'],
+      ['Lautaro Martinez', 'Lautaro'],
+      ['Emiliano Martinez', 'Dibu'],
+      ['Juan Roman Riquelme', 'Riquelme'],
+      ['Gabriel Batistuta', 'Batistuta'],
+      ['Carlos Tevez', 'Tevez']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores nascidos em Portugal',
+    tema: 'futebol', dif: 45,
+    respostas: [
+      ['Cristiano Ronaldo', 'CR7'],
+      'Luis Figo',
+      'Eusebio',
+      'Bruno Fernandes',
+      'Bernardo Silva',
+      'Ruben Dias',
+      'Joao Felix',
+      'Pepe',
+      'Nani',
+      ['Ricardo Quaresma', 'Quaresma'],
+      'Rui Costa',
+      'Deco'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores nascidos na Franca',
+    tema: 'futebol', dif: 40,
+    respostas: [
+      ['Zinedine Zidane', 'Zidane'],
+      ['Kylian Mbappe', 'Mbappe'],
+      ['Antoine Griezmann', 'Griezmann'],
+      ['Paul Pogba', 'Pogba'],
+      ['NGolo Kante', 'Kante'],
+      ['Hugo Lloris', 'Lloris'],
+      ['Raphael Varane', 'Varane'],
+      ['Olivier Giroud', 'Giroud'],
+      ['Franck Ribery', 'Ribery'],
+      ['Karim Benzema', 'Benzema'],
+      ['Thierry Henry', 'Henry'],
+      ['Michel Platini', 'Platini']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} jogadores nascidos no Brasil',
+    tema: 'futebol', dif: 20,
+    respostas: [
+      'Pele',
+      'Ronaldo',
+      'Ronaldinho',
+      'Neymar',
+      'Kaka',
+      'Rivaldo',
+      'Romario',
+      'Cafu',
+      'Roberto Carlos',
+      'Thiago Silva',
+      'Marcelo',
+      'Dani Alves',
+      'Casemiro',
+      'Alisson',
+      'Ederson',
+      ['Vinicius Junior', 'Vini Jr'],
+      'Gabriel Jesus',
+      ['Roberto Firmino', 'Firmino']
+    ]
   }
 ];
 
@@ -1988,6 +2264,64 @@ function paraRodada(n, evitar) {
     for (let i = 0; i < vezes; i++) bolo.push(lista);
   }
   return bolo;
+}
+
+
+/* ------------------------------------------------------------------ *
+ * Listas "com a letra X", geradas a partir das que ja existem.
+ *
+ * Em vez de escrever "paises com A", "paises com B" a mao, cada fonte e
+ * fatiada pela primeira letra do nome. So vira lista a letra que tiver itens
+ * suficientes — com duas ou tres a pergunta ficaria impossivel na rodada alta.
+ * ------------------------------------------------------------------ */
+
+const FONTES_POR_LETRA = [
+  ['Cite {n} paises da Europa', 'paises da Europa', 'geografia'],
+  ['Cite {n} paises da Africa', 'paises da Africa', 'geografia'],
+  ['Cite {n} paises da Asia', 'paises da Asia', 'geografia'],
+  ['Cite {n} paises da America do Sul', 'paises da America do Sul', 'geografia'],
+  ['Cite {n} estados brasileiros', 'estados brasileiros', 'geografia'],
+  ['Cite {n} capitais mundiais', 'capitais do mundo', 'geografia'],
+  ['Cite {n} frutas', 'frutas', 'comidas'],
+  ['Cite {n} animais selvagens', 'animais', 'animais'],
+  ['Cite {n} clubes brasileiros de futebol', 'clubes brasileiros', 'futebol'],
+  ['Cite {n} bandas de rock internacionais', 'bandas de rock', 'musica'],
+  ['Cite {n} marcas famosas', 'marcas', 'mainstream'],
+  ['Cite {n} pecas de roupa', 'pecas de roupa', 'objetos'],
+  ['Cite {n} objetos de uma casa', 'objetos de casa', 'objetos'],
+  ['Cite {n} nomes de animais domesticos', 'animais domesticos', 'animais']
+];
+
+const MINIMO_POR_LETRA = 4;
+
+/** Primeira letra do nome oficial, sem acento e em maiuscula. */
+function letraInicial(bruto) {
+  const nome = Array.isArray(bruto) ? bruto[0] : bruto;
+  return nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').charAt(0).toUpperCase();
+}
+
+for (const [enunciadoFonte, rotulo, tema] of FONTES_POR_LETRA) {
+  const fonte = LISTAS.find((l) => l.pergunta === enunciadoFonte);
+  if (!fonte) continue;
+
+  const porLetra = new Map();
+  for (const item of fonte.respostas) {
+    const letra = letraInicial(item);
+    if (!porLetra.has(letra)) porLetra.set(letra, []);
+    porLetra.get(letra).push(item);
+  }
+
+  for (const [letra, itens] of porLetra) {
+    if (itens.length < MINIMO_POR_LETRA) continue;
+    LISTAS.push({
+      pergunta: `Cite {n} ${rotulo} que comecam com a letra ${letra}`,
+      tema,
+      // Recorte por letra e mais dificil que a lista inteira: o repertorio
+      // encolhe e a pessoa precisa filtrar de cabeca.
+      dif: 55,
+      respostas: itens
+    });
+  }
 }
 
 /** Normaliza um item para { oficial, variantes }. */

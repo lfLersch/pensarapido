@@ -221,6 +221,30 @@ no lugar até a pessoa voltar. As barras animam por `transition` do CSS, pelo
 mesmo motivo. O relógio que vale continua sendo o do servidor — o da tela é só
 para a pessoa se situar.
 
+## Escalada: listas parametrizadas
+
+Duas famílias de pergunta que rendem muito com pouco conteúdo escrito:
+
+**"Com a letra X" — geradas sozinhas.** Em vez de escrever *países com A*,
+*países com B* uma a uma, cada lista-fonte é fatiada pela primeira letra do
+nome. Só vira pergunta a letra que tiver ao menos 4 itens; com duas ou três a
+rodada alta ficaria impossível. Hoje 14 fontes viram **41 listas automáticas** —
+adicionar uma fruta nova ao repertório cria pergunta em todas as letras
+afetadas, sem tocar em mais nada.
+
+```js
+const FONTES_POR_LETRA = [
+  ['Cite {n} frutas', 'frutas', 'comidas'],
+  ...
+];
+```
+
+**Elenco, carreira e nacionalidade.** Escritas à mão, porque dependem de dados
+que o banco não tem: *jogadores que passaram pelo Barcelona*, *clubes onde
+Zlatan jogou*, *jogadores nascidos na França*. A de carreira é naturalmente
+fechada — Neymar tem 4 clubes, Zlatan tem 9 — o que dá um bom degrau de
+dificuldade entre elas.
+
 ## Subcategorias
 
 Uma categoria pode ser dividida em partes escolhidas separadamente. Hoje só
