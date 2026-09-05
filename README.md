@@ -269,7 +269,7 @@ inventado é descartado.
 
 ## Banco de perguntas
 
-**1634 perguntas em 16 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**1685 perguntas em 16 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -303,6 +303,24 @@ apelido e o nome de registro é que vira variante aceita.
 { resposta: 'Hulk',     aceita: ['Givanildo Vieira de Sousa', 'Givanildo Vieira'] }
 { resposta: 'Casemiro', aceita: ['Carlos Henrique Casimiro', 'Casimiro'] }
 ```
+
+### Geografia — mapas de contorno
+
+A parte **Mapas** mostra o globo com um país destacado e pergunta qual é. São
+51 países, e a imagem vem do Commons pelo arquivo
+`País (orthographic projection).svg`.
+
+O caminho do arquivo no Commons é derivado do MD5 do nome, então a URL é
+montada sem consultar a API:
+
+```js
+const arquivo = `${pais}_(orthographic_projection).svg`;
+const md5 = crypto.createHash('md5').update(arquivo).digest('hex');
+// .../commons/thumb/<md5[0]>/<md5[0..1]>/<arquivo>/500px-<arquivo>.png
+```
+
+Cinco países ficaram de fora porque o Commons usa outro nome de arquivo para
+eles — Argentina, Grécia, Irlanda, Rússia e China dão 404 nesse padrão.
 
 ### Categoria Futebol
 
