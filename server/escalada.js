@@ -2543,6 +2543,79 @@ const LISTAS = [
       'Xian',
       'Nanquim'
     ]
+  },
+  {
+    pergunta: 'Cite {n} cidades que ja sediaram os Jogos Olimpicos de Verao',
+    tema: 'esportes', dif: 30,
+    respostas: [
+      'Atenas',
+      'Paris',
+      'Londres',
+      'Los Angeles',
+      'Toquio',
+      'Roma',
+      'Pequim',
+      ['Rio de Janeiro', 'Rio'],
+      'Sydney',
+      'Barcelona',
+      'Atlanta',
+      'Seul',
+      'Moscou',
+      'Montreal',
+      'Munique',
+      'Cidade do Mexico',
+      'Melbourne',
+      'Helsinque',
+      'Berlim',
+      'Amsterda',
+      'Antuerpia',
+      'Estocolmo',
+      ['Sao Luis', 'St. Louis']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades que ja sediaram os Jogos Olimpicos de Inverno',
+    tema: 'esportes', dif: 60,
+    respostas: [
+      'Pequim',
+      'PyeongChang',
+      'Sochi',
+      'Vancouver',
+      'Turim',
+      'Salt Lake City',
+      'Nagano',
+      'Lillehammer',
+      'Albertville',
+      'Calgary',
+      'Sarajevo',
+      'Lake Placid',
+      'Innsbruck',
+      'Sapporo',
+      'Grenoble',
+      'Oslo',
+      'Chamonix',
+      ['Cortina d’Ampezzo', 'Cortina'],
+      'Milao'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades que sediaram Olimpiadas neste seculo',
+    tema: 'esportes', dif: 45,
+    respostas: [
+      'Sydney',
+      'Atenas',
+      'Pequim',
+      'Londres',
+      ['Rio de Janeiro', 'Rio'],
+      'Toquio',
+      'Paris',
+      'Salt Lake City',
+      'Turim',
+      'Vancouver',
+      'Sochi',
+      'PyeongChang',
+      'Milao'
+    ]
   }
 ];
 
@@ -2614,6 +2687,7 @@ const FONTES_POR_LETRA = [
   ['Cite {n} capitais mundiais', 'capitais do mundo', 'geografia'],
   ['Cite {n} cidades do Brasil', 'cidades do Brasil', 'geografia'],
   ['Cite {n} cidades dos Estados Unidos', 'cidades dos EUA', 'geografia'],
+  ['Cite {n} cidades que ja sediaram os Jogos Olimpicos de Verao', 'cidades-sede de Olimpiada', 'esportes'],
   ['Cite {n} frutas', 'frutas', 'comidas'],
   ['Cite {n} animais selvagens', 'animais', 'animais'],
   ['Cite {n} clubes brasileiros de futebol', 'clubes brasileiros', 'futebol'],
