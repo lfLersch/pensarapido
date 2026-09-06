@@ -23,6 +23,9 @@ const estado = {
   necessarias: 1,   // Escalada: quantas respostas a rodada pede
   meusItens: [],    // Escalada: o que já respondi nesta rodada
   emRodada: false,
+  placar: [],       // ultimo placar recebido
+  carrossel: null,  // Carrossel: { voltas, msPorVez, ordem } da rodada
+  vivos: null,      // Carrossel: quem ainda nao saiu
   contagem: null,
   urgencia: null,
 };
@@ -674,7 +677,9 @@ socket.on('rodada:pergunta', (dados) => {
   estado.necessarias = dados.necessarias || 1;
   estado.meusItens = [];
   const painel = $('escalada');
-  painel.hidden = estado.necessarias < 2;
+  // No Carrossel o painel "suas respostas — so voce ve" nao cabe: ali cada
+  // acerto e publico, senao a pessoa seguinte repete o que ja saiu.
+  painel.hidden = estado.necessarias < 2 || Boolean(dados.carrossel);
   if (!painel.hidden) {
     $('escalada-itens').innerHTML = '';
     atualizarEscalada();
@@ -699,10 +704,88 @@ socket.on('rodada:pergunta', (dados) => {
   inputChat.placeholder = 'Escreva sua resposta…';
   if (!('ontouchstart' in window)) inputChat.focus();
 
+  // Modo Carrossel: a fila de jogadores e de quem é a vez.
+  const carrossel = $('carrossel');
+  estado.carrossel = dados.carrossel || null;
+  carrossel.hidden = !dados.carrossel;
+  if (dados.carrossel) {
+    estado.vivos = new Set(dados.carrossel.ordem);
+    montarFilaCarrossel(dados.carrossel.ordem, null);
+    $('carrossel-volta').textContent =
+      `${dados.carrossel.voltas} volta${dados.carrossel.voltas > 1 ? 's' : ''}`;
+    // Enquanto a vez não chega, ninguém escreve.
+    trancarChat('Espere a sua vez…');
+  }
+
   mensagemSistema(`Rodada ${dados.rodada} · ${dados.categoria.nome}`);
 
   pararContagem();
-  contarTempo(barraTempo, dados.duracaoMs, true);
+  // No carrossel o relógio é de cada vez, não da rodada: quem conta é
+  // 'carrossel:vez'.
+  if (dados.duracaoMs) contarTempo(barraTempo, dados.duracaoMs, true);
+});
+
+/** Deixa o campo de resposta indisponível com um aviso no lugar. */
+function trancarChat(aviso) {
+  inputChat.disabled = true;
+  inputChat.value = '';
+  inputChat.placeholder = aviso;
+}
+
+function destrancarChat(aviso) {
+  inputChat.disabled = false;
+  inputChat.placeholder = aviso;
+  if (!('ontouchstart' in window)) inputChat.focus();
+}
+
+/** Desenha a fila do carrossel, marcando de quem é a vez e quem já saiu. */
+function montarFilaCarrossel(ordem, jogadorDaVez) {
+  const fila = $('carrossel-fila');
+  fila.innerHTML = '';
+  const porId = new Map((estado.placar || []).map((j) => [j.id, j]));
+
+  for (const id of ordem) {
+    const jogador = porId.get(id);
+    const item = criar('li', 'carrossel__jogador');
+    if (id === jogadorDaVez) item.classList.add('agora');
+    if (estado.vivos && !estado.vivos.has(id)) item.classList.add('fora');
+    item.innerHTML = `<span>${jogador ? jogador.avatar : '👤'}</span><span>${
+      jogador ? jogador.nickname : '—'}</span>`;
+    fila.appendChild(item);
+  }
+}
+
+socket.on('carrossel:vez', (dados) => {
+  estado.vivos = new Set(dados.vivos);
+  montarFilaCarrossel(dados.ordem, dados.jogadorId);
+
+  const minha = dados.jogadorId === socket.id;
+  const porId = new Map((estado.placar || []).map((j) => [j.id, j]));
+  const jogador = porId.get(dados.jogadorId);
+
+  const rotulo = $('carrossel-vez');
+  rotulo.classList.toggle('minha', minha);
+  rotulo.textContent = minha ? 'Sua vez!' : `Vez de ${jogador ? jogador.nickname : '…'}`;
+  $('carrossel-volta').textContent = `volta ${dados.volta} de ${dados.voltas}`;
+
+  if (minha) destrancarChat('Rapido! Escreva sua resposta…');
+  else trancarChat(`Vez de ${jogador ? jogador.nickname : 'outro jogador'}…`);
+
+  pararContagem();
+  contarTempo(barraTempo, dados.msPorVez, true);
+});
+
+socket.on('carrossel:eliminado', (dados) => {
+  estado.vivos = new Set(dados.vivos);
+  if (estado.carrossel) montarFilaCarrossel(estado.carrossel.ordem, null);
+
+  if (dados.jogadorId === socket.id) {
+    trancarChat('Voce saiu desta rodada.');
+    // Sem isto o rótulo continuava em "Sua vez!" depois de a pessoa cair.
+    const rotulo = $('carrossel-vez');
+    rotulo.classList.remove('minha');
+    rotulo.textContent = 'Voce saiu desta rodada';
+  }
 });
 
 /* --------------------------- Modo Escalada --------------------------- */
@@ -859,10 +942,20 @@ formChat.addEventListener('submit', (evento) => {
     } else if (resposta.veredito === 'repetido') {
       avisoParticular(`Voce ja tinha dito "${resposta.item}". Tente outra.`);
 
+    } else if (resposta.veredito === 'eliminado') {
+      // Carrossel: errou na sua vez e saiu da rodada.
+      avisoParticular(resposta.repetido
+        ? `"${resposta.repetido}" ja tinha sido dito. Voce saiu desta rodada.`
+        : 'Errou! Voce saiu desta rodada.');
+
     } else if (resposta.veredito === 'item') {
-      // Acertou um item da lista, mas ainda falta responder mais.
-      registrarItem(resposta.item);
-      avisoParticular(`Boa! "${resposta.item}" conta. Faltam ${resposta.necessarias - resposta.quantos}.`);
+      // No Carrossel a vez passa adiante; na Escalada ainda falta responder.
+      if (estado.carrossel) {
+        avisoParticular(`Boa! "${resposta.item}" conta. +${resposta.pontos} pts.`);
+      } else {
+        registrarItem(resposta.item);
+        avisoParticular(`Boa! "${resposta.item}" conta. Faltam ${resposta.necessarias - resposta.quantos}.`);
+      }
 
     } else if (resposta.veredito === 'certo') {
       estado.acertou = true;
@@ -895,6 +988,12 @@ socket.on('rodada:resultado', (dados) => {
   $('mascara').textContent = '';
   pararAudio();
   $('escalada').hidden = true;
+  // Fim da rodada do Carrossel: a fila some e o chat volta para todos.
+  if (estado.carrossel) {
+    $('carrossel').hidden = true;
+    estado.carrossel = null;
+    destrancarChat('Digite uma mensagem…');
+  }
 
   $('resultado-certa').textContent = dados.resposta;
 
@@ -950,6 +1049,8 @@ socket.on('rodada:resultado', (dados) => {
 /* ---------------------------- Placar lateral ---------------------------- */
 
 function renderizarPlacar(placar) {
+  // Guardado porque o Carrossel precisa de nome e avatar para montar a fila.
+  estado.placar = placar;
   const lista = $('placar-lista');
   lista.innerHTML = '';
 

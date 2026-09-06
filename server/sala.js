@@ -24,6 +24,14 @@ const MS_APOS_ULTIMO = 0;        // acertou geral, fecha na hora: a contagem é 
 const MS_POR_RESPOSTA_EXTRA = 3000;
 const MS_TETO_RODADA = 90000;
 
+// Carrossel: a vez passa de jogador em jogador e quem não souber sai da
+// rodada. Cada pessoa tem 7s, e a cada 2 rodadas o carrossel dá uma volta a
+// mais — rodadas 1-2 uma volta, 3-4 duas, 5-6 três.
+const MS_POR_VEZ = 7000;
+const RODADAS_POR_VOLTA = 2;
+const BONUS_CARROSSEL = 5;   // para quem chega vivo ao fim da rodada
+const MS_ENTRE_VEZES = 900;  // respiro para a tela mostrar quem saiu
+
 const MAX_JOGADORES = 12;
 const MAX_TEXTO = 120;       // tamanho máximo de uma mensagem
 const INTERVALO_MENSAGENS = 350; // anti-spam, em ms
@@ -53,11 +61,11 @@ const MODOS = [
     disponivel: true
   },
   {
-    id: 'sobrevivencia',
-    nome: 'Sobrevivencia',
-    icone: '💀',
-    descricao: 'Errou, saiu. Em breve.',
-    disponivel: false
+    id: 'carrossel',
+    nome: 'Carrossel',
+    icone: '🎠',
+    descricao: 'A vez passa de um em um, 7s para cada. Quem nao souber sai da rodada. Rodadas 1-2 dao uma volta, 3-4 duas voltas, 5-6 tres.',
+    disponivel: true
   },
   {
     id: 'equipes',
@@ -147,6 +155,7 @@ class Sala {
     this.primeiroAcertoEm = null;
     this.acertos = new Map();   // socketId -> { ms, pontos, posicao }
     this.progresso = new Map(); // Escalada: socketId -> Set(índices já ditos)
+    this.itensUsados = new Set(); // Carrossel: itens ja ditos por QUALQUER um
     this.pontosRodada = new Map(); // socketId -> pontos feitos nesta rodada
     this.ultimoTema = null;     // tema da rodada anterior, para não repetir
     this.jogadoresNaRodada = 0;
@@ -158,7 +167,17 @@ class Sala {
     // perguntas do banco, "Legiao Urbana" de 5.
     this.respostasUsadas = new Set();
     this.listasUsadas = new Set();
+
+    // Carrossel: de quem é a vez e quem já saiu desta rodada.
+    this.ordem = [];            // socketIds na ordem em que o carrossel gira
+    this.vez = 0;               // índice em `ordem`
+    this.vivos = new Set();     // ainda na rodada
+    this.voltasAlvo = 1;
+    this.voltasFeitas = 0;
+    this.inicioVez = 0;
+
     this.temporizador = null;
+    this.temporizadorVez = null; // o relógio dos 7s corre à parte do da rodada
   }
 
   /* --------------------------- Jogadores ---------------------------- */
@@ -206,6 +225,14 @@ class Sala {
     if (jogador.lider) {
       const proximo = this.jogadores.values().next().value;
       if (proximo) proximo.lider = true;
+    }
+
+    // Carrossel: quem fecha a aba no meio da própria vez trava o carrossel,
+    // porque o relógio dos 7s espera uma resposta que não vem mais.
+    if (this.ehCarrossel() && this.vivos.has(socketId)) {
+      const eraAVez = this.ordem[this.vez] === socketId;
+      this.vivos.delete(socketId);
+      if (this.estado === 'pergunta' && eraAVez) this.avancarVez();
     }
 
     // Só faltava quem saiu para fechar a rodada.
@@ -413,17 +440,68 @@ class Sala {
     };
   }
 
+  /**
+   * Quantas voltas o carrossel dá nesta rodada.
+   * Rodadas 1-2 uma volta, 3-4 duas, 5-6 três, e assim por diante.
+   */
+  voltasDaRodada(rodada) {
+    return Math.floor((rodada - 1) / RODADAS_POR_VOLTA) + 1;
+  }
+
+  /**
+   * Carrossel: precisa de uma lista grande o bastante para todo mundo
+   * responder em todas as voltas — 4 pessoas em 3 voltas pedem 12 respostas.
+   */
+  perguntaCarrossel(rodada) {
+    const voltas = this.voltasDaRodada(rodada);
+    const precisa = Math.max(2, this.jogadores.size * voltas);
+
+    let candidatas = paraRodada(precisa, this.ultimoTema);
+    let tamanho = precisa;
+    // Sem lista tão grande, encolhe o pedido em vez de quebrar a rodada.
+    for (let n = precisa - 1; candidatas.length === 0 && n >= 2; n--) {
+      candidatas = paraRodada(n, this.ultimoTema);
+      tamanho = n;
+    }
+    if (candidatas.length === 0) return this.perguntaSimples();
+
+    const pergunta = this.montarListaEscalada(candidatas, tamanho);
+    // No carrossel ninguém precisa completar a lista sozinho: o que vale é
+    // ter uma resposta na sua vez.
+    pergunta.categoria = { id: 'carrossel', nome: `${voltas} volta${voltas > 1 ? 's' : ''}`, icone: '🎠', cor: '#f59e0b' };
+    return pergunta;
+  }
+
+  /** Monta a fila de vezes do carrossel para a rodada que vai começar. */
+  prepararCarrossel() {
+    const ids = [...this.jogadores.keys()];
+    // A cada rodada o começo anda um lugar, senão o primeiro joga sempre com
+    // a lista inteira livre e o último sempre com as sobras.
+    const giro = (this.rodada - 1) % Math.max(1, ids.length);
+    this.ordem = ids.slice(giro).concat(ids.slice(0, giro));
+    this.vivos = new Set(this.ordem);
+    this.vez = 0;
+    this.voltasAlvo = this.voltasDaRodada(this.rodada);
+    this.voltasFeitas = 0;
+  }
+
   proximaRodada() {
     this.rodada += 1;
 
-    this.perguntaAtual = this.config.modo === 'escalada'
-      ? this.perguntaEscalada(this.rodada)
-      : this.perguntaSimples();
+    if (this.config.modo === 'carrossel') {
+      this.perguntaAtual = this.perguntaCarrossel(this.rodada);
+      this.prepararCarrossel();
+    } else if (this.config.modo === 'escalada') {
+      this.perguntaAtual = this.perguntaEscalada(this.rodada);
+    } else {
+      this.perguntaAtual = this.perguntaSimples();
+    }
 
     const categoria = this.perguntaAtual.categoria;
 
     this.acertos = new Map();
     this.progresso = new Map();
+    this.itensUsados = new Set();
     this.pontosRodada = new Map();
     this.primeiroAcertoEm = null;
     this.estado = 'categoria';
@@ -466,10 +544,99 @@ class Sala {
       mascara: this.perguntaAtual.necessarias === 1 && this.perguntaAtual.resposta
         ? this.perguntaAtual.resposta.replace(/[\p{L}\p{N}]/gu, '•')
         : null,
-      duracaoMs
+      duracaoMs: this.ehCarrossel() ? null : duracaoMs,
+      carrossel: this.ehCarrossel()
+        ? { voltas: this.voltasAlvo, msPorVez: MS_POR_VEZ, ordem: this.ordem }
+        : null
     });
 
-    this.agendar(() => this.encerrarRodada(), duracaoMs);
+    // No carrossel não há relógio único de rodada: o tempo é de cada vez.
+    if (this.ehCarrossel()) this.iniciarVez();
+    else this.agendar(() => this.encerrarRodada(), duracaoMs);
+  }
+
+  ehCarrossel() {
+    return this.config.modo === 'carrossel';
+  }
+
+  /** Abre a vez de quem está na posição atual e liga o relógio dos 7s. */
+  iniciarVez() {
+    if (this.estado !== 'pergunta') return;
+
+    const jogadorId = this.ordem[this.vez];
+    this.inicioVez = Date.now();
+
+    this.emitir('carrossel:vez', {
+      jogadorId,
+      volta: this.voltasFeitas + 1,
+      voltas: this.voltasAlvo,
+      msPorVez: MS_POR_VEZ,
+      vivos: [...this.vivos],
+      ordem: this.ordem
+    });
+
+    clearTimeout(this.temporizadorVez);
+    this.temporizadorVez = setTimeout(() => {
+      // O tempo dessa pessoa acabou sem resposta.
+      this.eliminar(jogadorId, 'tempo');
+    }, MS_POR_VEZ);
+  }
+
+  /**
+   * Tira alguém da rodada e segue o carrossel.
+   * `motivo`: 'tempo' (não respondeu a tempo) ou 'errou'.
+   */
+  eliminar(jogadorId, motivo) {
+    if (this.estado !== 'pergunta' || !this.vivos.has(jogadorId)) return;
+    clearTimeout(this.temporizadorVez);
+
+    this.vivos.delete(jogadorId);
+    const jogador = this.jogadores.get(jogadorId);
+
+    this.emitir('carrossel:eliminado', {
+      jogadorId,
+      nickname: jogador ? jogador.nickname : '',
+      motivo,
+      vivos: [...this.vivos]
+    });
+    this.avisar(motivo === 'tempo'
+      ? `${jogador ? jogador.nickname : 'Alguem'} nao respondeu a tempo e saiu da rodada.`
+      : `${jogador ? jogador.nickname : 'Alguem'} errou e saiu da rodada.`);
+
+    this.avancarVez();
+  }
+
+  /**
+   * Passa a vez para o próximo que ainda está na rodada. Fecha a rodada
+   * quando as voltas terminam ou quando sobra no máximo uma pessoa.
+   */
+  avancarVez() {
+    clearTimeout(this.temporizadorVez);
+    if (this.estado !== 'pergunta') return;
+
+    if (this.vivos.size <= 1) {
+      this.agendar(() => this.encerrarRodada(), MS_ENTRE_VEZES);
+      return;
+    }
+
+    // Anda até achar alguém vivo, contando uma volta a cada retorno ao topo.
+    for (let passo = 0; passo < this.ordem.length + 1; passo++) {
+      this.vez += 1;
+      if (this.vez >= this.ordem.length) {
+        this.vez = 0;
+        this.voltasFeitas += 1;
+        if (this.voltasFeitas >= this.voltasAlvo) {
+          this.agendar(() => this.encerrarRodada(), MS_ENTRE_VEZES);
+          return;
+        }
+      }
+      if (this.vivos.has(this.ordem[this.vez])) {
+        this.agendar(() => this.iniciarVez(), MS_ENTRE_VEZES);
+        return;
+      }
+    }
+
+    this.agendar(() => this.encerrarRodada(), MS_ENTRE_VEZES);
   }
 
   /**
@@ -496,9 +663,25 @@ class Sala {
       return { veredito: 'chat' };
     }
 
+    // Carrossel: enquanto a pergunta está no ar, só quem está na vez escreve.
+    // O chat fica trancado para os outros — uma mensagem de quem não é da vez
+    // entregaria a resposta de graça.
+    if (this.ehCarrossel() && this.estado === 'pergunta') {
+      if (!this.vivos.has(socketId)) {
+        return { erro: 'Voce ja saiu desta rodada.' };
+      }
+      if (this.ordem[this.vez] !== socketId) {
+        return { erro: 'Espere a sua vez.' };
+      }
+    }
+
     // Mede o palpite contra cada item que a pergunta aceita. No Modo Tempo há
     // um item só; na Escalada há vários e cada um conta uma vez.
-    const jaTenho = this.progresso.get(socketId) || new Set();
+    // No Carrossel a lista do que já foi dito é de todos: o que um respondeu
+    // não serve para o próximo.
+    const jaTenho = this.ehCarrossel()
+      ? this.itensUsados
+      : (this.progresso.get(socketId) || new Set());
     let novoItem = -1;
     let repetido = -1;
     let perto = false;
@@ -519,6 +702,19 @@ class Sala {
       }
     }
     if (repetido >= 0) novoItem = -1;
+
+    // Carrossel: a vez se resolve aqui. Acertou, passa adiante; errou ou
+    // repetiu o que já foi dito, sai da rodada. "Quase" é só um aviso, e
+    // sobra tempo dos 7s para tentar de novo.
+    if (this.ehCarrossel() && this.estado === 'pergunta') {
+      if (novoItem >= 0) return this.acertoNoCarrossel(socketId, jogador, novoItem);
+      if (perto) return { veredito: 'quase' };
+
+      const item = repetido >= 0 ? this.perguntaAtual.itens[repetido].oficial : null;
+      this.publicarChat(jogador, limpo);
+      this.eliminar(socketId, 'errou');
+      return { veredito: 'eliminado', motivo: 'errou', repetido: item };
+    }
 
     // Longe de tudo: é conversa, vai para todo mundo.
     if (novoItem < 0 && repetido < 0 && !perto) {
@@ -613,6 +809,43 @@ class Sala {
     return { veredito: 'certo', pontos, posicao, item: nomeItem, quantos: jaTenho.size, necessarias };
   }
 
+  /**
+   * Carrossel: alguém respondeu certo na sua vez. O item sai de circulação
+   * para todo mundo, valem 2 pontos e a vez passa adiante.
+   */
+  acertoNoCarrossel(socketId, jogador, indice) {
+    this.itensUsados.add(indice);
+
+    const meus = this.progresso.get(socketId) || new Set();
+    meus.add(indice);
+    this.progresso.set(socketId, meus);
+
+    jogador.pontos += PONTOS_POR_ITEM;
+    this.pontosRodada.set(socketId, (this.pontosRodada.get(socketId) || 0) + PONTOS_POR_ITEM);
+
+    const nomeItem = this.perguntaAtual.itens[indice].oficial;
+
+    // Aqui o acerto é público de propósito: os outros precisam saber o que já
+    // saiu para não repetir na vez deles.
+    this.emitir('chat:mensagem', {
+      tipo: 'acerto',
+      jogadorId: socketId,
+      nickname: jogador.nickname,
+      avatar: jogador.avatar,
+      pontos: PONTOS_POR_ITEM,
+      texto: nomeItem
+    });
+    this.emitir('rodada:acertou', {
+      jogadorId: socketId,
+      totalAcertos: this.itensUsados.size,
+      totalJogadores: this.jogadores.size,
+      placar: this.placar()
+    });
+
+    this.avancarVez();
+    return { veredito: 'item', item: nomeItem, pontos: PONTOS_POR_ITEM };
+  }
+
   publicarChat(jogador, texto) {
     this.emitir('chat:mensagem', {
       tipo: 'jogador',
@@ -635,6 +868,17 @@ class Sala {
   encerrarRodada() {
     if (this.estado !== 'pergunta') return;
     this.limparTemporizador();
+
+    // Carrossel: quem chegou vivo ao fim da rodada leva o bônus.
+    if (this.ehCarrossel()) {
+      for (const id of this.vivos) {
+        const jogador = this.jogadores.get(id);
+        if (!jogador) continue;
+        jogador.pontos += BONUS_CARROSSEL;
+        this.pontosRodada.set(id, (this.pontosRodada.get(id) || 0) + BONUS_CARROSSEL);
+        this.acertos.set(id, { ms: null, pontos: this.pontosRodada.get(id), posicao: null, bonus: BONUS_CARROSSEL });
+      }
+    }
 
     // Se ninguém ficou de fora, a espera é mais curta.
     const msResultado = this.todosAcertaram() ? MS_RESULTADO_TODOS : MS_RESULTADO;
@@ -667,7 +911,9 @@ class Sala {
         total: jogador.pontos,
         // Escalada: o que a pessoa conseguiu lembrar, mesmo sem completar.
         itens: [...meus].map((i) => pergunta.itens[i].oficial),
-        necessarias: pergunta.necessarias
+        necessarias: pergunta.necessarias,
+        // Carrossel: quem sobreviveu à rodada e quem caiu no caminho.
+        eliminado: this.ehCarrossel() ? !this.vivos.has(jogador.id) : false
       };
     });
 
@@ -680,7 +926,16 @@ class Sala {
     let textoResposta;
     let listaCompleta = [];
 
-    if (pergunta.necessarias === 1 && pergunta.resposta) {
+    if (this.ehCarrossel()) {
+      const sobraram = [...this.vivos].map((id) => this.jogadores.get(id)).filter(Boolean);
+      listaCompleta = embaralhar(
+        pergunta.itens.filter((_, i) => !this.itensUsados.has(i)).map((i) => i.oficial)
+      ).slice(0, 12);
+      const nomes = sobraram.map((j) => j.nickname).join(', ');
+      textoResposta = sobraram.length
+        ? `${sobraram.length > 1 ? 'sobraram' : 'sobrou'}: ${nomes}`
+        : 'ninguem sobrou';
+    } else if (pergunta.necessarias === 1 && pergunta.resposta) {
       textoResposta = pergunta.resposta;
     } else if (pergunta.fixo) {
       listaCompleta = pergunta.itens.map((i) => i.oficial);
@@ -735,6 +990,7 @@ class Sala {
     this.perguntaAtual = null;
     this.acertos = new Map();
     this.progresso = new Map();
+    this.itensUsados = new Set();
     this.pontosRodada = new Map();
     for (const jogador of this.jogadores.values()) {
       jogador.pontos = 0;
@@ -777,6 +1033,10 @@ class Sala {
     if (this.temporizador) {
       clearTimeout(this.temporizador);
       this.temporizador = null;
+    }
+    if (this.temporizadorVez) {
+      clearTimeout(this.temporizadorVez);
+      this.temporizadorVez = null;
     }
   }
 
