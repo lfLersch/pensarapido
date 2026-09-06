@@ -229,5 +229,33 @@ console.log('');
   sala2.destruir();
 }
 
+/* --------- Recorte por letra precisa recortar de verdade --------- */
+{
+  // "Paises da Europa que terminam com A" pegava 34 dos 45 paises: a pergunta
+  // anunciava uma restricao que nao restringia nada. E como quase todo
+  // substantivo em portugues acaba em -a ou -o, a Escalada vivia caindo
+  // nessas duas letras.
+  const { LISTAS } = require('../server/escalada.js');
+  const TETO = 0.25;
+
+  let piorNome = null;
+  let piorFatia = 0;
+  const letras = new Set();
+
+  for (const lista of LISTAS) {
+    const m = lista.pergunta.match(/Cite \{n\} (.+?) que (?:termina|comeca)m com a letra (\w)/);
+    if (!m) continue;
+    letras.add(m[2]);
+    const fonte = LISTAS.find((l) => l.pergunta === `Cite {n} ${m[1]}`);
+    if (!fonte) continue;
+    const fatia = lista.respostas.length / fonte.respostas.length;
+    if (fatia > piorFatia) { piorFatia = fatia; piorNome = lista.pergunta; }
+  }
+
+  conferir(`nenhum recorte passa de ${TETO * 100}% da fonte (pior: ${piorNome})`,
+    piorFatia <= TETO + 1e-9, true);
+  conferir('e os recortes usam varias letras, nao so -a e -o', letras.size >= 8, true);
+}
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
 process.exit(falhas ? 1 : 0);

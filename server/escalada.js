@@ -4072,6 +4072,13 @@ const FONTES_POR_LETRA = [
 
 const MINIMO_POR_LETRA = 4;
 
+// Uma letra que abocanha boa parte da lista nao recorta nada. "Paises da
+// Europa que terminam com A" pegava 34 dos 45 paises: a restricao era so uma
+// frase a mais, e como quase todo substantivo em portugues termina em -a ou
+// -o, a Escalada vivia pedindo justamente essas duas. Acima deste teto a
+// letra nao vira pergunta.
+const TETO_FATIA_DA_LETRA = 0.25;
+
 /** Primeira letra do nome oficial, sem acento e em maiuscula. */
 function letraInicial(bruto) {
   const nome = Array.isArray(bruto) ? bruto[0] : bruto;
@@ -4091,6 +4098,7 @@ for (const [enunciadoFonte, rotulo, tema] of FONTES_POR_LETRA) {
 
   for (const [letra, itens] of porLetra) {
     if (itens.length < MINIMO_POR_LETRA) continue;
+    if (itens.length > fonte.respostas.length * TETO_FATIA_DA_LETRA) continue;
     LISTAS.push({
       pergunta: `Cite {n} ${rotulo} que comecam com a letra ${letra}`,
       tema,
@@ -4126,6 +4134,7 @@ for (const [enunciadoFonte, rotulo, tema] of FONTES_POR_LETRA) {
 
   for (const [letra, itens] of porLetra) {
     if (itens.length < MINIMO_POR_LETRA) continue;
+    if (itens.length > fonte.respostas.length * TETO_FATIA_DA_LETRA) continue;
     LISTAS.push({
       pergunta: `Cite {n} ${rotulo} que terminam com a letra ${letra}`,
       tema,
