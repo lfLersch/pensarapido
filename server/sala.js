@@ -1,7 +1,7 @@
 'use strict';
 
 const { CATEGORIAS, QUESTOES } = require('./questions');
-const { avaliar } = require('./comparar');
+const { avaliar, normalizar } = require('./comparar');
 const { paraRodada, itemDe } = require('./escalada');
 const dificuldade = require('./dificuldade');
 
@@ -152,6 +152,12 @@ class Sala {
     this.jogadoresNaRodada = 0;
 
     this.fila = [];             // perguntas embaralhadas ainda não usadas
+    // Respostas e listas que já caíram nesta partida. Duas cenas diferentes de
+    // Star Wars são duas perguntas no banco, mas para quem joga são a mesma:
+    // na segunda todo mundo digita na hora. "Star Wars" é resposta de 5
+    // perguntas do banco, "Legiao Urbana" de 5.
+    this.respostasUsadas = new Set();
+    this.listasUsadas = new Set();
     this.temporizador = null;
   }
 
@@ -268,6 +274,8 @@ class Sala {
 
     this.rodada = 0;
     this.fila = [];
+    this.respostasUsadas.clear();
+    this.listasUsadas.clear();
     this.montarFila();
     this.proximaRodada();
     return { ok: true };
@@ -294,11 +302,43 @@ class Sala {
     this.fila = embaralhar(todas);
   }
 
+  /**
+   * Tira a próxima pergunta da fila pulando as que repetem uma resposta já
+   * dada nesta partida.
+   *
+   * Resposta puramente numérica escapa da regra: "quanto e 6x5" e "quanto e
+   * 27+3" dão 30, e ninguém sente isso como repetição — são contas diferentes.
+   */
+  sacarDaFila() {
+    if (this.fila.length === 0) this.montarFila();
+
+    const puladas = [];
+    while (this.fila.length > 0) {
+      const bruta = this.fila.shift();
+      const chave = normalizar(bruta.resposta || '');
+
+      if (/^[0-9]+$/.test(chave) || !this.respostasUsadas.has(chave)) {
+        // As puladas voltam para o fim: podem servir numa partida seguinte.
+        if (puladas.length) this.fila.push(...puladas);
+        this.respostasUsadas.add(chave);
+        return bruta;
+      }
+      puladas.push(bruta);
+    }
+
+    // Sobrou só repetição — a partida é mais longa que o baralho escolhido.
+    // Recomeça uma passagem em vez de ficar sem pergunta.
+    this.respostasUsadas.clear();
+    this.fila = embaralhar(puladas);
+    if (this.fila.length === 0) this.montarFila();
+    const bruta = this.fila.shift();
+    this.respostasUsadas.add(normalizar(bruta.resposta || ''));
+    return bruta;
+  }
+
   /** Uma pergunta comum: uma resposta só. */
   perguntaSimples() {
-    if (this.fila.length === 0) this.montarFila(); // acabou o baralho, reembaralha
-
-    const bruta = this.fila.shift();
+    const bruta = this.sacarDaFila();
     const id = dificuldade.idDe(bruta.categoria, bruta.pergunta, bruta.resposta);
     const difBase = bruta.dif ?? 40;
 
@@ -344,7 +384,13 @@ class Sala {
   }
 
   montarListaEscalada(candidatas, necessarias) {
-    const lista = candidatas[Math.floor(Math.random() * candidatas.length)];
+    // Tira do bolo as listas que já caíram nesta partida. Se não sobrar nada,
+    // repetir é melhor do que travar a rodada.
+    const novas = candidatas.filter((l) => !this.listasUsadas.has(l.pergunta));
+    const bolo = novas.length ? novas : candidatas;
+
+    const lista = bolo[Math.floor(Math.random() * bolo.length)];
+    this.listasUsadas.add(lista.pergunta);
     const enunciado = lista.pergunta.replace('{n}', String(necessarias));
     this.ultimoTema = lista.tema || null;
     const id = dificuldade.idDe('escalada', enunciado, String(necessarias));
