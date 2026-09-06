@@ -9,7 +9,9 @@
     "dev": "node --watch server/index.js",
     "test": "node testes/comparar.test.js && node testes/rodada.test.js && node testes/escalada.test.js && node testes/nomes.test.js",
     "checar-imagens": "node testes/imagens.js",
-    "checar-letras": "node testes/letras.js"
+    "checar-letras": "node testes/letras.js",
+    "creditos": "node testes/creditos.js",
+    "imagens-locais": "node testes/imagens-locais.js"
   },
   "dependencies": {
     "express": "^4.19.2",
