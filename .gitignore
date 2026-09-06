@@ -7,3 +7,6 @@ server/dados/
 
 # pasta bruta de imagens: as usadas ja foram copiadas para public/img
 immg jogo/
+
+# pagina de trabalho: imagens ainda sem identificacao
+imagens-para-identificar.html
