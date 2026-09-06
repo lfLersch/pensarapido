@@ -190,5 +190,44 @@ console.log('');
   sala.destruir();
 }
 
+/* ------------- Item repetido nao pode pontuar duas vezes ------------- */
+{
+  // Uma lista com o MESMO item escrito de duas formas. Antes o palpite parava
+  // no primeiro item livre: quem dizia as duas formas marcava dois itens e
+  // levava o dobro de pontos pela mesma resposta.
+  const eventos2 = [];
+  const sala2 = new Sala('ESC2', {
+    categorias: ['geografia'], modo: 'escalada', metaPontos: 200, segundosPorPergunta: 30
+  }, (evento, dados) => eventos2.push({ evento, dados }));
+  sala2.entrar('luiz', 'Luiz');
+  sala2.iniciar();
+  sala2.limparTemporizador();
+
+  sala2.perguntaAtual = {
+    id: 'teste-repetido',
+    pergunta: 'Cite 2 bandas',
+    itens: [
+      { oficial: 'Charlie Brown Jr', variantes: ['Charlie Brown Junior'] },
+      { oficial: 'Charlie Brown Jr.', variantes: ['Charlie Brown Junior'] }
+    ],
+    necessarias: 2, fixo: false, resposta: 'Charlie Brown Jr', aceita: [],
+    categoria: { id: 'escalada', nome: '2 respostas' }, difBase: 40, dificuldade: 40
+  };
+  sala2.estado = 'pergunta';
+  sala2.inicioPergunta = Date.now();
+  sala2.progresso = new Map();
+  sala2.acertos = new Map();
+
+  const p1 = sala2.palpitar('luiz', 'Charlie Brown Jr');
+  sala2.jogadores.get('luiz').ultimaMensagem = 0;
+  const p2 = sala2.palpitar('luiz', 'Charlie Brown Junior');
+
+  conferir('1a forma da banda conta como item', p1.veredito, 'item');
+  conferir('2a forma da MESMA banda e repetida', p2.veredito, 'repetido');
+  conferir('  e nao pontua de novo', p2.pontos, undefined);
+
+  sala2.destruir();
+}
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
 process.exit(falhas ? 1 : 0);

@@ -457,17 +457,22 @@ class Sala {
     let repetido = -1;
     let perto = false;
 
+    // Varre a lista toda de propósito, sem parar no primeiro item livre: se o
+    // palpite também bate num item que a pessoa já tem, vale como repetido.
+    // Parando cedo, "Charlie Brown Jr" e "Charlie Brown Junior" marcavam dois
+    // itens diferentes e a mesma resposta pontuava duas vezes.
     for (let i = 0; i < this.perguntaAtual.itens.length; i++) {
       const item = this.perguntaAtual.itens[i];
       const r = avaliar(limpo, item.oficial, item.variantes);
 
       if (r.veredito === 'certo') {
         if (jaTenho.has(i)) repetido = i;
-        else { novoItem = i; break; }
+        else if (novoItem < 0) novoItem = i;
       } else if (r.veredito === 'quase') {
         perto = true;
       }
     }
+    if (repetido >= 0) novoItem = -1;
 
     // Longe de tudo: é conversa, vai para todo mundo.
     if (novoItem < 0 && repetido < 0 && !perto) {

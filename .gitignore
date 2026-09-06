@@ -4,3 +4,6 @@ node_modules/
 
 # estatisticas de dificuldade: dados de execucao, nao vao para o repositorio
 server/dados/
+
+# pasta bruta de imagens: as usadas ja foram copiadas para public/img
+immg jogo/
