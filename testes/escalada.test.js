@@ -294,5 +294,29 @@ console.log('');
   conferir('nenhum pais em dois continentes', dobrados, []);
 }
 
+/* ------- Dois itens da mesma lista nao podem ser o mesmo palpite ------- */
+{
+  // "PlayStation" e "PlayStation 2" eram itens separados, mas um caractere de
+  // diferenca em doze fica abaixo dos 10% de erro: o corretor via os dois como
+  // o mesmo palpite, entao o segundo nunca pontuava. Item que o corretor nao
+  // distingue tem que ser um item so, com o outro nome como variante.
+  const { LISTAS } = require('../server/escalada.js');
+  const { avaliar } = require('../server/comparar.js');
+
+  const ambiguos = [];
+  for (const lista of LISTAS) {
+    const itens = lista.respostas.map((r) => (Array.isArray(r) ? r : [r]));
+    for (let i = 0; i < itens.length; i++) {
+      for (let j = i + 1; j < itens.length; j++) {
+        if (avaliar(itens[i][0], itens[j][0], itens[j].slice(1)).veredito === 'certo') {
+          ambiguos.push(`${itens[i][0]} = ${itens[j][0]} (${lista.pergunta})`);
+        }
+      }
+    }
+  }
+
+  conferir('nenhum par de itens indistinguivel', ambiguos, []);
+}
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
 process.exit(falhas ? 1 : 0);
