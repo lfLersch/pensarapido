@@ -257,5 +257,42 @@ console.log('');
   conferir('e os recortes usam varias letras, nao so -a e -o', letras.size >= 8, true);
 }
 
+/* ---------------- As listas de paises tem que estar completas ---------------- */
+{
+  // A Asia tinha 25 dos 48 paises: faltava o Iemen, os do Golfo, o
+  // Afeganistao e quase toda a Asia Central. Pais e a pergunta mais facil de
+  // conferir que existe, entao nao ha desculpa para faltar.
+  const { LISTAS } = require('../server/escalada.js');
+  const quantos = (nome) => {
+    const l = LISTAS.find((x) => x.pergunta === `Cite {n} paises d${nome}`);
+    return l ? l.respostas.length : 0;
+  };
+
+  // 193 membros da ONU + Vaticano e Palestina (observadores) + Taiwan.
+  conferir('Africa tem os 54 paises', quantos('a Africa'), 54);
+  conferir('Asia tem os 48', quantos('a Asia'), 48);
+  conferir('Europa tem os 45 (44 + Vaticano)', quantos('a Europa'), 45);
+  conferir('America do Sul tem os 12', quantos('a America do Sul'), 12);
+  conferir('Oceania tem os 14', quantos('a Oceania'), 14);
+  conferir('America Central e Caribe tem os 20',
+    quantos('a America Central ou do Caribe'), 20);
+
+  // Nenhum pais pode aparecer em dois continentes: quem responde "Egito" em
+  // "paises da Asia" tem que ouvir que errou.
+  const onde = new Map();
+  for (const lista of LISTAS) {
+    const m = lista.pergunta.match(/^Cite \{n\} paises d[ao]s? (.+)$/);
+    if (!m || /letra|exatamente|espanhol/.test(lista.pergunta)) continue;
+    for (const r of lista.respostas) {
+      const nome = Array.isArray(r) ? r[0] : r;
+      if (!onde.has(nome)) onde.set(nome, []);
+      onde.get(nome).push(m[1]);
+    }
+  }
+  const dobrados = [...onde].filter(([, cs]) => cs.length > 1)
+    .map(([nome, cs]) => `${nome} (${cs.join('/')})`);
+  conferir('nenhum pais em dois continentes', dobrados, []);
+}
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
 process.exit(falhas ? 1 : 0);
