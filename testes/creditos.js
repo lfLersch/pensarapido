@@ -109,10 +109,12 @@ function escapar(t) {
   let novos = 0;
 
   for (const [arquivo, cats] of usados) {
+    // So resultado bom fica no cache. Falha costuma ser 429 passageiro, e
+    // guardar isso condenaria o arquivo a ficar sem credito para sempre.
     let d = cache[arquivo];
-    if (d === undefined) {
+    if (!d) {
       d = await dados(arquivo);
-      cache[arquivo] = d;
+      if (d) cache[arquivo] = d;
       novos++;
       // Grava a cada 10 consultas, para uma interrupcao custar pouco.
       if (novos % 10 === 0) {
