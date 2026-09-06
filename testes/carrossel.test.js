@@ -159,5 +159,28 @@ function responderCerto(sala) {
   sala.destruir();
 }
 
+/* ---------- Visivel manda a lista do que ja saiu; as cegas nao ---------- */
+{
+  for (const [modo, esperado] of [['carrossel', true], ['carrossel-cego', false]]) {
+    const eventos = [];
+    const sala = new Sala('CAR9', {
+      categorias: ['geografia'], modo, metaPontos: 9999, segundosPorPergunta: 20
+    }, (evento, dados) => eventos.push({ evento, dados }));
+    sala.entrar('a', 'Ana');
+    sala.entrar('b', 'Bia');
+    sala.iniciar();
+    sala.limparTemporizador();
+    sala.mostrarPergunta();
+    sala.limparTemporizador();
+
+    const pergunta = eventos.filter((e) => e.evento === 'rodada:pergunta').pop().dados;
+    const vez = eventos.filter((e) => e.evento === 'carrossel:vez').pop().dados;
+
+    conferir(modo + ' anuncia se a lista aparece', pergunta.carrossel.visivel, esperado);
+    conferir('  e manda (ou nao) o que ja foi dito', Array.isArray(vez.ditos), esperado);
+    sala.destruir();
+  }
+}
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
 process.exit(falhas ? 1 : 0);

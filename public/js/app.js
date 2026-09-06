@@ -714,6 +714,7 @@ socket.on('rodada:pergunta', (dados) => {
     $('carrossel-volta').textContent =
       `${dados.carrossel.voltas} volta${dados.carrossel.voltas > 1 ? 's' : ''}`;
     // Enquanto a vez não chega, ninguém escreve.
+    mostrarDitos(dados.carrossel.visivel ? [] : null);
     trancarChat('Espere a sua vez…');
   }
 
@@ -755,8 +756,33 @@ function montarFilaCarrossel(ordem, jogadorDaVez) {
   }
 }
 
+/** Desenha a lista do que ja foi respondido nesta rodada. */
+function mostrarDitos(ditos) {
+  const caixa = $('carrossel-ditos');
+  const lista = $('carrossel-lista');
+  // No Carrossel as cegas o servidor manda null: nao existe lista para ver.
+  if (!ditos) { caixa.hidden = true; estado.ditos = null; return; }
+  lista.innerHTML = '';
+  for (const nome of ditos) {
+    const el = criar('li', 'carrossel__dito');
+    el.textContent = nome;
+    lista.appendChild(el);
+  }
+  caixa.hidden = ditos.length === 0;
+  estado.ditos = ditos.slice();
+}
+
+/** Acrescenta um item na hora, sem esperar a proxima vez comecar. */
+function registrarDito(nome) {
+  if (estado.ditos === null) return;   // modo as cegas
+  const ditos = estado.ditos || [];
+  if (ditos.includes(nome)) return;
+  mostrarDitos(ditos.concat(nome));
+}
+
 socket.on('carrossel:vez', (dados) => {
   estado.vivos = new Set(dados.vivos);
+  mostrarDitos(dados.ditos || []);
   montarFilaCarrossel(dados.ordem, dados.jogadorId);
 
   const minha = dados.jogadorId === socket.id;
@@ -911,7 +937,11 @@ socket.on('chat:mensagem', (msg) => {
   if (msg.tipo === 'acerto') {
     const el = criar('div', 'msg msg--acerto' + (souEu ? ' msg--eu' : ''));
     const quando = msg.ms != null ? ` em ${(msg.ms / 1000).toFixed(1)}s` : '';
-    el.innerHTML = `${msg.avatar} <b>${escapar(msg.nickname)}</b> acertou${quando} · +${msg.pontos} pts`;
+    // No Carrossel vem tambem O QUE foi respondido: sem isso ninguem sabe o
+    // que ja saiu, e repetir elimina.
+    const oQue = msg.texto ? `: <b>${escapar(msg.texto)}</b>` : '';
+    el.innerHTML = `${msg.avatar} <b>${escapar(msg.nickname)}</b> acertou${oQue}${quando} · +${msg.pontos} pts`;
+    if (msg.texto && estado.carrossel) registrarDito(msg.texto);
     adicionarMensagem(el);
     return;
   }

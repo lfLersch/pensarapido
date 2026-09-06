@@ -65,9 +65,16 @@ const MODOS = [
   },
   {
     id: 'carrossel',
-    nome: 'Carrossel',
+    nome: 'Carrossel visivel',
     icone: '🎠',
-    descricao: 'A vez passa de um em um, 7s para cada. Quem nao souber sai da rodada. Rodadas 1-2 dao uma volta, 3-4 duas voltas, 5-6 tres.',
+    descricao: 'A vez passa de um em um, 7s para cada. Quem nao souber sai da rodada. O que ja foi respondido fica na tela. Rodadas 1-2 dao uma volta, 3-4 duas, 5-6 tres.',
+    disponivel: true
+  },
+  {
+    id: 'carrossel-cego',
+    nome: 'Carrossel as cegas',
+    icone: '🙈',
+    descricao: 'O mesmo carrossel, mas sem a lista do que ja foi dito: quem repetir uma resposta que ja saiu esta fora.',
     disponivel: true
   },
   {
@@ -497,7 +504,7 @@ class Sala {
   proximaRodada() {
     this.rodada += 1;
 
-    if (this.config.modo === 'carrossel') {
+    if (this.ehCarrossel()) {
       this.perguntaAtual = this.perguntaCarrossel(this.rodada);
       this.prepararCarrossel();
     } else if (this.config.modo === 'escalada') {
@@ -555,7 +562,7 @@ class Sala {
         : null,
       duracaoMs: this.ehCarrossel() ? null : duracaoMs,
       carrossel: this.ehCarrossel()
-        ? { voltas: this.voltasAlvo, msPorVez: MS_POR_VEZ, ordem: this.ordem }
+        ? { voltas: this.voltasAlvo, msPorVez: MS_POR_VEZ, ordem: this.ordem, visivel: this.mostraDitos() }
         : null
     });
 
@@ -565,6 +572,11 @@ class Sala {
   }
 
   ehCarrossel() {
+    return this.config.modo === 'carrossel' || this.config.modo === 'carrossel-cego';
+  }
+
+  /** So o carrossel visivel manda a lista do que ja foi respondido. */
+  mostraDitos() {
     return this.config.modo === 'carrossel';
   }
 
@@ -581,7 +593,12 @@ class Sala {
       voltas: this.voltasAlvo,
       msPorVez: MS_POR_VEZ,
       vivos: [...this.vivos],
-      ordem: this.ordem
+      ordem: this.ordem,
+      // O que já foi dito vai junto: sem essa lista à vista ninguém sabe o
+      // que ainda vale, e repetir elimina.
+      ditos: this.mostraDitos()
+        ? [...this.itensUsados].map((i) => this.perguntaAtual.itens[i].oficial)
+        : null
     });
 
     clearTimeout(this.temporizadorVez);
