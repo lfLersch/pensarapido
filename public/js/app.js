@@ -395,10 +395,31 @@ function renderizarSala() {
   for (const jogador of sala.jogadores) {
     const item = criar('li', 'jogador');
     const souEu = jogador.id === estado.eu?.id;
+    const souLiderAgora = sala.jogadores.some((j) => j.id === estado.eu?.id && j.lider);
+
     item.innerHTML = `
-      <span class="jogador__avatar">${jogador.avatar}</span>
+      <button class="jogador__avatar${souEu ? ' jogador__avatar--meu' : ''}"
+              type="button"${souEu ? ' title="Clique para trocar de icone"' : ' disabled'}>
+        ${jogador.avatar}
+      </button>
       <span class="jogador__nome">${escapar(jogador.nickname)}${souEu ? '<span class="jogador__voce">(voce)</span>' : ''}</span>
-      ${jogador.lider ? '<span class="coroa">👑 Lider</span>' : ''}`;
+      ${jogador.lider ? '<span class="coroa">👑 Lider</span>' : ''}
+      ${souLiderAgora && !souEu ? '<button class="jogador__expulsar" type="button" title="Expulsar da sala">✕</button>' : ''}`;
+
+    if (souEu) {
+      item.querySelector('.jogador__avatar').addEventListener('click', abrirEscolhaAvatar);
+    }
+
+    const botaoExpulsar = item.querySelector('.jogador__expulsar');
+    if (botaoExpulsar) {
+      botaoExpulsar.addEventListener('click', () => {
+        if (!confirm(`Expulsar ${jogador.nickname} da sala?`)) return;
+        socket.emit('sala:expulsar', { jogadorId: jogador.id }, (r) => {
+          if (r?.erro) avisar('aviso-sala', r.erro);
+        });
+      });
+    }
+
     lista.appendChild(item);
   }
 
@@ -408,6 +429,61 @@ function renderizarSala() {
   $('btn-iniciar').hidden = !souLider;
   $('texto-espera').hidden = souLider;
 }
+
+/**
+ * Balao para trocar o proprio icone.
+ *
+ * Os livres vem do servidor junto com o estado da sala, entao a lista nunca
+ * mostra um icone que outra pessoa acabou de pegar.
+ */
+function abrirEscolhaAvatar() {
+  const antigo = document.getElementById('balao-avatar');
+  if (antigo) return antigo.remove(); // clicar de novo fecha
+
+  const livres = estado.sala?.avataresLivres || [];
+  if (!livres.length) return brindar('Nao sobrou nenhum icone livre');
+
+  const balao = criar('div', 'balao');
+  balao.id = 'balao-avatar';
+  balao.innerHTML = '<span class="balao__titulo">Escolha seu icone</span>';
+
+  const grade = criar('div', 'balao__grade');
+  for (const avatar of livres) {
+    const opcao = criar('button', 'balao__opcao');
+    opcao.type = 'button';
+    opcao.textContent = avatar;
+    opcao.addEventListener('click', () => {
+      socket.emit('sala:trocarAvatar', { avatar }, (r) => {
+        if (r?.erro) brindar(r.erro);
+      });
+      balao.remove();
+    });
+    grade.appendChild(opcao);
+  }
+  balao.appendChild(grade);
+
+  const meu = document.querySelector('.jogador__avatar--meu');
+  (meu ? meu.parentElement : document.body).appendChild(balao);
+
+  // Clicar fora fecha.
+  setTimeout(() => {
+    document.addEventListener('click', function fecha(e) {
+      if (!balao.contains(e.target)) {
+        balao.remove();
+        document.removeEventListener('click', fecha);
+      }
+    });
+  }, 0);
+}
+
+socket.on('sala:expulso', () => {
+  estado.sala = null;
+  estado.eu = null;
+  pararAnimacao();
+  pararAudio();
+  mostrarTela('tela-lobby');
+  avisar('aviso-lobby', 'O lider tirou voce da sala.');
+});
 
 $('codigo-valor').addEventListener('click', async () => {
   const codigo = estado.sala?.codigo;
@@ -980,7 +1056,8 @@ socket.on('sala:estado', (sala) => {
 });
 
 socket.on('sala:entrou', ({ nickname, avatar }) => brindar(`${avatar} ${nickname} entrou`));
-socket.on('sala:saiu', ({ nickname }) => brindar(`${nickname} saiu da sala`));
+socket.on('sala:saiu', ({ nickname, expulso }) =>
+  brindar(expulso ? `${nickname} foi expulso da sala` : `${nickname} saiu da sala`));
 
 socket.on('disconnect', () => {
   pararAnimacao();

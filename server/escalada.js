@@ -2317,6 +2317,232 @@ const LISTAS = [
       'Juninho Paulista',
       'Denilson'
     ]
+  },
+  {
+    pergunta: 'Cite {n} cidades de Portugal',
+    tema: 'geografia', dif: 40,
+    respostas: [
+      'Lisboa',
+      'Porto',
+      'Braga',
+      'Coimbra',
+      'Faro',
+      'Aveiro',
+      'Funchal',
+      'Setubal',
+      'Guimaraes',
+      'Evora',
+      'Sintra',
+      'Cascais',
+      'Viseu',
+      'Leiria'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades da Italia',
+    tema: 'geografia', dif: 40,
+    respostas: [
+      'Roma',
+      'Milao',
+      'Napoles',
+      'Turim',
+      'Florenca',
+      'Veneza',
+      'Bolonha',
+      'Genova',
+      'Verona',
+      'Palermo',
+      'Pisa',
+      'Bari',
+      'Catania',
+      'Siena'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades do Japao',
+    tema: 'geografia', dif: 50,
+    respostas: [
+      'Toquio',
+      'Osaka',
+      ['Quioto', 'Kyoto'],
+      'Yokohama',
+      ['Nagoia', 'Nagoya'],
+      'Sapporo',
+      'Kobe',
+      'Fukuoka',
+      'Hiroshima',
+      'Nagasaki',
+      'Nara',
+      'Sendai'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades da Espanha',
+    tema: 'geografia', dif: 45,
+    respostas: [
+      'Madri',
+      'Barcelona',
+      'Valencia',
+      'Sevilha',
+      'Bilbao',
+      'Malaga',
+      'Zaragoza',
+      'Granada',
+      'Toledo',
+      'Salamanca',
+      'Cordoba',
+      'San Sebastian'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades da Franca',
+    tema: 'geografia', dif: 50,
+    respostas: [
+      'Paris',
+      'Marselha',
+      'Lyon',
+      'Toulouse',
+      'Nice',
+      'Bordeaux',
+      'Nantes',
+      'Estrasburgo',
+      'Lille',
+      'Montpellier',
+      'Cannes',
+      'Versalhes'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades dos Estados Unidos',
+    tema: 'geografia', dif: 30,
+    respostas: [
+      'Nova York',
+      'Los Angeles',
+      'Chicago',
+      'Houston',
+      'Miami',
+      'Las Vegas',
+      'San Francisco',
+      'Boston',
+      'Seattle',
+      'Washington',
+      'Dallas',
+      'Atlanta',
+      'Filadelfia',
+      'Denver',
+      'Orlando',
+      'Nova Orleans'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades da Alemanha',
+    tema: 'geografia', dif: 50,
+    respostas: [
+      'Berlim',
+      'Munique',
+      'Hamburgo',
+      'Colonia',
+      'Frankfurt',
+      'Stuttgart',
+      'Dusseldorf',
+      'Dresden',
+      'Leipzig',
+      'Bremen',
+      'Nuremberg',
+      'Dortmund'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades da Inglaterra',
+    tema: 'geografia', dif: 45,
+    respostas: [
+      'Londres',
+      'Manchester',
+      'Liverpool',
+      'Birmingham',
+      'Leeds',
+      'Bristol',
+      'Newcastle',
+      'Sheffield',
+      'Oxford',
+      'Cambridge',
+      'Nottingham',
+      'Brighton'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades do Brasil',
+    tema: 'geografia', dif: 20,
+    respostas: [
+      'Sao Paulo',
+      'Rio de Janeiro',
+      'Brasilia',
+      'Salvador',
+      'Fortaleza',
+      'Belo Horizonte',
+      'Manaus',
+      'Curitiba',
+      'Recife',
+      'Porto Alegre',
+      'Belem',
+      'Goiania',
+      'Campinas',
+      'Santos',
+      'Florianopolis',
+      'Natal',
+      'Vitoria',
+      'Maceio',
+      'Campo Grande',
+      'Cuiaba'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades da Argentina',
+    tema: 'geografia', dif: 50,
+    respostas: [
+      'Buenos Aires',
+      'Cordoba',
+      'Rosario',
+      'Mendoza',
+      'La Plata',
+      'Mar del Plata',
+      'Salta',
+      'Bariloche',
+      'Tucuman',
+      'Ushuaia'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades do Mexico',
+    tema: 'geografia', dif: 55,
+    respostas: [
+      'Cidade do Mexico',
+      'Guadalajara',
+      'Monterrey',
+      'Cancun',
+      'Tijuana',
+      'Puebla',
+      'Acapulco',
+      'Merida',
+      'Oaxaca',
+      'Veracruz'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} cidades da China',
+    tema: 'geografia', dif: 60,
+    respostas: [
+      'Pequim',
+      'Xangai',
+      'Hong Kong',
+      ['Cantao', 'Guangzhou'],
+      'Shenzhen',
+      'Macau',
+      'Chengdu',
+      'Wuhan',
+      'Xian',
+      'Nanquim'
+    ]
   }
 ];
 
@@ -2386,6 +2612,8 @@ const FONTES_POR_LETRA = [
   ['Cite {n} paises da America do Sul', 'paises da America do Sul', 'geografia'],
   ['Cite {n} estados brasileiros', 'estados brasileiros', 'geografia'],
   ['Cite {n} capitais mundiais', 'capitais do mundo', 'geografia'],
+  ['Cite {n} cidades do Brasil', 'cidades do Brasil', 'geografia'],
+  ['Cite {n} cidades dos Estados Unidos', 'cidades dos EUA', 'geografia'],
   ['Cite {n} frutas', 'frutas', 'comidas'],
   ['Cite {n} animais selvagens', 'animais', 'animais'],
   ['Cite {n} clubes brasileiros de futebol', 'clubes brasileiros', 'futebol'],

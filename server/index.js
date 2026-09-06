@@ -202,6 +202,41 @@ io.on('connection', (socket) => {
     publicarEstado(sala);
   });
 
+  socket.on('sala:expulsar', ({ jogadorId } = {}, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Voce nao esta em uma sala.' });
+    if (typeof jogadorId !== 'string') return responder(callback, { erro: 'Jogador invalido.' });
+
+    const { erro, jogador } = sala.expulsar(socket.id, jogadorId);
+    if (erro) return responder(callback, { erro });
+
+    // Avisa quem foi tirado e o desliga da sala, para nao continuar recebendo
+    // os eventos da partida.
+    const alvo = io.sockets.sockets.get(jogadorId);
+    if (alvo) {
+      alvo.emit('sala:expulso');
+      alvo.leave(sala.codigo);
+      alvo.data.codigo = null;
+    }
+
+    io.to(sala.codigo).emit('sala:saiu', { nickname: jogador.nickname, expulso: true });
+    responder(callback, { ok: true });
+    removerSalaSeVazia(sala);
+    if (salas.has(sala.codigo)) publicarEstado(sala);
+  });
+
+  socket.on('sala:trocarAvatar', ({ avatar } = {}, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Voce nao esta em uma sala.' });
+    if (typeof avatar !== 'string') return responder(callback, { erro: 'Icone invalido.' });
+
+    const r = sala.trocarAvatar(socket.id, avatar);
+    if (r.erro) return responder(callback, { erro: r.erro });
+
+    responder(callback, r);
+    publicarEstado(sala);
+  });
+
   socket.on('sala:sair', (_dados, callback) => {
     const sala = salaDoSocket();
     if (!sala) return responder(callback, { ok: true });

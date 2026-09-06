@@ -29,7 +29,13 @@ const MAX_TEXTO = 120;       // tamanho máximo de uma mensagem
 const INTERVALO_MENSAGENS = 350; // anti-spam, em ms
 
 const ALFABETO_CODIGO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem O/0 e I/1
-const AVATARES = ['🦊', '🐼', '🐸', '🦁', '🐧', '🐙', '🦄', '🐨', '🦉', '🐝', '🐬', '🦖'];
+// Mais avatares que o teto de jogadores, para sempre sobrar escolha na troca.
+const AVATARES = [
+  '🦊', '🐼', '🐸', '🦁', '🐧', '🐙', '🦄', '🐨',
+  '🦉', '🐝', '🐬', '🦖', '🐯', '🐷', '🐵', '🐺',
+  '🦈', '🦋', '🐢', '🦩', '🦚', '🐳', '🦌', '🐿',
+  '🦥', '🦓', '🐮', '🐔', '🦜', '🐦', '🐤', '🦭'
+];
 
 const MODOS = [
   {
@@ -202,6 +208,38 @@ class Sala {
     }
 
     return jogador;
+  }
+
+  /** O lider tira alguem da sala. Devolve o jogador removido. */
+  expulsar(socketIdLider, socketIdAlvo) {
+    if (!this.ehLider(socketIdLider)) return { erro: 'So o lider pode expulsar.' };
+    if (socketIdLider === socketIdAlvo) return { erro: 'Voce nao pode se expulsar.' };
+
+    const alvo = this.jogadores.get(socketIdAlvo);
+    if (!alvo) return { erro: 'Esse jogador nao esta na sala.' };
+
+    const removido = this.sair(socketIdAlvo);
+    return { ok: true, jogador: removido };
+  }
+
+  /** Troca o proprio avatar, se ninguem mais estiver usando. */
+  trocarAvatar(socketId, avatar) {
+    const jogador = this.jogadores.get(socketId);
+    if (!jogador) return { erro: 'Voce nao esta nesta sala.' };
+    if (!AVATARES.includes(avatar)) return { erro: 'Esse icone nao existe.' };
+    if (jogador.avatar === avatar) return { ok: true, avatar };
+
+    const emUso = [...this.jogadores.values()].some((j) => j.avatar === avatar);
+    if (emUso) return { erro: 'Esse icone ja e de outra pessoa.' };
+
+    jogador.avatar = avatar;
+    return { ok: true, avatar };
+  }
+
+  /** Quais icones ainda estao livres, para a pessoa escolher. */
+  avataresLivres() {
+    const usados = new Set([...this.jogadores.values()].map((j) => j.avatar));
+    return AVATARES.filter((a) => !usados.has(a));
   }
 
   ehLider(socketId) {
@@ -674,7 +712,8 @@ class Sala {
       estado: this.estado,
       config: this.config,
       rodada: this.rodada,
-      jogadores: this.placar()
+      jogadores: this.placar(),
+      avataresLivres: this.avataresLivres()
     };
   }
 
@@ -697,6 +736,6 @@ class Sala {
 }
 
 module.exports = {
-  Sala, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO,
+  Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO,
   gerarCodigo, calcularPontos, indicePerguntas
 };
