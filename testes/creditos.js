@@ -20,6 +20,9 @@ const path = require('path');
 const { CATEGORIAS, QUESTOES } = require('../server/questions');
 
 const SAIDA = path.join(__dirname, '..', 'public', 'creditos.html');
+// Guarda o que ja foi consultado. Sao 300+ arquivos e a API e lenta: sem isso,
+// qualquer interrupcao obrigava a comecar do zero.
+const CACHE = path.join(__dirname, '..', 'server', 'dados', 'creditos-cache.json');
 const AGENTE = 'PensaRapido/1.0 (jogo de perguntas; pagina de creditos)';
 const PAUSA = 700;
 const TENTATIVAS = 4;
@@ -95,18 +98,38 @@ function escapar(t) {
   if (locais) console.log(`imagens locais: ${locais} (credito por conta de quem adicionou)`);
   console.log('');
 
+  let cache = {};
+  try { cache = JSON.parse(fs.readFileSync(CACHE, 'utf8')); } catch (e) { /* primeira vez */ }
+  const jaTinha = Object.keys(cache).length;
+  if (jaTinha) console.log(`aproveitando ${jaTinha} consultas do cache\n`);
+
   const creditos = [];
   const semDados = [];
   let feitos = 0;
+  let novos = 0;
 
   for (const [arquivo, cats] of usados) {
-    const d = await dados(arquivo);
+    let d = cache[arquivo];
+    if (d === undefined) {
+      d = await dados(arquivo);
+      cache[arquivo] = d;
+      novos++;
+      // Grava a cada 10 consultas, para uma interrupcao custar pouco.
+      if (novos % 10 === 0) {
+        fs.mkdirSync(path.dirname(CACHE), { recursive: true });
+        fs.writeFileSync(CACHE, JSON.stringify(cache));
+      }
+      await dormir(PAUSA);
+    }
+
     if (d) creditos.push({ ...d, categorias: [...cats].join(', ') });
     else semDados.push(arquivo);
 
-    if (++feitos % 25 === 0) console.log(`  ${feitos}/${usados.size}`);
-    await dormir(PAUSA);
+    if (++feitos % 50 === 0) console.log(`  ${feitos}/${usados.size}`);
   }
+
+  fs.mkdirSync(path.dirname(CACHE), { recursive: true });
+  fs.writeFileSync(CACHE, JSON.stringify(cache));
 
   creditos.sort((a, b) => a.arquivo.localeCompare(b.arquivo));
 

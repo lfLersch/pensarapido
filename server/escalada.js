@@ -2616,6 +2616,241 @@ const LISTAS = [
       'PyeongChang',
       'Milao'
     ]
+  },
+  {
+    pergunta: 'Cite {n} personagens dos Simpsons',
+    tema: 'cinema', dif: 25,
+    respostas: [
+      'Homer',
+      'Marge',
+      'Bart',
+      'Lisa',
+      'Maggie',
+      ['Ned Flanders', 'Flanders'],
+      ['Sr. Burns', 'Burns'],
+      'Smithers',
+      'Milhouse',
+      'Nelson',
+      'Krusty',
+      'Moe',
+      'Barney',
+      'Apu',
+      ['Diretor Skinner', 'Skinner'],
+      ['Chefe Wiggum', 'Wiggum'],
+      'Ralph',
+      ['Vovo Simpson', 'Abe']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Bob Esponja',
+    tema: 'cinema', dif: 30,
+    respostas: [
+      'Bob Esponja',
+      ['Patrick', 'Patrick Estrela'],
+      ['Lula Molusco', 'Squidward'],
+      ['Sr. Siriguejo', 'Siriguejo'],
+      'Sandy',
+      'Plankton',
+      'Gary',
+      'Perola',
+      'Karen',
+      'Sra. Puff'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens da Turma da Monica',
+    tema: 'cinema', dif: 35,
+    respostas: [
+      'Monica',
+      'Cebolinha',
+      'Cascao',
+      'Magali',
+      'Chico Bento',
+      'Rosinha',
+      'Bidu',
+      'Franjinha',
+      'Titi',
+      'Do Contra',
+      'Marina',
+      'Sansao',
+      'Horacio',
+      'Penadinho'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Toy Story',
+    tema: 'cinema', dif: 40,
+    respostas: [
+      'Woody',
+      ['Buzz Lightyear', 'Buzz'],
+      'Jessie',
+      'Rex',
+      'Slinky',
+      ['Sr. Cabeca de Batata', 'Cabeca de Batata'],
+      'Hamm',
+      'Betty',
+      'Andy',
+      'Sid',
+      'Forky',
+      'Zurg'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de O Rei Leao',
+    tema: 'cinema', dif: 35,
+    respostas: [
+      'Simba',
+      'Mufasa',
+      'Scar',
+      'Nala',
+      'Timao',
+      'Pumba',
+      'Rafiki',
+      'Zazu',
+      'Sarabi',
+      'Kiara'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Shrek',
+    tema: 'cinema', dif: 40,
+    respostas: [
+      'Shrek',
+      'Fiona',
+      'Burro',
+      'Gato de Botas',
+      ['Lorde Farquaad', 'Farquaad'],
+      'Dragoa',
+      'Pinoquio',
+      ['Biscoito', 'Cookie'],
+      'Fada Madrinha',
+      'Principe Encantado'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de O Senhor dos Aneis',
+    tema: 'cinema', dif: 35,
+    respostas: [
+      'Frodo',
+      'Sam',
+      'Gandalf',
+      'Aragorn',
+      'Legolas',
+      'Gimli',
+      'Boromir',
+      'Merry',
+      'Pippin',
+      'Gollum',
+      'Sauron',
+      'Saruman',
+      'Arwen',
+      'Galadriel',
+      'Elrond',
+      'Bilbo'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Harry Potter',
+    tema: 'cinema', dif: 30,
+    respostas: [
+      ['Harry Potter', 'Harry'],
+      'Hermione',
+      ['Rony', 'Ron'],
+      'Dumbledore',
+      'Snape',
+      'Voldemort',
+      'Hagrid',
+      ['Draco Malfoy', 'Malfoy'],
+      ['Sirius Black', 'Sirius'],
+      'McGonagall',
+      'Dobby',
+      'Luna',
+      'Neville',
+      'Bellatrix'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens dos Flintstones',
+    tema: 'cinema', dif: 50,
+    respostas: [
+      'Fred',
+      'Barney',
+      'Vilma',
+      'Betty',
+      'Pedrita',
+      'Bam-Bam',
+      'Dino',
+      'Sr. Pedregulho'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Scooby-Doo',
+    tema: 'cinema', dif: 35,
+    respostas: [
+      ['Scooby-Doo', 'Scooby'],
+      'Salsicha',
+      'Fred',
+      'Velma',
+      'Daphne'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Jovens Titas',
+    tema: 'cinema', dif: 45,
+    respostas: [
+      'Robin',
+      'Estelar',
+      'Ravena',
+      'Ciborgue',
+      'Mutano'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens das Meninas Superpoderosas',
+    tema: 'cinema', dif: 45,
+    respostas: [
+      'Florzinha',
+      'Lindinha',
+      'Docinho',
+      ['Professor Utonio', 'Utonio'],
+      ['Macaco Louco', 'Mojo Jojo'],
+      'Ele'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens do Ursinho Pooh',
+    tema: 'cinema', dif: 45,
+    respostas: [
+      'Pooh',
+      'Tigrao',
+      'Leitao',
+      'Ior',
+      'Coelho',
+      'Corujao',
+      'Cangu',
+      'Guru',
+      'Christopher Robin'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Dragon Ball',
+    tema: 'anime', dif: 30,
+    respostas: [
+      'Goku',
+      'Vegeta',
+      'Gohan',
+      'Piccolo',
+      'Bulma',
+      'Krilin',
+      'Trunks',
+      'Freeza',
+      'Cell',
+      'Majin Boo',
+      'Mestre Kame',
+      'Yamcha',
+      'Tenshinhan',
+      'Chi-Chi'
+    ]
   }
 ];
 
