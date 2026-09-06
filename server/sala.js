@@ -29,6 +29,9 @@ const MS_TETO_RODADA = 90000;
 // mais — rodadas 1-2 uma volta, 3-4 duas, 5-6 três.
 const MS_POR_VEZ = 7000;
 const RODADAS_POR_VOLTA = 2;
+// Para em 3 voltas. Sem teto, a rodada 15 pedia 8 voltas: com 2 pessoas isso
+// são 16 respostas seguidas, e quase nenhuma lista tem tamanho para isso.
+const MAX_VOLTAS = 3;
 const BONUS_CARROSSEL = 5;   // para quem chega vivo ao fim da rodada
 const MS_ENTRE_VEZES = 900;  // respiro para a tela mostrar quem saiu
 
@@ -445,7 +448,7 @@ class Sala {
    * Rodadas 1-2 uma volta, 3-4 duas, 5-6 três, e assim por diante.
    */
   voltasDaRodada(rodada) {
-    return Math.floor((rodada - 1) / RODADAS_POR_VOLTA) + 1;
+    return Math.min(MAX_VOLTAS, Math.floor((rodada - 1) / RODADAS_POR_VOLTA) + 1);
   }
 
   /**
@@ -466,6 +469,12 @@ class Sala {
     if (candidatas.length === 0) return this.perguntaSimples();
 
     const pergunta = this.montarListaEscalada(candidatas, tamanho);
+
+    // O número no enunciado é o total da rodada inteira, não o que cabe a
+    // cada um. "Cite 14 frutas" fazia parecer que a pessoa tinha que lembrar
+    // catorze na sua vez, quando o que ela deve é uma.
+    pergunta.pergunta = pergunta.pergunta.replace(/^Cite \d+ /, 'Cite ');
+
     // No carrossel ninguém precisa completar a lista sozinho: o que vale é
     // ter uma resposta na sua vez.
     pergunta.categoria = { id: 'carrossel', nome: `${voltas} volta${voltas > 1 ? 's' : ''}`, icone: '🎠', cor: '#f59e0b' };

@@ -53,6 +53,10 @@ function responderCerto(sala) {
   conferir('rodada 4 da 2 voltas', sala.voltasDaRodada(4), 2);
   conferir('rodada 5 da 3 voltas', sala.voltasDaRodada(5), 3);
   conferir('rodada 6 da 3 voltas', sala.voltasDaRodada(6), 3);
+  // Para em 3: sem teto a rodada 15 pedia 8 voltas, e com 2 pessoas isso sao
+  // 16 respostas seguidas, que quase nenhuma lista tem.
+  conferir('rodada 9 nao passa de 3 voltas', sala.voltasDaRodada(9), 3);
+  conferir('rodada 30 tambem para em 3', sala.voltasDaRodada(30), 3);
   sala.destruir();
 }
 
