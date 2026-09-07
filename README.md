@@ -156,18 +156,30 @@ parcial conta, então ninguém sai de mãos vazias por ter parado a um item do f
    entram três vezes no bolo do sorteio e as demais uma vez — as fechadas
    continuam mais prováveis, sem tirar as outras do jogo.
 
-São **212 listas escritas à mão** (mais de 5.800 itens) e outras **318 geradas**
-a partir delas — 530 no total. Cobrem futebol, geografia, música, cinema,
-séries, anime, games, ciência, história, mitologia, política, esportes e
-cultura pop.
+São **221 listas escritas à mão** (mais de 6.700 itens) e outras **396 geradas**
+a partir delas — 617 no total. Cobrem futebol, geografia, música, cinema,
+séries, anime, games, ciência, história, filosofia, mitologia, política,
+esportes, objetos de casa e cultura pop.
 
-Entre as maiores: os **97 vencedores do Oscar de Melhor Filme** (a lista
-completa, de *Asas* a *Anora*), **172 atores** e **88 atrizes**
-internacionais, **141 artistas com Grammy**, **125 séries**, **119
-presidentes e líderes mundiais do século XXI**, **115 cantores sertanejos**
-(cada integrante de dupla vale sozinho), **106 personagens da mitologia
-grega**, **96 pilotos de Fórmula 1**, **86 artistas de funk**, **79 divas
-pop** e **72 ditadores da história**.
+Entre as maiores: **144 filósofos e sociólogos**, os **97 vencedores do
+Oscar de Melhor Filme** (a lista completa, de *Asas* a *Anora*), **172
+atores** e **88 atrizes** internacionais, **141 artistas com Grammy**,
+**125 séries**, **119 presidentes e líderes mundiais do século XXI**,
+**115 cantores sertanejos** (cada integrante de dupla vale sozinho),
+**106 personagens da mitologia grega**, **96 pilotos de Fórmula 1**,
+**86 artistas de funk**, **79 divas pop** e **72 ditadores da história**.
+
+**Um cômodo por lista.** *Coisas que tem em uma cozinha* (92) sozinha não
+cobre a casa, então cada cômodo virou uma pergunta: banheiro (50), quarto
+(44), escritório (42), sala de estar (40), garagem (40), quintal (36) e
+área de serviço (32). É repertório que todo mundo tem na cabeça sem estudar
+— o tipo de lista que salva uma rodada alta.
+
+**A escola também virou repertório.** *Coisas que tem na aula de português*
+(147) e *de matemática* (141) puxam o vocabulário que todo mundo atravessou:
+substantivo, paroxítona, crase e oração de um lado; Bhaskara, incógnita,
+potenciação e hipotenusa do outro. As duas dividem o mesmo `tema`, então
+nunca caem em rodadas seguidas.
 
 ### Presente Grego
 

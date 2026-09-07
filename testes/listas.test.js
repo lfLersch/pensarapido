@@ -83,7 +83,18 @@ if (choques.length) {
     ['Cite {n} divas pop', 70],
     ['Cite {n} pilotos de Formula 1', 90],
     ['Cite {n} ditadores da historia', 65],
-    ['Cite {n} presidentes e lideres mundiais do seculo XXI', 110]
+    ['Cite {n} presidentes e lideres mundiais do seculo XXI', 110],
+    ['Cite {n} filosofos ou sociologos', 130],
+    ['Cite {n} coisas que tem em uma cozinha', 85],
+    ['Cite {n} coisas que tem em um banheiro', 45],
+    ['Cite {n} coisas que tem em um quarto', 40],
+    ['Cite {n} coisas que tem em uma sala de estar', 35],
+    ['Cite {n} coisas que tem em uma area de servico', 30],
+    ['Cite {n} coisas que tem em uma garagem', 35],
+    ['Cite {n} coisas que tem em um quintal', 32],
+    ['Cite {n} coisas que tem em um escritorio', 38],
+    ['Cite {n} coisas que tem na aula de portugues', 130],
+    ['Cite {n} coisas que tem na aula de matematica', 125]
   ];
 
   for (const [pergunta, minimo] of MINIMOS) {
