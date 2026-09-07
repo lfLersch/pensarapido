@@ -694,7 +694,6 @@ const LISTAS = [
     ['Daifuku'],
     ['Page One'],
     ['Ulti'],
-    ['Who's-Who'],
     ['Black Maria'],
     ['Sasaki'],
     ['Denjiro'],
