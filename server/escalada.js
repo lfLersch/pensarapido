@@ -1985,6 +1985,7 @@ const LISTAS = [
       'Sopa de capeletti',
       'Agnolini',
     ]
+  },
   {
     pergunta: 'Cite {n} times de futebol europeus',
     tema: 'futebol', dif: 30,
@@ -2286,6 +2287,7 @@ const LISTAS = [
       'Megamente',
       ['Os Incriveis', 'Os Incríveis'],
     ]
+  },
   {
     pergunta: 'Cite {n} personagens de Pokemon',
     tema: 'anime', dif: 35,
@@ -5152,6 +5154,7 @@ const LISTAS = [
       ['Fred e Fabrício', 'Fred & Fabrício'],
       ['Diego e Victor Hugo', 'Diego & Victor Hugo'],
     ]
+  },
   {
     pergunta: 'Cite {n} frutas',
     tema: 'comidas', dif: 15,
@@ -9628,7 +9631,6 @@ respostas: [
     ['Kim Wexler', 'Kim'],
     ['Howard Hamlin', 'Howard'],
     ['Chuck McGill', 'Chuck'],
-    ['Mike's Lawyer'],
     ['Gomie', 'Steven Gomez'],
     ['Clovis', 'Clovis Landry'],
     ['Jack Welker', 'Jack'],
@@ -9675,7 +9677,7 @@ respostas: [
     ['Claudia Henderson', 'Claudia'],
     ['Dr. Owens', 'Sam Owens'],
     ['Suzie Bingham', 'Suzie'],
-    ['Dart', 'D'Artagnan'],
+    ['Dart', 'DArtagnan'],
     ['Mind Flayer', 'Devorador de Mentes'],
     ['Demobat'],
     ['Demodog'],
