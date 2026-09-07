@@ -1000,9 +1000,10 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   padding: 5px 12px;
   font-size: 13.5px;
   font-weight: 700;
-  color: #bbf7d0;
-  background: rgba(34, 197, 94, 0.2);
-  border: 1px solid rgba(34, 197, 94, 0.45);
+  /* Azul, a cor de "um item da lista", igual a mensagem do chat. */
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.45);
   border-radius: 99px;
   animation: subir 240ms ease;
 }
@@ -1250,6 +1251,33 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   letter-spacing: 0.4px;
   text-transform: uppercase;
   opacity: 0.65;
+}
+
+/* Item de uma lista: azul.
+
+   Verde fica reservado para quem fechou a resposta inteira. Numa rodada de
+   Escalada as duas coisas aparecem seguidas no chat, e a cor e o que separa
+   "lembrei mais um" de "acabei". */
+.msg--item {
+  font-weight: 600;
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.16);
+  border-left: 3px solid #3b82f6;
+}
+.msg--item b { color: #fff; }
+
+/* A dica do "quase": as letras que bateram, e "_" onde faltou. Monoespacada e
+   espacada para as posicoes ficarem obvias. */
+.msg__mascara {
+  display: block;
+  margin-top: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--destaque);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .chat__form {
@@ -1566,4 +1594,198 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.07);
   color: var(--texto-fraco);
+}
+
+/* ------------------------ Modo Presente Grego ------------------------- */
+
+.presente {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  border-radius: var(--raio-peq);
+}
+
+.presente__topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.presente__fase {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #fbbf24;
+}
+
+.presente__lance {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--texto-suave);
+}
+
+/* Cada dupla com os papéis da rodada: quem leiloa (🔨) e quem responde (🎁). */
+.presente__duplas {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.presente__dupla {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: var(--raio-peq);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid transparent;
+  transition: border-color .2s, background .2s;
+}
+.presente__dupla.minha { border-color: color-mix(in srgb, var(--cor-dupla) 55%, transparent); }
+/* De quem é a palavra agora. */
+.presente__dupla.agora {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.7);
+}
+/* Quem está com o maior lance na mesa — é essa dupla que o "duvido" cobra. */
+.presente__dupla.topo { background: rgba(245, 158, 11, 0.12); }
+
+.presente__dupla-nome {
+  font-weight: 800;
+  color: var(--cor-dupla, var(--texto));
+}
+
+.presente__papel {
+  color: var(--texto-suave);
+  white-space: nowrap;
+}
+
+.presente__valor {
+  margin-left: auto;
+  padding: 2px 10px;
+  font-weight: 800;
+  color: #0d0a1f;
+  background: var(--destaque);
+  border-radius: 99px;
+}
+
+.presente__vez {
+  margin: 12px 0 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--texto-suave);
+}
+.presente__vez.minha { color: #fbbf24; }
+
+/* O lance: um número e as duas saídas possíveis. */
+.presente__forma {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.presente__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--texto-fraco);
+}
+
+.presente__campo input {
+  width: 108px;
+  padding: 11px 14px;
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--texto);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-peq);
+}
+.presente__campo input:focus {
+  outline: none;
+  border-color: var(--destaque);
+}
+
+.btn--perigo {
+  background: rgba(244, 63, 94, 0.18);
+  border-color: rgba(244, 63, 94, 0.5);
+  color: #fecdd3;
+}
+.btn--perigo:hover:not(:disabled) { background: rgba(244, 63, 94, 0.3); }
+
+/* A entrega: o que a pessoa desafiada já conseguiu dizer. */
+.presente__entrega {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(245, 158, 11, 0.24);
+}
+
+.presente__contador {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fbbf24;
+}
+.presente__contador.completo { color: var(--certo); }
+
+.presente__rotulo {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+
+.presente__itens {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.presente__item {
+  padding: 5px 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  border-radius: 99px;
+  animation: subir 240ms ease;
+}
+
+/* Quem vai responder não lê o enunciado: no lugar dele fica só o aviso. */
+.pergunta__texto--segredo {
+  font-size: clamp(16px, 2.2vw, 20px);
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+/* A que dupla cada pessoa pertence, no placar lateral. */
+.placar__dupla {
+  font-size: 13px;
+  opacity: .85;
+}
+
+.dica-duplas {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  text-align: center;
+  color: var(--destaque);
 }

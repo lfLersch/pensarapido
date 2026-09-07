@@ -135,6 +135,7 @@
       </div>
 
       <p class="aviso" id="aviso-sala" role="alert"></p>
+      <p class="dica-duplas" id="dica-duplas" hidden></p>
 
       <div class="sala__acoes">
         <button class="btn btn--fantasma" id="btn-sair-sala">Sair</button>
@@ -219,13 +220,45 @@
             </div>
           </div>
 
+          <!-- Modo Presente Grego: o leilao e depois a entrega -->
+          <div class="presente" id="presente" hidden>
+            <div class="presente__topo">
+              <span class="presente__fase" id="presente-fase">Leilao</span>
+              <span class="presente__lance" id="presente-lance">sem lance ainda</span>
+            </div>
+
+            <ul class="presente__duplas" id="presente-duplas"></ul>
+
+            <p class="presente__vez" id="presente-vez"></p>
+
+            <form class="presente__forma" id="presente-forma" hidden autocomplete="off">
+              <label class="presente__campo">
+                <span>Meu parceiro diz</span>
+                <input id="presente-input" type="number" min="1" max="60" step="1"
+                       inputmode="numeric" />
+              </label>
+              <button class="btn btn--primario" type="submit" id="presente-apostar">Apostar</button>
+              <button class="btn btn--perigo" type="button" id="presente-duvidar">Duvido!</button>
+            </form>
+
+            <div class="presente__entrega" id="presente-entrega" hidden>
+              <div class="presente__topo">
+                <span class="presente__contador" id="presente-contador">0 de 0</span>
+                <span class="presente__rotulo" id="presente-rotulo">respostas</span>
+              </div>
+              <ul class="presente__itens" id="presente-itens"></ul>
+            </div>
+          </div>
+
           <div class="barra-tempo"><i id="barra-tempo"></i></div>
 
           <p class="status-respostas" id="status-respostas"></p>
 
           <div class="resultado" id="resultado" hidden>
             <div class="resultado__topo">
-              <h3 class="resultado__titulo">Resposta certa: <b id="resultado-certa"></b></h3>
+              <h3 class="resultado__titulo">
+                <span id="resultado-rotulo">Resposta certa</span>: <b id="resultado-certa"></b>
+              </h3>
               <span class="selo-dificuldade" id="selo-dificuldade"></span>
             </div>
             <p class="proxima" id="proxima">

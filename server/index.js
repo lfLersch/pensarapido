@@ -48,7 +48,15 @@ function criarSala(config) {
     codigo = gerarCodigo();
   } while (salas.has(codigo));
 
-  const sala = new Sala(codigo, config, (evento, dados) => io.to(codigo).emit(evento, dados));
+  const sala = new Sala(
+    codigo,
+    config,
+    (evento, dados) => io.to(codigo).emit(evento, dados),
+    // Cada socket é dono de uma sala com o próprio id, então dá para falar com
+    // uma pessoa só — é assim que a pergunta do Presente Grego chega apenas a
+    // quem está leiloando.
+    (socketId, evento, dados) => io.to(socketId).emit(evento, dados)
+  );
   salas.set(codigo, sala);
   return sala;
 }
@@ -190,6 +198,26 @@ io.on('connection', (socket) => {
     if (typeof texto !== 'string') return responder(callback, { erro: 'Mensagem inválida.' });
 
     responder(callback, sala.palpitar(socket.id, texto));
+  });
+
+  // Presente Grego: o lance diz quantas respostas o PARCEIRO vai conseguir.
+  socket.on('sala:apostar', ({ aposta } = {}, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+
+    const valor = Number(aposta);
+    if (!Number.isInteger(valor) || valor < 1) {
+      return responder(callback, { erro: 'A aposta é um número inteiro a partir de 1.' });
+    }
+
+    responder(callback, sala.apostar(socket.id, valor));
+  });
+
+  socket.on('sala:duvidar', (_dados, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+
+    responder(callback, sala.duvidar(socket.id));
   });
 
   socket.on('sala:novoJogo', (_dados, callback) => {

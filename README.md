@@ -28,7 +28,7 @@ Todo jogador começa digitando um **nickname** e escolhendo entre:
 | Ajuste | Opções |
 | --- | --- |
 | Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, Cinema & TV, História, Ciência, Games, **Mainstream** |
-| Tipo de jogo | **Modo Tempo** ou **Escalada** (Sobrevivência e Equipes aparecem como *em breve*) |
+| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas) ou **Presente Grego** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
 
@@ -41,8 +41,26 @@ quantos por cento da palavra saíram errados:
 | Erro | O que acontece |
 | --- | --- |
 | **menos de 10%** | conta como **acerto** e pontua |
-| **de 10% a 20%** | mostra **"Quase!"** só para quem escreveu; a mensagem **não** vai ao chat |
+| **de 10% a 20%** | mostra **onde você errou** só para quem escreveu; a mensagem **não** vai ao chat |
 | **mais de 20%** | é conversa: vira **mensagem normal no chat global** |
+
+**O "quase" mostra onde foi o erro.** Em vez de um aviso genérico, volta a
+resposta com as letras que bateram no lugar e `_` onde faltou — quem digitou
+`cera` com `cara` na frente vê **`c_ra`**. A conta é o mesmo alinhamento de
+Levenshtein que já mede o erro, refeito de trás para frente para saber quais
+letras casaram (`mascaraDeAcerto`, em [`server/comparar.js`](server/comparar.js)).
+Espaço e pontuação passam direto: não é neles que alguém erra.
+
+A dica só aparece na faixa do "quase". Palpite longe continua indo para o
+chat sem devolver nada — senão bastaria digitar letras soltas para arrancar a
+resposta do servidor.
+
+**Item de lista é azul; resposta fechada é verde.** Quando a rodada pede
+vários itens (Escalada, Carrossel, Presente Grego), cada acerto parcial entra
+no chat no mesmo formato compacto do acerto, só que em azul. O verde fica
+reservado para quem fechou a resposta inteira — numa rodada de Escalada as
+duas coisas aparecem seguidas, e a cor é o que separa "lembrei mais um" de
+"acabei".
 
 Antes de comparar, o texto é normalizado: acentos, maiúsculas, pontuação e
 espaços são ignorados. `JAPÃO`, `japao` e `Japão` são a mesma coisa.
@@ -138,8 +156,70 @@ parcial conta, então ninguém sai de mãos vazias por ter parado a um item do f
    entram três vezes no bolo do sorteio e as demais uma vez — as fechadas
    continuam mais prováveis, sem tirar as outras do jogo.
 
-São **61 listas** e mais de 800 itens, cobrindo futebol, geografia, música,
-cinema, anime, games, ciência, história, esportes e cultura pop.
+São **212 listas escritas à mão** (mais de 5.800 itens) e outras **318 geradas**
+a partir delas — 530 no total. Cobrem futebol, geografia, música, cinema,
+séries, anime, games, ciência, história, mitologia, política, esportes e
+cultura pop.
+
+Entre as maiores: os **97 vencedores do Oscar de Melhor Filme** (a lista
+completa, de *Asas* a *Anora*), **172 atores** e **88 atrizes**
+internacionais, **141 artistas com Grammy**, **125 séries**, **119
+presidentes e líderes mundiais do século XXI**, **115 cantores sertanejos**
+(cada integrante de dupla vale sozinho), **106 personagens da mitologia
+grega**, **96 pilotos de Fórmula 1**, **86 artistas de funk**, **79 divas
+pop** e **72 ditadores da história**.
+
+### Presente Grego
+
+Joga-se **em duplas**, e a sala precisa de um número **par a partir de 4**. As
+duplas são sorteadas quando a partida começa e duram até o fim dela.
+
+Cada rodada tem dois papéis dentro da dupla, e eles **trocam a cada rodada**:
+
+- **🔨 quem leiloa** — vê a pergunta e aposta quantas respostas o parceiro faz;
+- **🎁 quem responde** — não vê nada até o leilão acabar.
+
+O enunciado sai do servidor **um a um, só para quem leiloa**. Não é a tela que
+esconde: a mensagem nem chega a quem vai responder, então não adianta abrir o
+inspetor. Durante o leilão o chat fica trancado para todo mundo — quem leiloa
+já leu a pergunta, e uma frase solta entregaria o assunto.
+
+**O leilão.** A palavra passa de dupla em dupla, **15s para cada uma**:
+
+- **cobrir** — apostar qualquer número **maior** que o lance na mesa (de 4 pode
+  ir para 5 ou direto para 11);
+- **duvidar** — encerrar o leilão e cobrar o último lance. Não dá para duvidar
+  antes do primeiro lance nem do próprio lance da dupla.
+
+Deixar o tempo acabar tem dois significados: **sem lance na mesa** o leilão abre
+no mínimo (quem começa é obrigado a apostar); **com lance na mesa** vale como
+*duvido*, porque ninguém cobriu.
+
+**A entrega.** Fechado o leilão, a pergunta abre para a mesa inteira, mas só
+**quem foi desafiado** escreve. A rodada dura `20s + 6s por resposta além da
+primeira`, com teto de 120s — o dobro do peso da Escalada, porque aqui é uma
+pessoa só digitando a lista sozinha. Errar não elimina: só queima relógio.
+
+**Pontuação: tudo ou nada.** O prêmio é `aposta × 2`, e vai inteiro para uma das
+duplas — as duas pessoas dela recebem:
+
+| O que aconteceu | Quem leva |
+| --- | --- |
+| Entregou as respostas prometidas | a dupla que **apostou** |
+| Faltou uma que seja | a dupla que **duvidou** |
+
+Parar a um item do combinado vale o mesmo que parar em zero. É isso que torna o
+lance alto tentador e perigoso na mesma medida: apostar 12 e não entregar dá 24
+pontos para quem duvidou.
+
+**As listas.** Só entram repertórios com **15 itens ou mais**, e o número some
+do enunciado — *"Cite {n} países da África"* vira *"Cite países da África"*,
+porque quantas respostas valem é justamente o que o leilão decide. Rodada de
+Presente Grego **não alimenta a dificuldade adaptativa**: responde uma pessoa
+só, contra um alvo que ela nem escolheu.
+
+Se alguém sai no meio e a rodada fica sem quem responder, ela é **cancelada**
+sem ninguém pontuar. Sem duas duplas inteiras, a partida termina.
 
 ### Durante a partida
 
@@ -199,6 +279,12 @@ public/
 lobby → categoria → pergunta → resultado → (categoria… ou fim)
                                               ↑             │
                                               └─────────────┘
+```
+
+O **Presente Grego** entra com um estado a mais entre a categoria e a pergunta:
+
+```
+lobby → categoria → leilao → pergunta → resultado → …
 ```
 
 O líder volta ao saguão pelo botão *Jogar de novo*, mantendo os jogadores.
@@ -387,7 +473,10 @@ npm test
 
 Cobre a régua de acerto/quase/chat (36 casos), a pontuação por atraso numa
 rodada com relógio controlado, o Modo Escalada da rodada 1 à 6 — incluindo a
-checagem de que nenhum item correto vaza para o chat — e a regra de nomes:
+checagem de que nenhum item correto vaza para o chat —, o Carrossel, o
+**Presente Grego** (formação das duplas, regras do lance, o segredo do
+enunciado, as duas pontas do "duvido" e o que acontece quando alguém sai no
+meio) e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim
 que "Silva", "Ronaldo", "Müller", "Costa" e "Martínez" saíram das variantes).

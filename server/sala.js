@@ -1,7 +1,7 @@
 'use strict';
 
 const { CATEGORIAS, QUESTOES } = require('./questions');
-const { avaliar, normalizar } = require('./comparar');
+const { avaliar, normalizar, mascaraDeAcerto } = require('./comparar');
 const { paraRodada, itemDe } = require('./escalada');
 const dificuldade = require('./dificuldade');
 
@@ -34,6 +34,34 @@ const RODADAS_POR_VOLTA = 2;
 const MAX_VOLTAS = 3;
 const BONUS_CARROSSEL = 5;   // para quem chega vivo ao fim da rodada
 const MS_ENTRE_VEZES = 900;  // respiro para a tela mostrar quem saiu
+
+// Presente Grego: joga-se em duplas. Um integrante ve a pergunta e leiloa
+// quantas respostas o PARCEIRO consegue dizer — e o parceiro so descobre a
+// pergunta quando o leilao acaba. Dai o nome: o lance e um presente
+// embrulhado que a outra metade da dupla tem que desembrulhar.
+const MS_POR_LANCE = 15000;      // tempo de cada dupla para cobrir ou duvidar
+const MS_ENTRE_LANCES = 700;     // respiro entre um lance e o proximo
+const MS_APOS_LEILAO = 3200;     // tela do "duvido" antes da pergunta aparecer
+// A lista precisa de repertorio: com lista curta o lance esbarra no tamanho
+// dela e a rodada vira conta de padaria em vez de conhecimento.
+const MIN_ITENS_PRESENTE = 15;
+const MAX_APOSTA = 60;           // teto so para barrar lance de brincadeira
+const PONTOS_POR_APOSTA = 2;     // cada item apostado vale isto para a dupla
+// Aqui uma pessoa so digita a lista inteira, entao cada resposta pedida pesa
+// mais que na Escalada, onde todo mundo responde em paralelo.
+const MS_POR_ITEM_PRESENTE = 6000;
+const MS_TETO_PRESENTE = 120000;
+const MIN_JOGADORES_DUPLA = 4;   // duas duplas
+
+// Uma cara para cada dupla: com o teto de 12 jogadores dao 6 duplas.
+const DUPLAS_VISUAL = [
+  { icone: '🟣', cor: '#a78bfa' },
+  { icone: '🟠', cor: '#fb923c' },
+  { icone: '🟢', cor: '#34d399' },
+  { icone: '🔵', cor: '#60a5fa' },
+  { icone: '🔴', cor: '#f87171' },
+  { icone: '🟡', cor: '#fbbf24' }
+];
 
 const MAX_JOGADORES = 12;
 const MAX_TEXTO = 120;       // tamanho máximo de uma mensagem
@@ -76,6 +104,14 @@ const MODOS = [
     icone: '🙈',
     descricao: 'O mesmo carrossel, mas sem a lista do que ja foi dito: quem repetir uma resposta que ja saiu esta fora.',
     disponivel: true
+  },
+  {
+    id: 'presente-grego',
+    nome: 'Presente Grego',
+    icone: '🎁',
+    descricao: 'Em duplas. Um de cada dupla ve a pergunta e leiloa quantas respostas o PARCEIRO consegue dizer — e o parceiro so descobre a pergunta no fim. O lance sobe ate alguem duvidar; se a aposta nao sair, quem duvidou leva os pontos.',
+    disponivel: true,
+    duplas: true
   },
   {
     id: 'equipes',
@@ -149,14 +185,18 @@ class Sala {
    * @param {string} codigo
    * @param {{categorias:string[], modo:string, metaPontos:number, segundosPorPergunta:number}} config
    * @param {(evento:string, dados:any)=>void} emitir  publica um evento na sala
+   * @param {(socketId:string, evento:string, dados:any)=>void} [emitirPara]
+   *        fala com uma pessoa so. No Presente Grego a pergunta vai por aqui:
+   *        quem esta no leilao ve, quem vai responder nao.
    */
-  constructor(codigo, config, emitir) {
+  constructor(codigo, config, emitir, emitirPara) {
     this.codigo = codigo;
     this.config = config;
     this.emitir = emitir;
+    this.emitirPara = emitirPara || (() => {});
 
     this.jogadores = new Map(); // socketId -> jogador
-    this.estado = 'lobby';      // lobby | categoria | pergunta | resultado | fim
+    this.estado = 'lobby';      // lobby | categoria | leilao | pergunta | resultado | fim
     this.criadaEm = Date.now();
 
     this.rodada = 0;
@@ -185,6 +225,10 @@ class Sala {
     this.voltasAlvo = 1;
     this.voltasFeitas = 0;
     this.inicioVez = 0;
+
+    // Presente Grego: as duplas duram a partida inteira; o leilão, uma rodada.
+    this.duplas = [];
+    this.leilao = null;
 
     this.temporizador = null;
     this.temporizadorVez = null; // o relógio dos 7s corre à parte do da rodada
@@ -245,6 +289,8 @@ class Sala {
       if (this.estado === 'pergunta' && eraAVez) this.avancarVez();
     }
 
+    if (this.ehPresenteGrego() && this.duplas.length) this.desfazerDupla(socketId);
+
     // Só faltava quem saiu para fechar a rodada.
     if (this.estado === 'pergunta' && this.todosAcertaram()) {
       this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
@@ -303,6 +349,14 @@ class Sala {
     if (this.jogadores.size < 1) {
       return { erro: 'E preciso pelo menos um jogador.' };
     }
+    if (this.ehPresenteGrego()) {
+      if (this.jogadores.size < MIN_JOGADORES_DUPLA) {
+        return { erro: `O Presente Grego precisa de ${MIN_JOGADORES_DUPLA} jogadores: sao duas duplas no minimo.` };
+      }
+      if (this.jogadores.size % 2 !== 0) {
+        return { erro: 'O Presente Grego e jogado em duplas: o numero de jogadores tem que ser par.' };
+      }
+    }
 
     for (const jogador of this.jogadores.values()) {
       jogador.pontos = 0;
@@ -313,9 +367,89 @@ class Sala {
     this.fila = [];
     this.respostasUsadas.clear();
     this.listasUsadas.clear();
+    if (this.ehPresenteGrego()) this.formarDuplas();
     this.montarFila();
     this.proximaRodada();
     return { ok: true };
+  }
+
+  /* ------------------------- Duplas (Presente Grego) ------------------------ */
+
+  ehPresenteGrego() {
+    return this.config.modo === 'presente-grego';
+  }
+
+  /** Sorteia as duplas da partida. Elas duram até o fim do jogo. */
+  formarDuplas() {
+    const ids = embaralhar([...this.jogadores.keys()]);
+    this.duplas = [];
+
+    for (let i = 0; i + 1 < ids.length; i += 2) {
+      const n = this.duplas.length;
+      this.duplas.push({
+        id: `d${n + 1}`,
+        nome: `Dupla ${n + 1}`,
+        ...DUPLAS_VISUAL[n % DUPLAS_VISUAL.length],
+        // Quem abre leiloando é sorteado aqui; daí em diante os papéis
+        // alternam a cada rodada. Sorteio puro rodada a rodada deixaria
+        // alguém a partida inteira sem nunca responder.
+        giro: Math.floor(Math.random() * 2),
+        jogadores: [ids[i], ids[i + 1]]
+      });
+    }
+  }
+
+  duplaPorId(id) {
+    return this.duplas.find((d) => d.id === id) || null;
+  }
+
+  duplaDe(socketId) {
+    return this.duplas.find((d) => d.jogadores.includes(socketId)) || null;
+  }
+
+  /** Só dupla inteira entra no leilão: com um integrante só não há a quem apostar. */
+  duplasAtivas() {
+    return this.duplas.filter(
+      (d) => d.jogadores.length === 2 && d.jogadores.every((id) => this.jogadores.has(id))
+    );
+  }
+
+  /** Quem leiloa nesta rodada por esta dupla. O papel troca a cada rodada. */
+  leiloeiroDe(dupla) {
+    if (!dupla || dupla.jogadores.length < 2) return null;
+    return dupla.jogadores[(this.rodada - 1 + dupla.giro) % 2];
+  }
+
+  /** O outro: quem vai receber o presente sem saber o que tem dentro. */
+  respondedorDe(dupla) {
+    const leiloeiro = this.leiloeiroDe(dupla);
+    if (!leiloeiro) return null;
+    return dupla.jogadores.find((id) => id !== leiloeiro) || null;
+  }
+
+  /**
+   * Alguém saiu no meio da partida: a dupla dele fica capenga e sai do leilão.
+   * Se a rodada dependia dessa pessoa, ela não tem como terminar.
+   */
+  desfazerDupla(socketId) {
+    const dupla = this.duplaDe(socketId);
+    if (!dupla) return;
+
+    const eraDaVez = this.estado === 'leilao'
+      && this.leilao
+      && this.leilao.duplas[this.leilao.vez] === dupla.id;
+    const tinhaOMaiorLance = this.leilao && this.leilao.duplaAposta === dupla.id;
+
+    dupla.jogadores = dupla.jogadores.filter((id) => id !== socketId);
+
+    // Quem ia entregar o presente sumiu: a rodada não tem como terminar.
+    if (this.leilao && this.leilao.respondedor === socketId) {
+      return this.cancelarRodada('quem tinha sido desafiado saiu da sala');
+    }
+    if (!this.leilaoAberto()) return;
+    // Sem a dupla do maior lance não há presente para entregar.
+    if (tinhaOMaiorLance) return this.cancelarRodada('a dupla do maior lance se desfez');
+    if (eraDaVez) this.avancarLance();
   }
 
   /** Junta as perguntas das categorias escolhidas e embaralha. */
@@ -488,6 +622,24 @@ class Sala {
     return pergunta;
   }
 
+  /**
+   * Presente Grego: uma lista grande e sem número no enunciado.
+   *
+   * Quantas respostas a rodada pede é justamente o que o leilão decide, então
+   * "Cite 15 paises da Africa" vira "Cite paises da Africa".
+   */
+  perguntaPresente() {
+    const semFixas = (lista) => !lista.fixo;
+    let candidatas = paraRodada(MIN_ITENS_PRESENTE, this.ultimoTema).filter(semFixas);
+    if (candidatas.length === 0) candidatas = paraRodada(MIN_ITENS_PRESENTE).filter(semFixas);
+    if (candidatas.length === 0) return this.perguntaSimples();
+
+    const pergunta = this.montarListaEscalada(candidatas, MIN_ITENS_PRESENTE);
+    pergunta.pergunta = pergunta.pergunta.replace(/^Cite \d+ /, 'Cite ');
+    pergunta.categoria = { id: 'presente-grego', nome: 'Leilao', icone: '🎁', cor: '#f59e0b' };
+    return pergunta;
+  }
+
   /** Monta a fila de vezes do carrossel para a rodada que vai começar. */
   prepararCarrossel() {
     const ids = [...this.jogadores.keys()];
@@ -502,9 +654,18 @@ class Sala {
   }
 
   proximaRodada() {
+    // Presente Grego sem duas duplas inteiras não tem leilão possível.
+    if (this.ehPresenteGrego() && this.duplasAtivas().length < 2) {
+      this.avisar('Nao sobraram duas duplas completas. Fim de jogo.', true);
+      return this.terminar();
+    }
+
     this.rodada += 1;
 
-    if (this.ehCarrossel()) {
+    if (this.ehPresenteGrego()) {
+      this.perguntaAtual = this.perguntaPresente();
+      this.prepararLeilao();
+    } else if (this.ehCarrossel()) {
       this.perguntaAtual = this.perguntaCarrossel(this.rodada);
       this.prepararCarrossel();
     } else if (this.config.modo === 'escalada') {
@@ -536,10 +697,20 @@ class Sala {
   duracaoDaRodada() {
     const base = this.config.segundosPorPergunta * 1000;
     const extras = Math.max(0, (this.perguntaAtual.necessarias || 1) - 1);
+
+    // No Presente Grego é uma pessoa só digitando a lista inteira, sem ajuda
+    // de ninguém: cada resposta pedida vale mais tempo que na Escalada.
+    if (this.ehPresenteGrego()) {
+      return Math.min(base + extras * MS_POR_ITEM_PRESENTE, MS_TETO_PRESENTE);
+    }
     return Math.min(base + extras * MS_POR_RESPOSTA_EXTRA, MS_TETO_RODADA);
   }
 
   mostrarPergunta() {
+    // No Presente Grego a pergunta não abre a rodada: primeiro vem o leilão, e
+    // só quem leiloa enxerga o enunciado.
+    if (this.ehPresenteGrego() && this.estado === 'categoria') return this.iniciarLeilao();
+
     this.estado = 'pergunta';
     this.inicioPergunta = Date.now();
     this.jogadoresNaRodada = this.jogadores.size;
@@ -563,12 +734,258 @@ class Sala {
       duracaoMs: this.ehCarrossel() ? null : duracaoMs,
       carrossel: this.ehCarrossel()
         ? { voltas: this.voltasAlvo, msPorVez: MS_POR_VEZ, ordem: this.ordem, visivel: this.mostraDitos() }
+        : null,
+      // Presente Grego: agora a pergunta é pública, mas só uma pessoa responde
+      // — e a mesa inteira sabe quanto ela prometeu entregar.
+      presente: this.ehPresenteGrego() && this.leilao
+        ? {
+            aposta: this.leilao.aposta,
+            respondedor: this.leilao.respondedor,
+            duplaAposta: this.leilao.duplaAposta,
+            duplaDuvidou: this.leilao.duplaDuvidou
+          }
         : null
     });
 
     // No carrossel não há relógio único de rodada: o tempo é de cada vez.
     if (this.ehCarrossel()) this.iniciarVez();
     else this.agendar(() => this.encerrarRodada(), duracaoMs);
+  }
+
+  /* ---------------------- Leilão (Presente Grego) ---------------------- */
+
+  /** Zera o leilão da rodada e decide qual dupla abre. */
+  prepararLeilao() {
+    const ativas = this.duplasAtivas();
+    // Abrir o leilão é desvantagem — o primeiro lance é o mais barato de
+    // cobrir —, então a vez de começar gira a cada rodada.
+    const giro = (this.rodada - 1) % Math.max(1, ativas.length);
+    const ordem = ativas.slice(giro).concat(ativas.slice(0, giro));
+
+    this.leilao = {
+      duplas: ordem.map((d) => d.id),
+      vez: 0,
+      aposta: 0,            // maior lance na mesa
+      duplaAposta: null,    // de quem é esse lance
+      quemApostou: null,
+      duplaDuvidou: null,   // quem chamou o blefe
+      quemDuvidou: null,
+      respondedor: null,    // quem vai ter que entregar
+      // O "duvido" fecha o leilão na hora, mas a pergunta só abre alguns
+      // segundos depois. Sem esta trava, um lance atrasado entrava nessa
+      // brecha e trocava quem tinha sido desafiado.
+      fechado: false,
+      historico: [],
+      conseguiu: false,
+      ditas: 0,
+      premio: 0
+    };
+  }
+
+  /** Abre o leilão: a pergunta vai só para quem vai leiloar. */
+  iniciarLeilao() {
+    this.estado = 'leilao';
+
+    this.emitir('leilao:comeco', {
+      rodada: this.rodada,
+      msPorLance: MS_POR_LANCE,
+      maxAposta: MAX_APOSTA,
+      pontosPorAposta: PONTOS_POR_APOSTA,
+      duplas: this.leilao.duplas.map((id) => this.duplaPublica(this.duplaPorId(id)))
+    });
+
+    // O enunciado sai daqui um por um, e não pelo evento da sala: se fosse
+    // junto, quem vai responder leria a pergunta antes de o leilão acabar.
+    for (const id of this.leilao.duplas) {
+      const leiloeiro = this.leiloeiroDe(this.duplaPorId(id));
+      if (leiloeiro) {
+        this.emitirPara(leiloeiro, 'leilao:pergunta', { pergunta: this.perguntaAtual.pergunta });
+      }
+    }
+
+    this.avisar('Leilao aberto! Quem esta leiloando ja viu a pergunta.');
+    this.abrirLance();
+  }
+
+  /** Retrato de uma dupla para a tela, com os papéis desta rodada. */
+  duplaPublica(dupla) {
+    if (!dupla) return null;
+    const cracha = (id) => {
+      const j = this.jogadores.get(id);
+      return j ? { id: j.id, nickname: j.nickname, avatar: j.avatar } : null;
+    };
+    return {
+      id: dupla.id,
+      nome: dupla.nome,
+      icone: dupla.icone,
+      cor: dupla.cor,
+      leiloeiro: cracha(this.leiloeiroDe(dupla)),
+      respondedor: cracha(this.respondedorDe(dupla))
+    };
+  }
+
+  /**
+   * O leilão ainda aceita lance?
+   *
+   * Entre o "duvido" e a pergunta aparecer passam alguns segundos de tela, e
+   * nessa janela a sala continua no estado `leilao` — mas o leilão acabou.
+   */
+  leilaoAberto() {
+    return this.estado === 'leilao' && Boolean(this.leilao) && !this.leilao.fechado;
+  }
+
+  /** Passa a palavra para a dupla da vez e liga o relógio do lance. */
+  abrirLance() {
+    if (!this.leilaoAberto()) return;
+
+    const dupla = this.duplaPorId(this.leilao.duplas[this.leilao.vez]);
+    const quem = this.leiloeiroDe(dupla);
+    if (!dupla || !quem) return this.cancelarRodada('uma dupla se desfez no meio do leilao');
+
+    this.emitir('leilao:vez', {
+      duplaId: dupla.id,
+      jogadorId: quem,
+      aposta: this.leilao.aposta,
+      minimo: this.leilao.aposta + 1,
+      // Ninguém duvida do nada, nem do próprio lance.
+      podeDuvidar: this.leilao.aposta > 0 && this.leilao.duplaAposta !== dupla.id,
+      msPorLance: MS_POR_LANCE
+    });
+
+    clearTimeout(this.temporizadorVez);
+    this.temporizadorVez = setTimeout(() => this.lanceNoTempo(dupla.id), MS_POR_LANCE);
+  }
+
+  /** O relógio do lance zerou sem ninguém dizer nada. */
+  lanceNoTempo(duplaId) {
+    if (!this.leilaoAberto()) return;
+    const dupla = this.duplaPorId(duplaId);
+    const quem = this.leiloeiroDe(dupla);
+    if (!quem) return this.cancelarRodada('uma dupla se desfez no meio do leilao');
+
+    if (this.leilao.aposta > 0 && this.leilao.duplaAposta !== duplaId) {
+      this.avisar('Tempo! Ninguem cobriu o lance.');
+      return this.fecharLeilao(quem, duplaId);
+    }
+
+    // Quem abre é obrigado a apostar: sem lance na mesa não há o que duvidar.
+    this.avisar('Tempo! O leilao abriu no lance minimo.');
+    this.registrarLance(quem, duplaId, this.leilao.aposta + 1);
+  }
+
+  /**
+   * Um lance novo: a aposta é de quantas respostas o PARCEIRO consegue dizer.
+   * Vale qualquer número, desde que maior que o lance que estava na mesa.
+   */
+  apostar(socketId, valor) {
+    if (!this.leilaoAberto()) return { erro: 'O leilao nao esta aberto.' };
+
+    const dupla = this.duplaPorId(this.leilao.duplas[this.leilao.vez]);
+    if (!dupla || this.leiloeiroDe(dupla) !== socketId) return { erro: 'Nao e a sua vez no leilao.' };
+
+    const aposta = Number(valor);
+    if (!Number.isInteger(aposta)) return { erro: 'A aposta e um numero inteiro.' };
+    if (aposta <= this.leilao.aposta) {
+      return { erro: `A aposta precisa ser maior que ${this.leilao.aposta}.` };
+    }
+    if (aposta > MAX_APOSTA) return { erro: `O teto do leilao e ${MAX_APOSTA}.` };
+
+    this.registrarLance(socketId, dupla.id, aposta);
+    return { ok: true, aposta };
+  }
+
+  registrarLance(socketId, duplaId, aposta) {
+    clearTimeout(this.temporizadorVez);
+
+    this.leilao.aposta = aposta;
+    this.leilao.duplaAposta = duplaId;
+    this.leilao.quemApostou = socketId;
+    this.leilao.historico.push({ duplaId, jogadorId: socketId, aposta });
+
+    const jogador = this.jogadores.get(socketId);
+    const dupla = this.duplaPorId(duplaId);
+    const parceiro = this.jogadores.get(this.respondedorDe(dupla));
+
+    this.emitir('leilao:lance', {
+      duplaId,
+      jogadorId: socketId,
+      nickname: jogador ? jogador.nickname : '',
+      aposta,
+      historico: this.leilao.historico
+    });
+    this.avisar(`${jogador ? jogador.nickname : 'Alguem'} apostou que ${
+      parceiro ? parceiro.nickname : 'o parceiro'} diz ${aposta}.`);
+
+    this.avancarLance();
+  }
+
+  /** "Duvido": encerra o leilão e cobra o último lance. */
+  duvidar(socketId) {
+    if (!this.leilaoAberto()) return { erro: 'O leilao nao esta aberto.' };
+
+    const dupla = this.duplaPorId(this.leilao.duplas[this.leilao.vez]);
+    if (!dupla || this.leiloeiroDe(dupla) !== socketId) return { erro: 'Nao e a sua vez no leilao.' };
+    if (this.leilao.aposta <= 0) return { erro: 'Ainda nao ha lance para duvidar. Abra o leilao.' };
+    if (this.leilao.duplaAposta === dupla.id) return { erro: 'Voce nao duvida do proprio lance.' };
+
+    this.fecharLeilao(socketId, dupla.id);
+    return { ok: true };
+  }
+
+  /** Passa a palavra para a próxima dupla que ainda esteja inteira. */
+  avancarLance() {
+    clearTimeout(this.temporizadorVez);
+    if (!this.leilaoAberto()) return;
+
+    for (let passo = 0; passo < this.leilao.duplas.length; passo++) {
+      this.leilao.vez = (this.leilao.vez + 1) % this.leilao.duplas.length;
+      if (this.leiloeiroDe(this.duplaPorId(this.leilao.duplas[this.leilao.vez]))) {
+        this.agendar(() => this.abrirLance(), MS_ENTRE_LANCES);
+        return;
+      }
+    }
+
+    this.cancelarRodada('as duplas se desfizeram no meio do leilao');
+  }
+
+  /**
+   * Fecha o leilão. Quem fez o último lance entrega o presente: o parceiro
+   * dele é quem vai ter que dizer as respostas prometidas.
+   */
+  fecharLeilao(quemDuvidou, duplaDuvidou) {
+    this.limparTemporizador();
+    this.leilao.fechado = true;
+
+    const desafiada = this.duplaPorId(this.leilao.duplaAposta);
+    const respondedor = this.respondedorDe(desafiada);
+    if (!respondedor) return this.cancelarRodada('a dupla do maior lance se desfez');
+
+    this.leilao.quemDuvidou = quemDuvidou;
+    this.leilao.duplaDuvidou = duplaDuvidou;
+    this.leilao.respondedor = respondedor;
+    // A rodada passa a pedir exatamente o que foi prometido.
+    this.perguntaAtual.necessarias = this.leilao.aposta;
+
+    const duvidoso = this.jogadores.get(quemDuvidou);
+    const vitima = this.jogadores.get(respondedor);
+
+    this.emitir('leilao:fim', {
+      aposta: this.leilao.aposta,
+      duplaAposta: this.leilao.duplaAposta,
+      duplaDuvidou,
+      quemDuvidou,
+      nicknameDuvidou: duvidoso ? duvidoso.nickname : '',
+      respondedor,
+      nicknameRespondedor: vitima ? vitima.nickname : '',
+      duracaoMs: MS_APOS_LEILAO
+    });
+    this.avisar(`${duvidoso ? duvidoso.nickname : 'Alguem'} duvidou! ${
+      vitima ? vitima.nickname : 'O parceiro'} tem que dizer ${this.leilao.aposta}.`, true);
+
+    // Agora a pergunta pode ser pública: a mesa inteira assiste à entrega.
+    // O desvio do `mostrarPergunta` só vale saindo da tela de categoria, então
+    // aqui ele segue o caminho normal.
+    this.agendar(() => this.mostrarPergunta(), MS_APOS_LEILAO);
   }
 
   ehCarrossel() {
@@ -682,11 +1099,26 @@ class Sala {
     }
     jogador.ultimaMensagem = agora;
 
+    // Presente Grego: durante o leilão o chat fica fechado para todo mundo.
+    // Quem está leiloando já leu a pergunta, e uma frase solta entregaria o
+    // assunto para quem vai ter que responder.
+    if (this.estado === 'leilao') {
+      return { erro: 'O leilao esta rolando. O chat volta quando ele acabar.' };
+    }
+
     // Fora de rodada (saguão, resultado, fim) é chat puro.
     const rodadaViva = this.perguntaAtual && (this.estado === 'pergunta' || this.estado === 'categoria');
     if (!rodadaViva) {
       this.publicarChat(jogador, limpo);
       return { veredito: 'chat' };
+    }
+
+    // Presente Grego: quem responde é só quem foi desafiado. Se os outros
+    // pudessem escrever, o parceiro soprava a lista inteira.
+    if (this.ehPresenteGrego() && this.estado === 'pergunta') {
+      if (!this.leilao || socketId !== this.leilao.respondedor) {
+        return { erro: 'So quem foi desafiado responde esta rodada.' };
+      }
     }
 
     // Carrossel: enquanto a pergunta está no ar, só quem está na vez escreve.
@@ -711,6 +1143,9 @@ class Sala {
     let novoItem = -1;
     let repetido = -1;
     let perto = false;
+    // Do "quase" mais perto sai a dica: a grafia que a pessoa quase acertou.
+    let quaseAlvo = null;
+    let quaseErro = Infinity;
 
     // Varre a lista toda de propósito, sem parar no primeiro item livre: se o
     // palpite também bate num item que a pessoa já tem, vale como repetido.
@@ -725,6 +1160,10 @@ class Sala {
         else if (novoItem < 0) novoItem = i;
       } else if (r.veredito === 'quase') {
         perto = true;
+        if (r.erro < quaseErro) {
+          quaseErro = r.erro;
+          quaseAlvo = r.alvo;
+        }
       }
     }
     if (repetido >= 0) novoItem = -1;
@@ -734,12 +1173,24 @@ class Sala {
     // sobra tempo dos 7s para tentar de novo.
     if (this.ehCarrossel() && this.estado === 'pergunta') {
       if (novoItem >= 0) return this.acertoNoCarrossel(socketId, jogador, novoItem);
-      if (perto) return { veredito: 'quase' };
+      if (perto) return { veredito: 'quase', dica: mascaraDeAcerto(limpo, quaseAlvo) };
 
       const item = repetido >= 0 ? this.perguntaAtual.itens[repetido].oficial : null;
       this.publicarChat(jogador, limpo);
       this.eliminar(socketId, 'errou');
       return { veredito: 'eliminado', motivo: 'errou', repetido: item };
+    }
+
+    // Presente Grego: aqui errar não elimina — só queima o relógio, que já é o
+    // castigo. Cada acerto é público, porque a mesa inteira está torcendo.
+    if (this.ehPresenteGrego() && this.estado === 'pergunta') {
+      if (novoItem >= 0) return this.acertoNoPresente(socketId, jogador, novoItem);
+      if (perto) return { veredito: 'quase', dica: mascaraDeAcerto(limpo, quaseAlvo) };
+      if (repetido >= 0) {
+        return { veredito: 'repetido', item: this.perguntaAtual.itens[repetido].oficial };
+      }
+      this.publicarChat(jogador, limpo);
+      return { veredito: 'chat' };
     }
 
     // Longe de tudo: é conversa, vai para todo mundo.
@@ -758,9 +1209,11 @@ class Sala {
       return { veredito: 'repetido', item: this.perguntaAtual.itens[repetido].oficial };
     }
 
-    // De 10% a 20% de erro: aviso particular, sem ir para o chat.
+    // De 10% a 20% de erro: em vez de um "quase" seco, devolve o que ja bateu
+    // — "c_ra" para quem escreveu "cera" com "cara" na frente. A mensagem
+    // continua sendo so de quem escreveu.
     if (novoItem < 0) {
-      return { veredito: 'quase' };
+      return { veredito: 'quase', dica: mascaraDeAcerto(limpo, quaseAlvo) };
     }
 
     /* --- acertou um item --- */
@@ -872,6 +1325,40 @@ class Sala {
     return { veredito: 'item', item: nomeItem, pontos: PONTOS_POR_ITEM };
   }
 
+  /**
+   * Presente Grego: um item entregue. Ainda não vale ponto nenhum — no fim é
+   * tudo ou nada, e quem leva é a dupla que apostou ou a que duvidou.
+   */
+  acertoNoPresente(socketId, jogador, indice) {
+    const meus = this.progresso.get(socketId) || new Set();
+    meus.add(indice);
+    this.progresso.set(socketId, meus);
+    this.itensUsados.add(indice);
+
+    const nomeItem = this.perguntaAtual.itens[indice].oficial;
+    const aposta = this.leilao.aposta;
+
+    this.emitir('chat:mensagem', {
+      tipo: 'acerto',
+      jogadorId: socketId,
+      nickname: jogador.nickname,
+      avatar: jogador.avatar,
+      pontos: 0,
+      texto: nomeItem
+    });
+    this.emitir('presente:progresso', {
+      jogadorId: socketId,
+      item: nomeItem,
+      quantos: meus.size,
+      aposta
+    });
+
+    // Entregou o prometido: não faz sentido segurar o resto do relógio.
+    if (meus.size >= aposta) this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
+
+    return { veredito: 'item', item: nomeItem, quantos: meus.size, necessarias: aposta };
+  }
+
   publicarChat(jogador, texto) {
     this.emitir('chat:mensagem', {
       tipo: 'jogador',
@@ -891,9 +1378,96 @@ class Sala {
     return this.jogadores.size > 0 && this.acertos.size >= this.jogadores.size;
   }
 
+  /**
+   * Fecha a conta do Presente Grego: é tudo ou nada.
+   *
+   * Entregou o que foi prometido, a dupla que apostou leva; faltou um item que
+   * seja, quem duvidou leva. Nos dois casos o prêmio é o tamanho da aposta —
+   * por isso o lance alto é tentador e perigoso na mesma medida.
+   */
+  pagarPresente() {
+    const leilao = this.leilao;
+    if (!leilao || !leilao.respondedor) return;
+
+    leilao.ditas = (this.progresso.get(leilao.respondedor) || new Set()).size;
+    leilao.conseguiu = leilao.ditas >= leilao.aposta;
+    leilao.premio = leilao.aposta * PONTOS_POR_APOSTA;
+
+    const vencedora = this.duplaPorId(leilao.conseguiu ? leilao.duplaAposta : leilao.duplaDuvidou);
+    if (!vencedora) return;
+
+    for (const id of vencedora.jogadores) {
+      const jogador = this.jogadores.get(id);
+      if (!jogador) continue;
+      jogador.pontos += leilao.premio;
+      this.pontosRodada.set(id, (this.pontosRodada.get(id) || 0) + leilao.premio);
+      this.acertos.set(id, { ms: null, pontos: leilao.premio, posicao: null, bonus: 0 });
+    }
+
+    const entregador = this.jogadores.get(leilao.respondedor);
+    if (entregador && leilao.conseguiu) entregador.acertos += 1;
+  }
+
+  /** O que esta pessoa fez na rodada do Presente Grego, para o resultado. */
+  papelNoPresente(socketId) {
+    if (!this.ehPresenteGrego() || !this.leilao) return null;
+    if (this.leilao.respondedor === socketId) return 'respondeu';
+    if (this.leilao.quemApostou === socketId) return 'apostou';
+    if (this.leilao.quemDuvidou === socketId) return 'duvidou';
+    return null;
+  }
+
+  /** Como o leilão terminou, para a tela de resultado. */
+  resumoDoPresente() {
+    const l = this.leilao;
+    if (!l) return null;
+    return {
+      aposta: l.aposta,
+      ditas: l.ditas,
+      premio: l.premio,
+      conseguiu: l.conseguiu,
+      respondedor: l.respondedor,
+      duplaAposta: l.duplaAposta,
+      duplaDuvidou: l.duplaDuvidou,
+      duplaVencedora: l.conseguiu ? l.duplaAposta : l.duplaDuvidou,
+      historico: l.historico,
+      duplas: this.duplas.map((d) => ({ id: d.id, nome: d.nome, icone: d.icone, cor: d.cor }))
+    };
+  }
+
+  /**
+   * Rodada que não tem como continuar (alguém saiu no meio do leilão, uma
+   * dupla se desfez). Ninguém pontua e a partida segue na rodada seguinte.
+   */
+  cancelarRodada(motivo) {
+    if (this.estado !== 'leilao' && this.estado !== 'pergunta') return;
+    this.limparTemporizador();
+    this.estado = 'resultado';
+
+    this.avisar(`Rodada cancelada: ${motivo}.`, true);
+    this.emitir('rodada:resultado', {
+      rodada: this.rodada,
+      titulo: 'Rodada cancelada',
+      resposta: motivo,
+      listaCompleta: [],
+      listaParcial: false,
+      necessarias: 0,
+      aceita: [],
+      dificuldade: { valor: 0, nivel: 'sem conta', cor: '#6f6791' },
+      detalhes: [],
+      placar: this.placar(),
+      duracaoMs: MS_RESULTADO,
+      acabou: false
+    });
+
+    this.agendar(() => this.proximaRodada(), MS_RESULTADO);
+  }
+
   encerrarRodada() {
     if (this.estado !== 'pergunta') return;
     this.limparTemporizador();
+
+    if (this.ehPresenteGrego()) this.pagarPresente();
 
     // Carrossel: quem chegou vivo ao fim da rodada leva o bônus.
     if (this.ehCarrossel()) {
@@ -914,11 +1488,16 @@ class Sala {
     const participantes = Math.max(this.jogadoresNaRodada, this.acertos.size, 1);
 
     // A dificuldade sobe quando pouca gente acerta ou quando demoram muito.
-    const novaDificuldade = dificuldade.registrar(this.perguntaAtual.id, this.perguntaAtual.difBase, {
-      jogadores: participantes,
-      tempos,
-      duracaoMs: this.config.segundosPorPergunta * 1000
-    });
+    // No Presente Grego a rodada não mede a pergunta: responde uma pessoa só,
+    // contra um alvo que ela nem escolheu. Registrar isso sujaria a
+    // estatística da lista, então aqui a dificuldade é só lida.
+    const novaDificuldade = this.ehPresenteGrego()
+      ? dificuldade.dificuldadeDe(this.perguntaAtual.id, this.perguntaAtual.difBase)
+      : dificuldade.registrar(this.perguntaAtual.id, this.perguntaAtual.difBase, {
+          jogadores: participantes,
+          tempos,
+          duracaoMs: this.config.segundosPorPergunta * 1000
+        });
 
     const pergunta = this.perguntaAtual;
 
@@ -939,7 +1518,10 @@ class Sala {
         itens: [...meus].map((i) => pergunta.itens[i].oficial),
         necessarias: pergunta.necessarias,
         // Carrossel: quem sobreviveu à rodada e quem caiu no caminho.
-        eliminado: this.ehCarrossel() ? !this.vivos.has(jogador.id) : false
+        eliminado: this.ehCarrossel() ? !this.vivos.has(jogador.id) : false,
+        // Presente Grego: de que dupla é e o que fez nesta rodada.
+        dupla: this.ehPresenteGrego() ? (this.duplaDe(jogador.id) || {}).id || null : null,
+        papel: this.papelNoPresente(jogador.id)
       };
     });
 
@@ -952,7 +1534,19 @@ class Sala {
     let textoResposta;
     let listaCompleta = [];
 
-    if (this.ehCarrossel()) {
+    if (this.ehPresenteGrego()) {
+      const l = this.leilao;
+      const entregador = this.jogadores.get(l.respondedor);
+      const nome = entregador ? entregador.nickname : 'Quem foi desafiado';
+      const dono = this.duplaPorId(l.conseguiu ? l.duplaAposta : l.duplaDuvidou);
+      listaCompleta = embaralhar(
+        pergunta.itens.filter((_, i) => !this.itensUsados.has(i)).map((i) => i.oficial)
+      ).slice(0, 12);
+      const quantas = `${l.aposta} ${l.aposta === 1 ? 'resposta' : 'respostas'}`;
+      textoResposta = l.conseguiu
+        ? `${nome} entregou ${quantas} — a ${dono ? dono.nome : 'dupla'} leva ${l.premio} pts`
+        : `${nome} disse ${l.ditas} de ${l.aposta} — a ${dono ? dono.nome : 'dupla'} leva ${l.premio} pts por ter duvidado`;
+    } else if (this.ehCarrossel()) {
       const sobraram = [...this.vivos].map((id) => this.jogadores.get(id)).filter(Boolean);
       listaCompleta = embaralhar(
         pergunta.itens.filter((_, i) => !this.itensUsados.has(i)).map((i) => i.oficial)
@@ -971,11 +1565,17 @@ class Sala {
       textoResposta = `qualquer ${pergunta.necessarias} de ${pergunta.itens.length} possiveis`;
     }
 
-    this.avisar(`A resposta era: ${textoResposta}`, true);
+    this.avisar(this.ehPresenteGrego()
+      ? `Fim do leilao: ${textoResposta}`
+      : `A resposta era: ${textoResposta}`, true);
 
     this.emitir('rodada:resultado', {
       rodada: this.rodada,
+      // O Presente Grego não tem "a resposta certa": tem uma aposta que saiu
+      // ou não saiu.
+      titulo: this.ehPresenteGrego() ? 'Fim do leilao' : 'Resposta certa',
       resposta: textoResposta,
+      presente: this.ehPresenteGrego() ? this.resumoDoPresente() : null,
       listaCompleta,
       listaParcial: !pergunta.fixo && pergunta.necessarias > 1,
       necessarias: pergunta.necessarias,
@@ -1018,6 +1618,9 @@ class Sala {
     this.progresso = new Map();
     this.itensUsados = new Set();
     this.pontosRodada = new Map();
+    // As duplas são sorteadas de novo a cada partida.
+    this.duplas = [];
+    this.leilao = null;
     for (const jogador of this.jogadores.values()) {
       jogador.pontos = 0;
       jogador.acertos = 0;
@@ -1028,14 +1631,22 @@ class Sala {
 
   placar() {
     return [...this.jogadores.values()]
-      .map((j) => ({
-        id: j.id,
-        nickname: j.nickname,
-        avatar: j.avatar,
-        pontos: j.pontos,
-        acertos: j.acertos,
-        lider: j.lider
-      }))
+      .map((j) => {
+        const dupla = this.ehPresenteGrego() ? this.duplaDe(j.id) : null;
+        return {
+          id: j.id,
+          nickname: j.nickname,
+          avatar: j.avatar,
+          pontos: j.pontos,
+          acertos: j.acertos,
+          lider: j.lider,
+          // No Presente Grego os dois integrantes pontuam juntos, então o
+          // placar precisa dizer quem é de quem.
+          dupla: dupla ? dupla.id : null,
+          duplaNome: dupla ? dupla.nome : null,
+          duplaIcone: dupla ? dupla.icone : null
+        };
+      })
       .sort((a, b) => b.pontos - a.pontos || b.acertos - a.acertos || a.nickname.localeCompare(b.nickname));
   }
 
@@ -1046,6 +1657,9 @@ class Sala {
       config: this.config,
       rodada: this.rodada,
       jogadores: this.placar(),
+      duplas: this.duplas.map((d) => ({
+        id: d.id, nome: d.nome, icone: d.icone, cor: d.cor, jogadores: d.jogadores
+      })),
       avataresLivres: this.avataresLivres()
     };
   }

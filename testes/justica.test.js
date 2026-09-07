@@ -44,6 +44,8 @@ const conferir = (nome, obtido, esperado) => {
     ['paises da Oceania', 14],
     ['cidades do Brasil com mais de 1 milhao', 15],
     ['Jogos Olimpicos de Verao', 23],
+    // Vencedores do Oscar de Melhor Filme, de Asas (1929) a Anora (2025).
+    ['vencedores do Oscar de Melhor Filme', 97],
     ['Jogos Olimpicos de Inverno', 22]
   ];
 

@@ -26,6 +26,7 @@ const estado = {
   placar: [],       // ultimo placar recebido
   carrossel: null,  // Carrossel: { voltas, msPorVez, ordem } da rodada
   vivos: null,      // Carrossel: quem ainda nao saiu
+  presente: null,   // Presente Grego: { duplas, aposta, ... } da rodada
   contagem: null,
   urgencia: null,
 };
@@ -337,7 +338,8 @@ function atualizarResumo() {
     <span>${plural(total, 'categoria', 'categorias')}</span>
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
-    <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>`;
+    <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
+    ${modo && modo.duplas ? '<span>👥 <b>4, 6, 8…</b> jogadores</span>' : ''}`;
 
   $('btn-criar').disabled = total === 0;
 }
@@ -431,6 +433,17 @@ function renderizarSala() {
   const souLider = sala.jogadores.some((j) => j.id === estado.eu?.id && j.lider);
   $('btn-iniciar').hidden = !souLider;
   $('texto-espera').hidden = souLider;
+
+  // Presente Grego: nao adianta apertar iniciar com a sala impar — o servidor
+  // recusa. Melhor dizer isso antes.
+  const quantos = sala.jogadores.length;
+  const faltaFechar = Boolean(modo && modo.duplas) && (quantos < 4 || quantos % 2 !== 0);
+  const dica = $('dica-duplas');
+  dica.hidden = !faltaFechar;
+  dica.textContent = quantos < 4
+    ? `${modo ? modo.nome : 'Este modo'} e em duplas: faltam ${4 - quantos} para fechar duas duplas.`
+    : 'Falta uma pessoa para fechar a ultima dupla — o numero tem que ser par.';
+  $('btn-iniciar').disabled = faltaFechar;
 }
 
 /**
@@ -659,6 +672,7 @@ socket.on('rodada:pergunta', (dados) => {
   $('pergunta-categoria-nome').textContent = dados.categoria.nome;
 
   $('pergunta-texto').textContent = dados.pergunta;
+  $('pergunta-texto').classList.remove('pergunta__texto--segredo');
   $('mascara').textContent = dados.mascara || '';
 
   // Perguntas de música mostram o trecho da letra em destaque, uma linha
@@ -677,9 +691,10 @@ socket.on('rodada:pergunta', (dados) => {
   estado.necessarias = dados.necessarias || 1;
   estado.meusItens = [];
   const painel = $('escalada');
-  // No Carrossel o painel "suas respostas — so voce ve" nao cabe: ali cada
-  // acerto e publico, senao a pessoa seguinte repete o que ja saiu.
-  painel.hidden = estado.necessarias < 2 || Boolean(dados.carrossel);
+  // No Carrossel e no Presente Grego o painel "suas respostas — so voce ve"
+  // nao cabe: ali cada acerto e publico, senao a pessoa seguinte repete o que
+  // ja saiu (e no leilao a mesa inteira acompanha a entrega).
+  painel.hidden = estado.necessarias < 2 || Boolean(dados.carrossel) || Boolean(dados.presente);
   if (!painel.hidden) {
     $('escalada-itens').innerHTML = '';
     atualizarEscalada();
@@ -718,7 +733,12 @@ socket.on('rodada:pergunta', (dados) => {
     trancarChat('Espere a sua vez…');
   }
 
-  mensagemSistema(`Rodada ${dados.rodada} · ${dados.categoria.nome}`);
+  // Presente Grego: o leilao acabou, a pergunta abriu para a mesa inteira e
+  // agora so quem foi desafiado escreve.
+  if (dados.presente) abrirEntregaDoPresente(dados.presente);
+  else $('presente').hidden = true;
+
+  if (!dados.presente) mensagemSistema(`Rodada ${dados.rodada} · ${dados.categoria.nome}`);
 
   pararContagem();
   // No carrossel o relógio é de cada vez, não da rodada: quem conta é
@@ -812,6 +832,229 @@ socket.on('carrossel:eliminado', (dados) => {
     rotulo.classList.remove('minha');
     rotulo.textContent = 'Voce saiu desta rodada';
   }
+});
+
+/* ------------------------ Modo Presente Grego ------------------------ */
+
+/**
+ * Limpa os blocos que só aparecem em alguns modos.
+ *
+ * O leilão entra na tela do jogo sem passar pelo `rodada:pergunta`, então
+ * precisa apagar o que sobrou da rodada anterior por conta própria.
+ */
+function limparTabuleiro() {
+  $('resultado').hidden = true;
+  $('escalada').hidden = true;
+  $('carrossel').hidden = true;
+  $('letra').hidden = true;
+  $('pergunta-figura').hidden = true;
+  $('mascara').textContent = '';
+  $('status-respostas').textContent = '';
+  montarAudio(null);
+}
+
+socket.on('leilao:comeco', (dados) => {
+  revelacao.hidden = true;
+  jogo.hidden = false;
+  mostrarTela('tela-jogo');
+
+  estado.acertou = false;
+  estado.carrossel = null;
+  estado.presente = { duplas: dados.duplas, aposta: 0, duplaAposta: null, maxAposta: dados.maxAposta };
+
+  $('jogo-codigo').textContent = estado.sala?.codigo || '----';
+  $('jogo-rodada').textContent = dados.rodada;
+  $('jogo-meta').textContent = `${estado.sala?.config.metaPontos ?? '—'} pts`;
+
+  $('pergunta-categoria').style.setProperty('--cor-categoria', '#f59e0b');
+  $('pergunta-categoria-icone').textContent = '🎁';
+  $('pergunta-categoria-nome').textContent = 'Leilao';
+
+  limparTabuleiro();
+
+  // Quem vai responder não pode ler o enunciado: para essa pessoa a pergunta
+  // chega só no fim do leilão, pelo `rodada:pergunta`.
+  const souLeiloeiro = dados.duplas.some((d) => d.leiloeiro && d.leiloeiro.id === socket.id);
+  $('pergunta-texto').textContent = souLeiloeiro
+    ? 'Lendo a pergunta…'
+    : 'Seu parceiro esta leiloando por voce. Voce so ve a pergunta quando o leilao acabar.';
+  $('pergunta-texto').classList.toggle('pergunta__texto--segredo', !souLeiloeiro);
+
+  $('presente').hidden = false;
+  $('presente-entrega').hidden = true;
+  $('presente-forma').hidden = true;
+  $('presente-itens').innerHTML = '';
+  $('presente-fase').textContent = 'Leilao';
+  $('presente-lance').textContent = 'sem lance ainda';
+  desenharDuplas(null, null);
+
+  trancarChat('O leilao esta rolando…');
+  mensagemSistema(`Rodada ${dados.rodada} · leilao em duplas`);
+  pararContagem();
+});
+
+// Chega só para quem está leiloando.
+socket.on('leilao:pergunta', (dados) => {
+  $('pergunta-texto').textContent = dados.pergunta;
+  $('pergunta-texto').classList.remove('pergunta__texto--segredo');
+});
+
+/** Desenha as duplas com os papéis da rodada e quem está com a palavra. */
+function desenharDuplas(duplaDaVez, duplaDoLance) {
+  const lista = $('presente-duplas');
+  lista.innerHTML = '';
+  if (!estado.presente) return;
+
+  for (const dupla of estado.presente.duplas) {
+    const item = criar('li', 'presente__dupla');
+    item.dataset.id = dupla.id;
+    item.style.setProperty('--cor-dupla', dupla.cor);
+    if (dupla.id === duplaDaVez) item.classList.add('agora');
+    if (dupla.id === duplaDoLance) item.classList.add('topo');
+
+    const meu = [dupla.leiloeiro, dupla.respondedor].some((p) => p && p.id === estado.eu?.id);
+    if (meu) item.classList.add('minha');
+
+    const lance = estado.presente.lances?.[dupla.id];
+    item.innerHTML = `
+      <span class="presente__dupla-nome">${dupla.icone} ${escapar(dupla.nome)}</span>
+      <span class="presente__papel" title="leiloa esta rodada">🔨 ${
+        escapar(dupla.leiloeiro ? dupla.leiloeiro.nickname : '—')}</span>
+      <span class="presente__papel" title="responde esta rodada, sem ver a pergunta">🎁 ${
+        escapar(dupla.respondedor ? dupla.respondedor.nickname : '—')}</span>
+      ${lance ? `<span class="presente__valor">${lance}</span>` : ''}`;
+    lista.appendChild(item);
+  }
+}
+
+socket.on('leilao:vez', (dados) => {
+  if (!estado.presente) return;
+  estado.presente.aposta = dados.aposta;
+  estado.presente.vez = dados.jogadorId;
+
+  const dupla = estado.presente.duplas.find((d) => d.id === dados.duplaId);
+  const minha = dados.jogadorId === socket.id;
+
+  desenharDuplas(dados.duplaId, estado.presente.duplaAposta);
+
+  $('presente-lance').textContent = dados.aposta > 0
+    ? `lance na mesa: ${dados.aposta}`
+    : 'sem lance ainda';
+
+  const vez = $('presente-vez');
+  vez.classList.toggle('minha', minha);
+  vez.textContent = minha
+    ? 'Sua vez: quantas o seu parceiro consegue dizer?'
+    : `Vez de ${dupla && dupla.leiloeiro ? dupla.leiloeiro.nickname : '…'}`;
+
+  const forma = $('presente-forma');
+  forma.hidden = !minha;
+  if (minha) {
+    const campo = $('presente-input');
+    campo.min = String(dados.minimo);
+    campo.max = String(estado.presente.maxAposta || 60);
+    campo.value = String(dados.minimo);
+    $('presente-duvidar').disabled = !dados.podeDuvidar;
+    $('presente-duvidar').title = dados.podeDuvidar
+      ? `Duvido que a outra dupla faca ${dados.aposta}`
+      : 'So da para duvidar de um lance que ja esta na mesa';
+    if (!('ontouchstart' in window)) campo.focus();
+  }
+
+  pararContagem();
+  contarTempo(barraTempo, dados.msPorLance, true);
+});
+
+socket.on('leilao:lance', (dados) => {
+  if (!estado.presente) return;
+  estado.presente.aposta = dados.aposta;
+  estado.presente.duplaAposta = dados.duplaId;
+  estado.presente.lances = { [dados.duplaId]: dados.aposta };
+
+  $('presente-lance').textContent = `lance na mesa: ${dados.aposta}`;
+  $('presente-forma').hidden = true;
+  desenharDuplas(null, dados.duplaId);
+});
+
+socket.on('leilao:fim', (dados) => {
+  if (!estado.presente) return;
+  estado.presente.aposta = dados.aposta;
+  estado.presente.respondedor = dados.respondedor;
+
+  $('presente-forma').hidden = true;
+  $('presente-fase').textContent = 'Duvidaram!';
+  $('presente-lance').textContent = `aposta cobrada: ${dados.aposta}`;
+  desenharDuplas(dados.duplaDuvidou, dados.duplaAposta);
+
+  const vez = $('presente-vez');
+  const souEu = dados.respondedor === socket.id;
+  vez.classList.toggle('minha', souEu);
+  vez.textContent = souEu
+    ? `${dados.nicknameDuvidou} duvidou de voce! Prepare-se para dizer ${dados.aposta}.`
+    : `${dados.nicknameDuvidou} duvidou · ${dados.nicknameRespondedor} tem que dizer ${dados.aposta}`;
+
+  pararContagem();
+  contarTempo(barraTempo, dados.duracaoMs, true);
+});
+
+/** Depois do leilão a pergunta é pública e só o desafiado responde. */
+function abrirEntregaDoPresente(presente) {
+  if (!estado.presente) estado.presente = { duplas: [] };
+  estado.presente.aposta = presente.aposta;
+  estado.presente.respondedor = presente.respondedor;
+  estado.presente.entregues = [];
+
+  const souEu = presente.respondedor === socket.id;
+  const quem = (estado.placar || []).find((j) => j.id === presente.respondedor);
+
+  $('presente').hidden = false;
+  $('presente-forma').hidden = true;
+  $('presente-fase').textContent = 'Entrega';
+  $('presente-lance').textContent = `aposta de ${presente.aposta}`;
+  desenharDuplas(presente.duplaAposta, presente.duplaAposta);
+
+  const vez = $('presente-vez');
+  vez.classList.toggle('minha', souEu);
+  vez.textContent = souEu
+    ? `Voce prometeu ${presente.aposta}. Escreva no chat!`
+    : `${quem ? quem.nickname : 'A pessoa desafiada'} tem que dizer ${presente.aposta}`;
+
+  $('presente-entrega').hidden = false;
+  $('presente-itens').innerHTML = '';
+  $('presente-rotulo').textContent = souEu ? 'suas respostas' : `respostas de ${quem ? quem.nickname : '…'}`;
+  atualizarEntrega(0, presente.aposta);
+
+  if (souEu) destrancarChat(`Diga ${plural(presente.aposta, 'resposta', 'respostas')}…`);
+  else trancarChat(`${quem ? quem.nickname : 'Quem foi desafiado'} esta respondendo…`);
+}
+
+function atualizarEntrega(quantos, aposta) {
+  const contador = $('presente-contador');
+  contador.textContent = `${quantos} de ${aposta}`;
+  contador.classList.toggle('completo', quantos >= aposta);
+}
+
+socket.on('presente:progresso', (dados) => {
+  const el = criar('li', 'presente__item');
+  el.textContent = dados.item;
+  $('presente-itens').appendChild(el);
+  atualizarEntrega(dados.quantos, dados.aposta);
+});
+
+$('presente-forma').addEventListener('submit', (evento) => {
+  evento.preventDefault();
+  const aposta = parseInt($('presente-input').value, 10);
+  if (!Number.isInteger(aposta)) return avisoParticular('Escreva um numero inteiro.');
+
+  socket.emit('sala:apostar', { aposta }, (resposta) => {
+    if (resposta?.erro) avisoParticular(resposta.erro);
+  });
+});
+
+$('presente-duvidar').addEventListener('click', () => {
+  socket.emit('sala:duvidar', {}, (resposta) => {
+    if (resposta?.erro) avisoParticular(resposta.erro);
+  });
 });
 
 /* --------------------------- Modo Escalada --------------------------- */
@@ -917,10 +1160,17 @@ function mensagemSistema(texto, destaque = false) {
   adicionarMensagem(el);
 }
 
-/** Aviso que só quem escreveu enxerga — não vai para o chat de ninguém. */
-function avisoParticular(texto) {
-  const el = criar('div', 'msg msg--privado');
-  el.innerHTML = `${escapar(texto)}<span class="msg__so-voce">so voce esta vendo isto</span>`;
+/**
+ * Aviso que só quem escreveu enxerga — não vai para o chat de ninguém.
+ *
+ * `classe` troca a cor: o "quase" é amarelo, o item de lista é azul.
+ * `dica` é a máscara de letras do "quase" ("c_ra"), que entra em destaque.
+ */
+function avisoParticular(texto, classe = 'msg--privado', dica = '') {
+  const el = criar('div', `msg ${classe}`);
+  el.innerHTML = `${escapar(texto)}
+    ${dica ? `<code class="msg__mascara">${escapar(dica)}</code>` : ''}
+    <span class="msg__so-voce">so voce esta vendo isto</span>`;
   adicionarMensagem(el);
 
   formChat.classList.remove('quase');
@@ -929,18 +1179,46 @@ function avisoParticular(texto) {
   setTimeout(() => formChat.classList.remove('quase'), 900);
 }
 
+/**
+ * Item de lista acertado, no mesmo formato compacto do acerto — só que azul e
+ * particular.
+ *
+ * Azul é a cor de "um item da lista"; verde fica reservado para quem fechou a
+ * resposta inteira. Na Escalada a mensagem precisa ser particular: se fosse
+ * pública, entregaria o item para os outros.
+ */
+function avisoDeItem(resposta) {
+  const el = criar('div', 'msg msg--item');
+  const eu = estado.eu || {};
+  const quanto = resposta.pontos ? ` · +${resposta.pontos} pts` : '';
+  const falta = resposta.necessarias && resposta.quantos != null
+    ? ` · faltam ${resposta.necessarias - resposta.quantos}`
+    : '';
+
+  el.innerHTML = `${eu.avatar || ''} <b>${escapar(eu.nickname || 'Voce')}</b> acertou: `
+    + `<b>${escapar(resposta.item)}</b>${quanto}${falta}`
+    + '<span class="msg__so-voce">so voce esta vendo isto</span>';
+  adicionarMensagem(el);
+}
+
 socket.on('chat:mensagem', (msg) => {
   if (msg.tipo === 'sistema') return mensagemSistema(msg.texto, msg.destaque);
 
   const souEu = msg.jogadorId === estado.eu?.id;
 
   if (msg.tipo === 'acerto') {
-    const el = criar('div', 'msg msg--acerto' + (souEu ? ' msg--eu' : ''));
+    // Acerto com `texto` é um item de lista (Carrossel, Presente Grego): azul.
+    // Sem `texto`, é a resposta fechada da rodada: verde.
+    const cor = msg.texto ? 'msg--item' : 'msg--acerto';
+    const el = criar('div', `msg ${cor}` + (souEu ? ' msg--eu' : ''));
     const quando = msg.ms != null ? ` em ${(msg.ms / 1000).toFixed(1)}s` : '';
     // No Carrossel vem tambem O QUE foi respondido: sem isso ninguem sabe o
     // que ja saiu, e repetir elimina.
     const oQue = msg.texto ? `: <b>${escapar(msg.texto)}</b>` : '';
-    el.innerHTML = `${msg.avatar} <b>${escapar(msg.nickname)}</b> acertou${oQue}${quando} · +${msg.pontos} pts`;
+    // No Presente Grego o item nao vale ponto na hora: a conta e no fim da
+    // rodada, e e tudo ou nada.
+    const ganho = msg.pontos ? ` · +${msg.pontos} pts` : '';
+    el.innerHTML = `${msg.avatar} <b>${escapar(msg.nickname)}</b> acertou${oQue}${quando}${ganho}`;
     if (msg.texto && estado.carrossel) registrarDito(msg.texto);
     adicionarMensagem(el);
     return;
@@ -964,7 +1242,9 @@ formChat.addEventListener('submit', (evento) => {
     if (resposta.erro) return avisoParticular(resposta.erro);
 
     if (resposta.veredito === 'quase') {
-      avisoParticular('Quase! Confira a escrita — sua mensagem nao foi para o chat.');
+      // A dica mostra ONDE errou: "c_ra" para quem escreveu "cera".
+      avisoParticular('Quase! Faltou acertar as letras marcadas:',
+        'msg--privado', resposta.dica);
 
     } else if (resposta.veredito === 'bloqueado') {
       avisoParticular('Segurei essa mensagem para nao entregar a resposta.');
@@ -979,13 +1259,10 @@ formChat.addEventListener('submit', (evento) => {
         : 'Errou! Voce saiu desta rodada.');
 
     } else if (resposta.veredito === 'item') {
-      // No Carrossel a vez passa adiante; na Escalada ainda falta responder.
-      if (estado.carrossel) {
-        avisoParticular(`Boa! "${resposta.item}" conta. +${resposta.pontos} pts.`);
-      } else {
-        registrarItem(resposta.item);
-        avisoParticular(`Boa! "${resposta.item}" conta. Faltam ${resposta.necessarias - resposta.quantos}.`);
-      }
+      // Um item de lista tem cara propria: azul, e no mesmo formato do acerto
+      // — verde continua sendo "fechou a resposta inteira".
+      if (!estado.carrossel) registrarItem(resposta.item);
+      avisoDeItem(resposta);
 
     } else if (resposta.veredito === 'certo') {
       estado.acertou = true;
@@ -1024,7 +1301,15 @@ socket.on('rodada:resultado', (dados) => {
     estado.carrossel = null;
     destrancarChat('Digite uma mensagem…');
   }
+  // Fim do Presente Grego: o painel do leilao sai e o chat volta para todos.
+  if (estado.presente) {
+    $('presente').hidden = true;
+    estado.presente = null;
+    destrancarChat('Digite uma mensagem…');
+  }
 
+  // O Presente Grego nao tem "resposta certa": tem uma aposta que saiu ou nao.
+  $('resultado-rotulo').textContent = dados.titulo || 'Resposta certa';
   $('resultado-certa').textContent = dados.resposta;
 
   const selo = $('selo-dificuldade');
@@ -1045,18 +1330,27 @@ socket.on('rodada:resultado', (dados) => {
   const lista = $('resultado-lista');
   lista.innerHTML = '';
 
+  const PAPEIS = { apostou: '🔨 apostou', duvidou: '🤨 duvidou', respondeu: '🎁 respondeu' };
+
   for (const detalhe of dados.detalhes) {
     const item = criar('li', 'resultado__item ' + (detalhe.acertou ? 'acertou' : 'errou'));
-    const tempo = detalhe.ms === null ? 'nao acertou' : `${(detalhe.ms / 1000).toFixed(1)}s`;
+    // No Presente Grego quase ninguem responde: o "nao acertou" pelo relogio
+    // nao diz nada, e quem conta a historia e o papel na rodada.
+    const tempo = dados.presente
+      ? (PAPEIS[detalhe.papel] || '—')
+      : (detalhe.ms === null ? 'nao acertou' : `${(detalhe.ms / 1000).toFixed(1)}s`);
 
     const pedia = detalhe.necessarias || 1;
     const conseguiu = detalhe.itens || [];
+    // "3/7" só faz sentido para quem respondeu; no leilão, os outros três nem
+    // podiam escrever.
+    const mostraContagem = dados.presente ? detalhe.papel === 'respondeu' : pedia > 1;
 
     item.innerHTML = `
       <span class="jogador__avatar">${detalhe.avatar}</span>
       <span class="resultado__nome">${escapar(detalhe.nickname)}</span>
-      ${detalhe.posicao === 1 ? '<span class="selo-primeiro">1º a acertar</span>' : ''}
-      ${pedia > 1 ? `<span class="resultado__tempo">${conseguiu.length}/${pedia}</span>` : ''}
+      ${detalhe.posicao === 1 && !dados.presente ? '<span class="selo-primeiro">1º a acertar</span>' : ''}
+      ${mostraContagem ? `<span class="resultado__tempo">${conseguiu.length}/${pedia}</span>` : ''}
       <span class="resultado__tempo">${tempo}</span>
       <span class="resultado__ganho ${detalhe.ganhou > 0 ? 'positivo' : ''}">
         ${detalhe.ganhou > 0 ? '+' + detalhe.ganhou : '0'}
@@ -1094,6 +1388,9 @@ function renderizarPlacar(placar) {
       <span class="placar__pos">${posicao + 1}º</span>
       <span class="placar__avatar">${jogador.avatar}</span>
       <span class="placar__nome">${escapar(jogador.nickname)}</span>
+      ${jogador.duplaIcone
+        ? `<span class="placar__dupla" title="${escapar(jogador.duplaNome || '')}">${jogador.duplaIcone}</span>`
+        : ''}
       <span class="placar__pontos">${jogador.pontos}</span>`;
     lista.appendChild(item);
   });

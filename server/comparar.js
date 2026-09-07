@@ -64,27 +64,118 @@ function distancia(a, b) {
  * @param {string} palpite    o que a pessoa digitou
  * @param {string} resposta   a resposta oficial
  * @param {string[]} aceitas  outras formas válidas ("Holanda" para "Países Baixos")
- * @returns {{veredito:'certo'|'quase'|'chat', erro:number, spoiler:boolean}}
+ * @returns {{veredito:'certo'|'quase'|'chat', erro:number, spoiler:boolean, alvo:string}}
+ *          `alvo` é a forma que chegou mais perto — é dela que sai a dica do
+ *          "quase", para a máscara mostrar a grafia que a pessoa quase acertou.
  */
 function avaliar(palpite, resposta, aceitas = []) {
   const p = normalizar(palpite);
-  if (!p) return { veredito: 'chat', erro: 1, spoiler: false };
-
-  const candidatos = [resposta, ...aceitas].map(normalizar).filter(Boolean);
-  if (candidatos.length === 0) return { veredito: 'chat', erro: 1, spoiler: false };
+  if (!p) return { veredito: 'chat', erro: 1, spoiler: false, alvo: resposta };
 
   let melhorErro = Infinity;
+  let melhorAlvo = resposta;
   let spoiler = false;
 
-  for (const candidato of candidatos) {
-    melhorErro = Math.min(melhorErro, distancia(p, candidato) / candidato.length);
+  for (const forma of [resposta, ...aceitas]) {
+    const candidato = normalizar(forma);
+    if (!candidato) continue;
+
+    const erro = distancia(p, candidato) / candidato.length;
+    if (erro < melhorErro) {
+      melhorErro = erro;
+      melhorAlvo = forma;
+    }
     // Frase que contém a resposta ("acho que é o Johnny Depp") não pode ir ao chat.
     if (candidato.length >= MIN_SPOILER && p.includes(candidato)) spoiler = true;
   }
 
-  if (melhorErro < LIMITE_CERTO) return { veredito: 'certo', erro: melhorErro, spoiler };
-  if (melhorErro <= LIMITE_QUASE || spoiler) return { veredito: 'quase', erro: melhorErro, spoiler };
-  return { veredito: 'chat', erro: melhorErro, spoiler };
+  if (melhorErro === Infinity) return { veredito: 'chat', erro: 1, spoiler: false, alvo: resposta };
+
+  const fim = { erro: melhorErro, spoiler, alvo: melhorAlvo };
+  if (melhorErro < LIMITE_CERTO) return { veredito: 'certo', ...fim };
+  if (melhorErro <= LIMITE_QUASE || spoiler) return { veredito: 'quase', ...fim };
+  return { veredito: 'chat', ...fim };
 }
 
-module.exports = { avaliar, normalizar, distancia, LIMITE_CERTO, LIMITE_QUASE };
+/**
+ * Alinha duas palavras e diz quais letras de `b` o `a` acertou.
+ *
+ * É o mesmo cálculo da distância de Levenshtein, mas guardando a matriz para
+ * refazer o caminho de trás para frente: cada passo na diagonal sem custo é
+ * uma letra que bateu.
+ *
+ * @returns {boolean[]} do tamanho de `b`
+ */
+function casarLetras(a, b) {
+  const matriz = [];
+  for (let i = 0; i <= a.length; i++) {
+    matriz.push(new Array(b.length + 1).fill(0));
+    matriz[i][0] = i;
+  }
+  for (let j = 0; j <= b.length; j++) matriz[0][j] = j;
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const custo = a[i - 1] === b[j - 1] ? 0 : 1;
+      matriz[i][j] = Math.min(
+        matriz[i - 1][j] + 1,
+        matriz[i][j - 1] + 1,
+        matriz[i - 1][j - 1] + custo
+      );
+    }
+  }
+
+  const casou = new Array(b.length).fill(false);
+  let i = a.length;
+  let j = b.length;
+
+  while (i > 0 && j > 0) {
+    const custo = a[i - 1] === b[j - 1] ? 0 : 1;
+    if (matriz[i][j] === matriz[i - 1][j - 1] + custo) {
+      if (custo === 0) casou[j - 1] = true;
+      i--;
+      j--;
+    } else if (matriz[i][j] === matriz[i - 1][j] + 1) {
+      i--; // sobrou letra no palpite
+    } else {
+      j--; // faltou letra da resposta
+    }
+  }
+
+  return casou;
+}
+
+/**
+ * O que a pessoa já acertou da resposta, letra por letra.
+ *
+ * Para a resposta "cara", quem digitou "cera" recebe "c_ra": as letras que
+ * bateram aparecem no lugar e as que faltaram viram "_". Espaço, hífen e
+ * pontuação passam direto — não é neles que alguém erra.
+ *
+ * Vale como dica do "quase", quando a pessoa já está a uma ou duas letras da
+ * resposta e só precisa saber ONDE errou.
+ */
+function mascaraDeAcerto(palpite, resposta) {
+  const alvo = normalizar(resposta);
+  if (!alvo) return '';
+
+  const casou = casarLetras(normalizar(palpite), alvo);
+
+  let posicao = 0;
+  let saida = '';
+  for (const caractere of String(resposta)) {
+    // Só letra e número entram na conta: o resto não é erro de ninguém.
+    if (normalizar(caractere)) {
+      saida += casou[posicao] ? caractere : '_';
+      posicao++;
+    } else {
+      saida += caractere;
+    }
+  }
+  return saida;
+}
+
+module.exports = {
+  avaliar, normalizar, distancia, casarLetras, mascaraDeAcerto,
+  LIMITE_CERTO, LIMITE_QUASE
+};
