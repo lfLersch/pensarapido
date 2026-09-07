@@ -207,6 +207,7 @@ class Sala {
     this.progresso = new Map(); // Escalada: socketId -> Set(índices já ditos)
     this.itensUsados = new Set(); // Carrossel: itens ja ditos por QUALQUER um
     this.pontosRodada = new Map(); // socketId -> pontos feitos nesta rodada
+    this.pulos = new Set();        // quem votou para pular a rodada atual
     this.ultimoTema = null;     // tema da rodada anterior, para não repetir
     this.jogadoresNaRodada = 0;
 
@@ -290,6 +291,20 @@ class Sala {
     }
 
     if (this.ehPresenteGrego() && this.duplas.length) this.desfazerDupla(socketId);
+
+    // Sair muda o placar da votação de pular: com uma pessoa a menos o teto
+    // baixa, e os votos que já estavam na mesa podem fechar a conta sozinhos.
+    if (this.pulos.delete(socketId) || this.pulos.size > 0) {
+      if (this.rodadaNoAr() && this.jogadores.size > 0 && this.pulos.size >= this.votosParaPular()) {
+        this.pularRodada();
+      } else if (this.rodadaNoAr()) {
+        this.emitir('rodada:pular', {
+          votos: this.pulos.size,
+          necessarios: this.votosParaPular(),
+          quem: [...this.pulos]
+        });
+      }
+    }
 
     // Só faltava quem saiu para fechar a rodada.
     if (this.estado === 'pergunta' && this.todosAcertaram()) {
@@ -680,6 +695,7 @@ class Sala {
     this.progresso = new Map();
     this.itensUsados = new Set();
     this.pontosRodada = new Map();
+    this.pulos = new Set();
     this.primeiroAcertoEm = null;
     this.estado = 'categoria';
 
@@ -1435,6 +1451,103 @@ class Sala {
     };
   }
 
+  /* --------------------- Pular a rodada por votação --------------------- */
+
+  /** Metade mais um: 2 votos numa sala de 3, 3 numa de 4, 4 numa de 6. */
+  votosParaPular() {
+    return Math.floor(this.jogadores.size / 2) + 1;
+  }
+
+  /** A rodada está no ar, em qualquer uma das fases em que dá para pular. */
+  rodadaNoAr() {
+    return this.estado === 'categoria' || this.estado === 'leilao' || this.estado === 'pergunta';
+  }
+
+  /**
+   * Voto para pular a rodada. Clicar de novo tira o voto — a pessoa pode
+   * mudar de ideia enquanto a votação não fecha.
+   */
+  votarPular(socketId) {
+    if (!this.jogadores.has(socketId)) return { erro: 'Voce nao esta nesta sala.' };
+    if (!this.rodadaNoAr()) return { erro: 'Nao ha rodada para pular agora.' };
+
+    if (this.pulos.has(socketId)) this.pulos.delete(socketId);
+    else this.pulos.add(socketId);
+
+    const necessarios = this.votosParaPular();
+    const jogador = this.jogadores.get(socketId);
+    this.avisar(this.pulos.has(socketId)
+      ? `${jogador.nickname} quer pular (${this.pulos.size} de ${necessarios}).`
+      : `${jogador.nickname} tirou o voto de pular (${this.pulos.size} de ${necessarios}).`);
+
+    this.emitir('rodada:pular', {
+      votos: this.pulos.size,
+      necessarios,
+      quem: [...this.pulos]
+    });
+
+    if (this.pulos.size >= necessarios) this.pularRodada();
+    return { ok: true, votou: this.pulos.has(socketId), votos: this.pulos.size, necessarios };
+  }
+
+  /**
+   * A maioria não quis esta rodada: ela morre aqui e a próxima começa.
+   *
+   * A resposta é revelada mesmo assim — quem votou para pular normalmente
+   * votou por não saber, e ficar sem saber é pior que a rodada perdida.
+   *
+   * O que já foi ganho na rodada continua ganho. Tirar ponto de quem acertou
+   * antes da votação fechar transformaria o botão em castigo, e o voto de
+   * pular é para destravar a mesa, não para punir quem sabia.
+   */
+  pularRodada() {
+    if (!this.rodadaNoAr()) return;
+    this.limparTemporizador();
+    this.estado = 'resultado';
+
+    const pergunta = this.perguntaAtual;
+    const resposta = pergunta ? this.revelacaoSimples(pergunta) : { texto: '—', lista: [] };
+
+    this.avisar(`A sala pulou a rodada. A resposta era: ${resposta.texto}`, true);
+
+    this.emitir('rodada:resultado', {
+      rodada: this.rodada,
+      titulo: 'Rodada pulada',
+      resposta: resposta.texto,
+      listaCompleta: resposta.lista,
+      listaParcial: resposta.parcial,
+      necessarias: pergunta ? pergunta.necessarias : 0,
+      aceita: pergunta ? pergunta.aceita : [],
+      // Rodada pulada não mede a pergunta: quase ninguém tentou responder.
+      dificuldade: { valor: 0, nivel: 'sem conta', cor: '#6f6791' },
+      detalhes: [],
+      placar: this.placar(),
+      duracaoMs: MS_RESULTADO,
+      acabou: false
+    });
+
+    this.agendar(() => this.proximaRodada(), MS_RESULTADO);
+  }
+
+  /**
+   * A resposta sem o que é de cada modo — serve para a rodada que acabou
+   * antes de ser jogada.
+   */
+  revelacaoSimples(pergunta) {
+    if (pergunta.necessarias === 1 && pergunta.resposta) {
+      return { texto: pergunta.resposta, lista: [], parcial: false };
+    }
+    if (pergunta.fixo) {
+      const lista = pergunta.itens.map((i) => i.oficial);
+      return { texto: lista.join(', '), lista, parcial: false };
+    }
+    return {
+      texto: `qualquer ${pergunta.necessarias} de ${pergunta.itens.length} possiveis`,
+      lista: embaralhar(pergunta.itens.map((i) => i.oficial)).slice(0, 12),
+      parcial: true
+    };
+  }
+
   /**
    * Rodada que não tem como continuar (alguém saiu no meio do leilão, uma
    * dupla se desfez). Ninguém pontua e a partida segue na rodada seguinte.
@@ -1618,6 +1731,7 @@ class Sala {
     this.progresso = new Map();
     this.itensUsados = new Set();
     this.pontosRodada = new Map();
+    this.pulos = new Set();
     // As duplas são sorteadas de novo a cada partida.
     this.duplas = [];
     this.leilao = null;

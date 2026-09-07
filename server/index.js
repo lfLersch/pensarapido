@@ -200,6 +200,14 @@ io.on('connection', (socket) => {
     responder(callback, sala.palpitar(socket.id, texto));
   });
 
+  // Voto para pular a rodada. Metade mais um fecha a conta.
+  socket.on('sala:pular', (_dados, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+
+    responder(callback, sala.votarPular(socket.id));
+  });
+
   // Presente Grego: o lance diz quantas respostas o PARCEIRO vai conseguir.
   socket.on('sala:apostar', ({ aposta } = {}, callback) => {
     const sala = salaDoSocket();

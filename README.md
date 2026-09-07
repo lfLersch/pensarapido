@@ -156,8 +156,8 @@ parcial conta, então ninguém sai de mãos vazias por ter parado a um item do f
    entram três vezes no bolo do sorteio e as demais uma vez — as fechadas
    continuam mais prováveis, sem tirar as outras do jogo.
 
-São **221 listas escritas à mão** (mais de 6.700 itens) e outras **396 geradas**
-a partir delas — 617 no total. Cobrem futebol, geografia, música, cinema,
+São **221 listas escritas à mão** (mais de 6.700 itens) e outras **259 geradas**
+a partir delas — 480 no total. Cobrem futebol, geografia, música, cinema,
 séries, anime, games, ciência, história, filosofia, mitologia, política,
 esportes, objetos de casa e cultura pop.
 
@@ -232,6 +232,29 @@ só, contra um alvo que ela nem escolheu.
 
 Se alguém sai no meio e a rodada fica sem quem responder, ela é **cancelada**
 sem ninguém pontuar. Sem duas duplas inteiras, a partida termina.
+
+### Pular a rodada
+
+Qualquer pessoa pode votar para **pular a rodada**, e com **metade mais um**
+ela morre na hora: 2 votos numa sala de 3, 3 numa de 4, 4 numa de 6. Serve
+para destravar a mesa quando a categoria não agrada ou ninguém sabe a
+pergunta.
+
+O botão aparece **na tela da categoria e no topo do jogo** — dá para recusar a
+categoria assim que ela aparece, e o voto continua valendo depois que a
+pergunta abre. Clicar de novo tira o voto; o placar (`2/3`) fica no próprio
+botão e cada voto vira aviso no chat.
+
+Duas decisões que valem registrar:
+
+- **A resposta é revelada mesmo assim.** Quem vota para pular normalmente vota
+  por não saber, e ficar sem saber é pior que a rodada perdida.
+- **O que já foi ganho continua ganho.** Tirar ponto de quem acertou antes da
+  votação fechar transformaria o botão em castigo — o voto é para destravar a
+  mesa, não para punir quem sabia.
+
+Rodada pulada **não alimenta a dificuldade adaptativa**: quase ninguém tentou
+responder, então ela não mede nada sobre a pergunta.
 
 ### Durante a partida
 
@@ -323,12 +346,17 @@ para a pessoa se situar.
 
 Duas famílias de pergunta que rendem muito com pouco conteúdo escrito:
 
-**"Com a letra X" — geradas sozinhas.** Em vez de escrever *países com A*,
-*países com B* uma a uma, cada lista-fonte é fatiada pela primeira letra do
-nome. Só vira pergunta a letra que tiver ao menos 4 itens; com duas ou três a
-rodada alta ficaria impossível. Hoje 14 fontes viram **41 listas automáticas** —
+**"Começam com a letra X" — geradas sozinhas.** Em vez de escrever *países com
+A*, *países com B* uma a uma, cada lista-fonte é fatiada pela primeira letra do
+nome. Só vira pergunta a letra que tiver ao menos 4 itens e que não pegue mais
+de um quarto da lista — uma letra que abocanha o repertório inteiro anuncia uma
+restrição que não restringe. Hoje 25 fontes viram **236 listas automáticas** —
 adicionar uma fruta nova ao repertório cria pergunta em todas as letras
 afetadas, sem tocar em mais nada.
+
+O recorte pela **última** letra existiu e saiu do jogo: quase todo substantivo
+em português acaba em *-a* ou *-o*, então a Escalada vivia caindo nessas duas,
+e ninguém organiza vocabulário pelo fim da palavra.
 
 ```js
 const FONTES_POR_LETRA = [
@@ -488,7 +516,9 @@ rodada com relógio controlado, o Modo Escalada da rodada 1 à 6 — incluindo a
 checagem de que nenhum item correto vaza para o chat —, o Carrossel, o
 **Presente Grego** (formação das duplas, regras do lance, o segredo do
 enunciado, as duas pontas do "duvido" e o que acontece quando alguém sai no
-meio) e a regra de nomes:
+meio), a **votação para pular** (o teto de metade mais um, o voto que
+alterna, as três fases em que vale e o que acontece quando quem votou sai)
+e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim
 que "Silva", "Ronaldo", "Müller", "Costa" e "Martínez" saíram das variantes).

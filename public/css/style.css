@@ -1789,3 +1789,43 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   text-align: center;
   color: var(--destaque);
 }
+
+/* ------------------ Pular a rodada por votacao ------------------- */
+
+/* O mesmo botao aparece na tela da categoria e no topo do jogo: da para
+   recusar a categoria assim que ela aparece, e o voto continua valendo
+   depois que a pergunta abre. */
+.btn--pular {
+  padding: 9px 15px;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+/* Quem ja votou ve o proprio voto marcado — e clicar de novo tira. */
+.btn--pular.votou {
+  color: var(--destaque);
+  border-color: rgba(251, 191, 36, 0.55);
+  background: rgba(251, 191, 36, 0.14);
+}
+
+/* Placar da votacao, "2/3". Fica vazio enquanto ninguem votou, e o :empty
+   tira o espaco extra do lado do texto. */
+.pular__votos {
+  margin-left: 6px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--destaque);
+}
+.pular__votos:empty { display: none; }
+
+/* Na tela da categoria o botao fica solto embaixo, sem competir com o nome
+   da categoria. */
+.revelacao .btn--pular {
+  margin-top: 6px;
+  opacity: 0.75;
+}
+.revelacao .btn--pular:hover { opacity: 1; }
+
+@media (max-width: 560px) {
+  .btn--pular { padding: 8px 11px; font-size: 12.5px; }
+}
