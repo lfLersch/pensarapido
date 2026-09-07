@@ -231,10 +231,10 @@ console.log('');
 
 /* --------- Recorte por letra precisa recortar de verdade --------- */
 {
-  // "Paises da Europa que terminam com A" pegava 34 dos 45 paises: a pergunta
-  // anunciava uma restricao que nao restringia nada. E como quase todo
-  // substantivo em portugues acaba em -a ou -o, a Escalada vivia caindo
-  // nessas duas letras.
+  // Uma letra que pega quase a lista inteira anuncia uma restricao que nao
+  // restringe nada: "paises da Europa com A" seria quase o repertorio todo.
+  // O recorte pela ULTIMA letra saiu do jogo — quase todo substantivo em
+  // portugues acaba em -a ou -o, entao a Escalada vivia caindo nessas duas.
   const { LISTAS } = require('../server/escalada.js');
   const TETO = 0.25;
 

@@ -156,6 +156,10 @@
       <h2 class="revelacao__nome" id="revelacao-nome">Bandeiras</h2>
       <div class="revelacao__barra"><i id="revelacao-barra"></i></div>
       <span class="conta-regressiva" id="revelacao-num"></span>
+      <button class="btn btn--fantasma btn--pular" id="btn-pular-rev" type="button">
+        <span class="btn__icone">⏭</span> Pular categoria
+        <b class="pular__votos" id="pular-votos-rev"></b>
+      </button>
     </div>
 
     <!-- 4b. Pergunta -->
@@ -167,6 +171,11 @@
           <span class="etiqueta">Meta <b id="jogo-meta">120</b></span>
         </div>
         <div class="jogo__canto">
+          <button class="btn btn--fantasma btn--pular" id="btn-pular" type="button"
+                  title="Votar para pular esta rodada">
+            <span class="btn__icone">⏭</span> Pular
+            <b class="pular__votos" id="pular-votos"></b>
+          </button>
           <div class="cronometro" id="cronometro"><span id="cronometro-num">20</span></div>
           <button class="btn btn--fantasma btn--sair" id="btn-sair-jogo" title="Sair da sala">
             Sair

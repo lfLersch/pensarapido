@@ -27,6 +27,7 @@ const estado = {
   carrossel: null,  // Carrossel: { voltas, msPorVez, ordem } da rodada
   vivos: null,      // Carrossel: quem ainda nao saiu
   presente: null,   // Presente Grego: { duplas, aposta, ... } da rodada
+  votei: false,     // votei para pular a rodada atual
   contagem: null,
   urgencia: null,
 };
@@ -637,6 +638,8 @@ function pararAnimacao() {
 socket.on('rodada:categoria', (dados) => {
   estado.acertou = false;
   estado.emRodada = true;
+  estado.votei = false;
+  mostrarVotacao(0, 0);
 
   mostrarTela('tela-jogo');
   jogo.hidden = true;
@@ -832,6 +835,40 @@ socket.on('carrossel:eliminado', (dados) => {
     rotulo.classList.remove('minha');
     rotulo.textContent = 'Voce saiu desta rodada';
   }
+});
+
+/* --------------------- Pular a rodada por votação --------------------- */
+
+/**
+ * Desenha os dois botões de pular — o da tela de categoria e o do jogo.
+ *
+ * São dois porque a votação vale nas duas telas: dá para recusar a categoria
+ * assim que ela aparece, e o voto continua valendo depois que a pergunta abre.
+ */
+function mostrarVotacao(votos, necessarios) {
+  const texto = votos > 0 ? `${votos}/${necessarios}` : '';
+  for (const [botao, marcador] of [['btn-pular', 'pular-votos'], ['btn-pular-rev', 'pular-votos-rev']]) {
+    $(marcador).textContent = texto;
+    $(botao).classList.toggle('votou', estado.votei);
+  }
+}
+
+function votarPular() {
+  socket.emit('sala:pular', {}, (r) => {
+    if (r?.erro) return avisoParticular(r.erro);
+    estado.votei = Boolean(r.votou);
+    mostrarVotacao(r.votos, r.necessarios);
+  });
+}
+
+$('btn-pular').addEventListener('click', votarPular);
+$('btn-pular-rev').addEventListener('click', votarPular);
+
+socket.on('rodada:pular', (dados) => {
+  // O servidor manda quem votou, então o botão continua certo mesmo se o
+  // callback do próprio clique chegar fora de ordem.
+  estado.votei = dados.quem.includes(socket.id);
+  mostrarVotacao(dados.votos, dados.necessarios);
 });
 
 /* ------------------------ Modo Presente Grego ------------------------ */
@@ -1290,6 +1327,8 @@ socket.on('rodada:acertou', (dados) => {
 
 socket.on('rodada:resultado', (dados) => {
   pararAnimacao();
+  estado.votei = false;
+  mostrarVotacao(0, 0);
   barraTempo.style.transform = 'scaleX(0)';
   cronometro.classList.remove('urgente');
   $('mascara').textContent = '';
