@@ -202,18 +202,15 @@ function montarCategorias() {
       <span class="categoria__check">✔</span>`;
 
     item.addEventListener('click', () => {
+      // Marcar a categoria marca todas as partes dela; desmarcar tira tudo.
       const marcada = estado.escolhas.categorias.has(categoria.id);
-      if (marcada) {
-        estado.escolhas.categorias.delete(categoria.id);
-        for (const s of [...estado.escolhas.subs]) {
-          if (s.startsWith(categoria.id + ':')) estado.escolhas.subs.delete(s);
-        }
-      } else {
-        estado.escolhas.categorias.add(categoria.id);
+      if (marcada) estado.escolhas.categorias.delete(categoria.id);
+      else estado.escolhas.categorias.add(categoria.id);
+      for (const parte of partesDe(categoria)) {
+        if (marcada) estado.escolhas.subs.delete(parte);
+        else estado.escolhas.subs.add(parte);
       }
-      item.classList.toggle('marcada', !marcada);
-      item.setAttribute('aria-pressed', String(!marcada));
-      atualizarResumo();
+      sincronizarCategorias();
     });
 
     grade.appendChild(item);
@@ -228,15 +225,13 @@ function montarCategorias() {
         chip.type = 'button';
         chip.dataset.id = `${categoria.id}:${sub.id}`;
         chip.innerHTML = `${sub.icone} ${sub.nome}`;
-        chip.title = `So as perguntas de ${sub.nome} dentro de ${categoria.nome}`;
+        chip.title = `Perguntas de ${sub.nome} dentro de ${categoria.nome}`;
 
+        // A parte liga e desliga sozinha: com a categoria marcada, desmarcar
+        // tira só esta parte; com a categoria desmarcada, marcar traz só ela.
         chip.addEventListener('click', () => {
-          const marcada = estado.escolhas.subs.has(chip.dataset.id);
-          if (marcada) estado.escolhas.subs.delete(chip.dataset.id);
-          else {
-            estado.escolhas.subs.add(chip.dataset.id);
-            estado.escolhas.categorias.add(categoria.id); // parte marcada exige a categoria
-          }
+          if (estado.escolhas.subs.has(chip.dataset.id)) estado.escolhas.subs.delete(chip.dataset.id);
+          else estado.escolhas.subs.add(chip.dataset.id);
           sincronizarCategorias();
         });
 
@@ -246,9 +241,27 @@ function montarCategorias() {
     }
   }
 
-  // Começa com tudo marcado.
-  estado.config.categorias.forEach((c) => estado.escolhas.categorias.add(c.id));
+  marcarTodasCategorias();
+}
+
+/** Tudo marcado: cada categoria com todas as partes. É assim que começa. */
+function marcarTodasCategorias() {
+  for (const c of estado.config.categorias) {
+    estado.escolhas.categorias.add(c.id);
+    partesDe(c).forEach((parte) => estado.escolhas.subs.add(parte));
+  }
   sincronizarCategorias();
+}
+
+/** Partes de uma categoria, no formato 'categoria:parte'. */
+function partesDe(categoria) {
+  return (categoria.subs || []).map((s) => `${categoria.id}:${s.id}`);
+}
+
+/** Categorias que entram no jogo: as marcadas e as que têm alguma parte marcada. */
+function categoriasEscolhidas() {
+  return estado.config.categorias.filter((c) => estado.escolhas.categorias.has(c.id)
+    || partesDe(c).some((parte) => estado.escolhas.subs.has(parte)));
 }
 
 function sincronizarCategorias() {
@@ -258,11 +271,11 @@ function sincronizarCategorias() {
     el.setAttribute('aria-pressed', String(marcada));
   });
 
-  // Os chips ficam sempre à vista: esconder quando a categoria estava
-  // desmarcada tornava impossível escolher só a parte (clicar em "Nenhuma"
-  // fazia o chip sumir). Clicar num chip marca a categoria dona junto.
+  // Os chips ficam sempre à vista, mesmo com a categoria desmarcada: é assim
+  // que se escolhe só uma parte dela. Só apagam quando nada ali vai para o jogo.
   document.querySelectorAll('.subcategorias').forEach((caixa) => {
-    caixa.classList.toggle('apagada', !estado.escolhas.categorias.has(caixa.dataset.de));
+    const alguma = [...estado.escolhas.subs].some((parte) => parte.startsWith(caixa.dataset.de + ':'));
+    caixa.classList.toggle('apagada', !estado.escolhas.categorias.has(caixa.dataset.de) && !alguma);
   });
 
   document.querySelectorAll('.subchip').forEach((chip) => {
@@ -274,10 +287,7 @@ function sincronizarCategorias() {
   atualizarResumo();
 }
 
-$('btn-todas-categorias').addEventListener('click', () => {
-  estado.config.categorias.forEach((c) => estado.escolhas.categorias.add(c.id));
-  sincronizarCategorias();
-});
+$('btn-todas-categorias').addEventListener('click', marcarTodasCategorias);
 
 $('btn-nenhuma-categoria').addEventListener('click', () => {
   estado.escolhas.categorias.clear();
@@ -376,7 +386,7 @@ function montarTempos() {
 }
 
 function atualizarResumo() {
-  const total = estado.escolhas.categorias.size;
+  const total = categoriasEscolhidas().length;
   const modo = estado.config.modos.find((m) => m.id === estado.escolhas.modo);
   $('resumo-config').innerHTML = `
     <span>${plural(total, 'categoria', 'categorias')}</span>
@@ -394,13 +404,18 @@ $('btn-criar').addEventListener('click', () => {
     mostrarTela('tela-lobby');
     return avisar('aviso-lobby', 'Digite um nickname com pelo menos 2 caracteres.');
   }
-  if (estado.escolhas.categorias.size === 0) {
+  if (categoriasEscolhidas().length === 0) {
     return avisar('aviso-config', 'Escolha pelo menos uma categoria.');
   }
 
+  // Categoria marcada vai inteira, menos as partes desmarcadas (`fora`);
+  // parte marcada de categoria desmarcada vai sozinha (`subs`).
+  const marcadas = estado.escolhas.categorias;
   const config = {
-    categorias: [...estado.escolhas.categorias],
-    subs: [...estado.escolhas.subs],
+    categorias: [...marcadas],
+    fora: estado.config.categorias.filter((c) => marcadas.has(c.id))
+      .flatMap(partesDe).filter((parte) => !estado.escolhas.subs.has(parte)),
+    subs: [...estado.escolhas.subs].filter((parte) => !marcadas.has(parte.split(':')[0])),
     modo: estado.escolhas.modo,
     metaPontos: estado.escolhas.metaPontos,
     segundosPorPergunta: estado.escolhas.segundosPorPergunta
@@ -432,12 +447,14 @@ function renderizarSala() {
   $('codigo-texto').textContent = sala.codigo;
 
   const modo = estado.config.modos.find((m) => m.id === sala.config.modo);
+  // Categoria que entrou só com uma parte também conta.
+  const emJogo = [...new Set([...sala.config.categorias, ...(sala.config.subs || []).map((s) => s.split(':')[0])])];
   $('resumo-sala').innerHTML = `
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     <span>Meta <b>${sala.config.metaPontos} pts</b></span>
     <span><b>${sala.config.segundosPorPergunta}s</b> por pergunta</span>
-    <span>${plural(sala.config.categorias.length, 'categoria', 'categorias')}</span>`;
-  $('resumo-sala').title = sala.config.categorias.map(nomeCategoria).join(', ');
+    <span>${plural(emJogo.length, 'categoria', 'categorias')}</span>`;
+  $('resumo-sala').title = emJogo.map(nomeCategoria).join(', ');
 
   const lista = $('lista-jogadores');
   lista.innerHTML = '';

@@ -33,7 +33,7 @@ cada 4 segundos enquanto o saguão está na tela.
 
 | Ajuste | Opções |
 | --- | --- |
-| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música (com a parte **Trechos**, que toca a música), Cinema & TV, História, Ciência, Games, **Mainstream**, **Marcas** |
+| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História, Ciência, Games, **Mainstream**, **Marcas** |
 | Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas) ou **Presente Grego** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
@@ -460,7 +460,7 @@ dificuldade entre elas.
 ## Subcategorias
 
 Uma categoria pode ser dividida em partes escolhidas separadamente — por
-exemplo **Anime → Naruto**, **Música → Trechos** e **Marcas → Carros**. A
+exemplo **Anime → Naruto**, **Esportes → NBA** e **Marcas → Carros**. A
 máquina serve para qualquer uma:
 
 ```js
@@ -474,15 +474,21 @@ As perguntas da parte levam o campo `sub`:
 { pergunta: 'Qual é a vila do Naruto?', sub: 'naruto', resposta: 'Konoha', dif: 30 }
 ```
 
-Na criação da sala, os chips das partes aparecem embaixo da categoria quando ela
-está marcada. **Marcar a categoria sem escolher parte nenhuma traz tudo**;
-escolhendo uma ou mais partes, só as perguntas delas entram no sorteio. Marcar
-uma parte marca a categoria junto, e o servidor revalida os dois — chip
-inventado é descartado.
+Na criação da sala, os chips das partes ficam embaixo da categoria e **começam
+todos marcados**:
+
+- **Categoria marcada** vem inteira. Desmarcar uma parte tira só aquela parte
+  (vai no campo `fora` da configuração).
+- **Categoria desmarcada com parte marcada** traz só aquela parte (campo `subs`).
+- Marcar a categoria marca todas as partes dela; desmarcar tira todas.
+
+O servidor revalida tudo (chip inventado é descartado) e recusa a sala se a
+escolha não tiver nenhuma pergunta — Marcas, por exemplo, só tem perguntas
+dentro das partes.
 
 ## Banco de perguntas
 
-**2334 perguntas em 17 categorias**, mais 536 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**2334 perguntas em 18 categorias**, mais 536 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -571,9 +577,9 @@ usa este logo?"*), os escudos de Manchester United e Liverpool no Futebol e o
 Snoopy em Cinema & TV. O fundo transparente vira branco: logo preto sobre
 transparente sumiria na tela escura do jogo.
 
-### Categoria Música — trechos de áudio
+### Categoria Ouvir músicas
 
-A parte **Trechos** toca os 20 primeiros segundos de uma música e pergunta *"Qual é o nome
+A categoria **Ouvir músicas** toca os 20 primeiros segundos de uma música e pergunta *"Qual é o nome
 desta música?"*. São 22 músicas: Yellow, Shape of You, Blinding Lights, In the
 End, Mr. Brightside e outras.
 

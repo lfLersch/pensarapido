@@ -37,9 +37,9 @@ const CATEGORIAS = [
     subs: [{ id: 'naruto', nome: 'Naruto', icone: '🌀' }] },
   { id: 'musica', nome: 'Musica', icone: '🎵', cor: '#a855f7',
     subs: [
-      { id: 'musicos', nome: 'Musicos', icone: '🎤' },
-      { id: 'trechos', nome: 'Trechos', icone: '🔊' }
+      { id: 'musicos', nome: 'Musicos', icone: '🎤' }
     ] },
+  { id: 'ouvir', nome: 'Ouvir musicas', icone: '🔊', cor: '#f43f5e' },
   { id: 'rap', nome: 'Rap e Hip Hop', icone: '🎧', cor: '#64748b' },
   { id: 'cinema', nome: 'Cinema & TV', icone: '🎬', cor: '#eab308',
     subs: [
@@ -1228,31 +1228,33 @@ const QUESTOES = {
     { pergunta: 'Qual instrumento Tom Jobim tocava e usava para compor?', resposta: 'Piano', dif: 40 },
     { pergunta: 'Qual e o instrumento de sopro tipico do jazz, com chaves e boquilha?', resposta: 'Saxofone', dif: 30 },
     { pergunta: 'Qual compositor alemao ficou surdo e mesmo assim escreveu a Nona Sinfonia?', resposta: 'Beethoven', dif: 25 },
-    { pergunta: 'Qual ritmo baiano dos anos 1980 misturou frevo, reggae e ritmos afro e lancou Daniela Mercury?', resposta: 'Axe', dif: 45 },
-    // Os 20 primeiros segundos de cada musica, cortados das musicas em FLAC
-    // de public/musicas, que fica fora do git. O audio toca com a pergunta.
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-as-it-was.mp3', resposta: 'As It Was', dif: 30 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-baby.mp3', resposta: 'Baby', dif: 20 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-believer.mp3', resposta: 'Believer', dif: 20 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-birds-of-a-feather.mp3', resposta: 'Birds of a Feather', dif: 35 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-blinding-lights.mp3', resposta: 'Blinding Lights', dif: 20 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-die-with-a-smile.mp3', resposta: 'Die With a Smile', dif: 30 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-dont-start-now.mp3', resposta: 'Don\'t Start Now', dif: 35 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-heat-waves.mp3', resposta: 'Heat Waves', dif: 35 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-i-wanna-be-yours.mp3', resposta: 'I Wanna Be Yours', aceita: ['I Want to Be Yours'], dif: 40 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-in-the-end.mp3', resposta: 'In the End', dif: 25 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-love-yourself.mp3', resposta: 'Love Yourself', dif: 30 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-mr-brightside.mp3', resposta: 'Mr. Brightside', aceita: ['Mister Brightside', 'Brightside'], dif: 35 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-one-dance.mp3', resposta: 'One Dance', dif: 35 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-perfect.mp3', resposta: 'Perfect', dif: 30 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-shape-of-you.mp3', resposta: 'Shape of You', dif: 20 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-someone-you-loved.mp3', resposta: 'Someone You Loved', dif: 30 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-starboy.mp3', resposta: 'Starboy', dif: 25 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-stay.mp3', resposta: 'Stay', dif: 30 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-sunflower.mp3', resposta: 'Sunflower', dif: 30 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-sweater-weather.mp3', resposta: 'Sweater Weather', dif: 35 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-the-night-we-met.mp3', resposta: 'The Night We Met', aceita: ['Night We Met'], dif: 45 },
-    { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-yellow.mp3', resposta: 'Yellow', dif: 25 }
+    { pergunta: 'Qual ritmo baiano dos anos 1980 misturou frevo, reggae e ritmos afro e lancou Daniela Mercury?', resposta: 'Axe', dif: 45 }
+  ],
+  // Os 20 primeiros segundos de cada musica, cortados dos FLAC de
+  // public/musicas (fora do git). O audio toca junto com a pergunta.
+  ouvir: [
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-as-it-was.mp3', resposta: 'As It Was', dif: 30 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-baby.mp3', resposta: 'Baby', dif: 20 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-believer.mp3', resposta: 'Believer', dif: 20 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-birds-of-a-feather.mp3', resposta: 'Birds of a Feather', dif: 35 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-blinding-lights.mp3', resposta: 'Blinding Lights', dif: 20 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-die-with-a-smile.mp3', resposta: 'Die With a Smile', dif: 30 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-dont-start-now.mp3', resposta: 'Don\'t Start Now', dif: 35 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-heat-waves.mp3', resposta: 'Heat Waves', dif: 35 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-i-wanna-be-yours.mp3', resposta: 'I Wanna Be Yours', aceita: ['I Want to Be Yours'], dif: 40 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-in-the-end.mp3', resposta: 'In the End', dif: 25 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-love-yourself.mp3', resposta: 'Love Yourself', dif: 30 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-mr-brightside.mp3', resposta: 'Mr. Brightside', aceita: ['Mister Brightside', 'Brightside'], dif: 35 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-one-dance.mp3', resposta: 'One Dance', dif: 35 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-perfect.mp3', resposta: 'Perfect', dif: 30 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-shape-of-you.mp3', resposta: 'Shape of You', dif: 20 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-someone-you-loved.mp3', resposta: 'Someone You Loved', dif: 30 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-starboy.mp3', resposta: 'Starboy', dif: 25 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-stay.mp3', resposta: 'Stay', dif: 30 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-sunflower.mp3', resposta: 'Sunflower', dif: 30 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-sweater-weather.mp3', resposta: 'Sweater Weather', dif: 35 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-the-night-we-met.mp3', resposta: 'The Night We Met', aceita: ['Night We Met'], dif: 45 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-yellow.mp3', resposta: 'Yellow', dif: 25 }
   ],
 
   rap: [

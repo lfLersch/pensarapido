@@ -6,7 +6,8 @@ const express = require('express');
 const { Server } = require('socket.io');
 
 const {
-  Sala, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, gerarCodigo, indicePerguntas
+  Sala, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, gerarCodigo, indicePerguntas,
+  categoriasEmJogo, perguntasEscolhidas
 } = require('./sala');
 const dificuldade = require('./dificuldade');
 
@@ -122,19 +123,26 @@ function validarConfig(bruta) {
   const categorias = Array.isArray(bruta.categorias)
     ? [...new Set(bruta.categorias.filter((id) => idsValidos.has(id)))]
     : [];
-  if (categorias.length === 0) return { erro: 'Escolha pelo menos uma categoria.' };
-
-  // Subcategorias vêm como 'categoria:parte'; só valem as que existem de fato
-  // e cuja categoria foi marcada.
-  const subsValidas = new Set();
+  // Partes vêm como 'categoria:parte' e só valem as que existem de fato.
+  // `fora`: partes desmarcadas de uma categoria marcada (saem só elas).
+  // `subs`: partes marcadas de uma categoria desmarcada (entram só elas).
+  const partesValidas = new Set();
   for (const categoria of CATEGORIAS) {
-    for (const sub of categoria.subs || []) subsValidas.add(`${categoria.id}:${sub.id}`);
+    for (const sub of categoria.subs || []) partesValidas.add(`${categoria.id}:${sub.id}`);
   }
-  const subs = Array.isArray(bruta.subs)
-    ? [...new Set(bruta.subs.filter(
-        (s) => subsValidas.has(s) && categorias.includes(String(s).split(':')[0])
-      ))]
-    : [];
+  const partes = (lista, daMarcada) => (Array.isArray(lista)
+    ? [...new Set(lista.filter((s) => partesValidas.has(s)
+        && categorias.includes(String(s).split(':')[0]) === daMarcada))]
+    : []);
+  const fora = partes(bruta.fora, true);
+  const subs = partes(bruta.subs, false);
+
+  // Categoria marcada com todas as partes desmarcadas pode ficar sem nada
+  // (Marcas só tem perguntas dentro das partes).
+  const escolha = { categorias, subs, fora };
+  const comPerguntas = categoriasEmJogo(escolha)
+    .filter((id) => perguntasEscolhidas(escolha, id).length > 0);
+  if (comPerguntas.length === 0) return { erro: 'Escolha pelo menos uma categoria.' };
 
   const modo = MODOS.find((m) => m.id === bruta.modo && m.disponivel);
   if (!modo) return { erro: 'Esse modo de jogo ainda não está disponível.' };
@@ -147,7 +155,7 @@ function validarConfig(bruta) {
   const segundos = Number(bruta.segundosPorPergunta);
   const segundosPorPergunta = SEGUNDOS_PERMITIDOS.includes(segundos) ? segundos : 20;
 
-  return { config: { categorias, subs, modo: modo.id, metaPontos, segundosPorPergunta } };
+  return { config: { categorias, subs, fora, modo: modo.id, metaPontos, segundosPorPergunta } };
 }
 
 /* -------------------------------- Socket.IO -------------------------------- */

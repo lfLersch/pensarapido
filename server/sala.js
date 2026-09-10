@@ -485,7 +485,7 @@ class Sala {
    */
   montarFila() {
     this.filas = new Map();
-    for (const idCategoria of this.config.categorias) {
+    for (const idCategoria of categoriasEmJogo(this.config)) {
       const perguntas = this.perguntasDaCategoria(idCategoria);
       if (perguntas.length) this.filas.set(idCategoria, embaralhar(perguntas));
     }
@@ -493,17 +493,7 @@ class Sala {
 
   /** As perguntas de uma categoria, respeitando as partes marcadas. */
   perguntasDaCategoria(idCategoria) {
-    const subsEscolhidas = new Set(this.config.subs || []);
-    // Quais partes desta categoria foram marcadas? Nenhuma = a categoria toda.
-    const daCategoria = [...subsEscolhidas]
-      .filter((s) => s.startsWith(idCategoria + ':'))
-      .map((s) => s.slice(idCategoria.length + 1));
-
-    const todas = (QUESTOES[idCategoria] || []).map((p) => ({ ...p, categoria: idCategoria }));
-    if (daCategoria.length === 0) return todas;
-    const filtradas = todas.filter((p) => daCategoria.includes(p.sub));
-    // Parte marcada sem pergunta nenhuma não pode matar a categoria inteira.
-    return filtradas.length ? filtradas : todas;
+    return perguntasEscolhidas(this.config, idCategoria);
   }
 
   /**
@@ -1864,7 +1854,37 @@ class Sala {
   }
 }
 
+/**
+ * Categorias que entram no sorteio: as marcadas e as que só tiveram alguma
+ * parte marcada.
+ */
+function categoriasEmJogo(config) {
+  const donas = (config.subs || []).map((s) => String(s).split(':')[0]);
+  const ids = new Set([...(config.categorias || []), ...donas]);
+  return CATEGORIAS.map((c) => c.id).filter((id) => ids.has(id));
+}
+
+/**
+ * As perguntas de uma categoria conforme as partes escolhidas.
+ *
+ * Categoria marcada vem inteira, menos as partes desmarcadas (`fora`).
+ * Categoria desmarcada com parte marcada (`subs`) traz só essas partes.
+ */
+function perguntasEscolhidas(config, idCategoria) {
+  const prefixo = idCategoria + ':';
+  const partes = (lista) => new Set((lista || [])
+    .filter((s) => s.startsWith(prefixo)).map((s) => s.slice(prefixo.length)));
+  const todas = (QUESTOES[idCategoria] || []).map((p) => ({ ...p, categoria: idCategoria }));
+
+  if ((config.categorias || []).includes(idCategoria)) {
+    const fora = partes(config.fora);
+    return todas.filter((p) => !(p.sub && fora.has(p.sub)));
+  }
+  const soEstas = partes(config.subs);
+  return todas.filter((p) => p.sub && soEstas.has(p.sub));
+}
+
 module.exports = {
   Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO,
-  gerarCodigo, calcularPontos, indicePerguntas
+  gerarCodigo, calcularPontos, indicePerguntas, categoriasEmJogo, perguntasEscolhidas
 };

@@ -66,7 +66,7 @@ function sala(config) {
 {
   // So os desenhos: o baralho acaba antes da partida. Depois de esgotar, uma
   // passagem nova comeca — repetir e melhor do que ficar sem pergunta.
-  const s = sala({ categorias: ['cinema'], subs: ['cinema:desenhos'] });
+  const s = sala({ categorias: [], subs: ['cinema:desenhos'] });
   const vistas = [];
   let vazia = false;
   for (let i = 0; i < 90; i++) {
