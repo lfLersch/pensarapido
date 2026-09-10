@@ -21,6 +21,10 @@ const MIN_SPOILER = 4;     // respostas com 4+ caracteres são protegidas de spo
  * Deixa o texto comparável: sem acentos, sem maiúsculas, sem pontuação e sem
  * espaços. Assim "Japão", "japao" e "JAPAO" são a mesma coisa, e o jogador não
  * perde ponto por causa de um acento ou de um espaço a mais.
+ *
+ * O "%" fica: "3%" é nome de série. Sem ele a resposta virava só "3" — e na
+ * rodada "Cite 3 séries famosas" digitar o número do próprio enunciado
+ * contava como acerto.
  */
 function normalizar(texto) {
   if (typeof texto !== 'string') return '';
@@ -28,7 +32,63 @@ function normalizar(texto) {
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
+    .replace(/[^a-z0-9%]/g, '');
+}
+
+/* ---------------------------- Sobrenomes ---------------------------- */
+
+// Partícula que costuma ir junto com o sobrenome: "da Vinci", "Van Gogh",
+// "Du Bois", "Del Toro". O "e" de "Costa e Silva" não é partícula.
+const PARTICULAS = new Set([
+  'da', 'de', 'do', 'das', 'dos', 'di', 'del', 'della', 'du',
+  'van', 'von', 'la', 'le', 'bin', 'ibn', 'al'
+]);
+
+// Ligação não é sobrenome: "Costa e Silva" não vira "e".
+const LIGACOES_DE_DUPLA = new Set(['e', 'y']);
+const LIGACOES = new Set([...PARTICULAS, ...LIGACOES_DE_DUPLA]);
+
+// Sufixo de geração também não: o sobrenome de "Café Filho" é "Café Filho",
+// e o de "Robert Downey Jr." é "Downey Jr.".
+const SUFIXOS = new Set([
+  'filho', 'junior', 'jr', 'neto', 'sobrinho', 'sr',
+  // Numeral de rei e de papa: o "I" de "Dom Pedro I" virava sobrenome.
+  'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi'
+]);
+
+/**
+ * Os atalhos de um nome de pessoa — o que a pessoa responde de verdade.
+ *
+ * Ninguém digita "Lionel Messi" num jogo de velocidade: digita "Messi". Esta
+ * função diz quais são esses atalhos, para quem monta as listas não precisar
+ * escrever a variante em cada nome (e esquecer nos próximos).
+ *
+ * Com partícula antes do sobrenome vêm as duas formas: "Vinci" e "da Vinci".
+ * A curta sozinha às vezes soa estranha, mas aceitar a mais é inofensivo — o
+ * que dói é recusar a que a pessoa digitou.
+ *
+ * Devolve lista vazia quando não há atalho: nome de uma palavra só ("Pelé"),
+ * ou quando o sobrenome é o nome inteiro ("Café Filho").
+ */
+function sobrenomesDe(nome) {
+  const partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+  if (partes.length < 2) return [];
+  // "X e Y" e dupla ("Claudinho e Buchecha") ou nome que so se diz inteiro
+  // ("Costa e Silva"): o ultimo nome sozinho apontaria para outra pessoa.
+  if (partes.some((parte) => LIGACOES_DE_DUPLA.has(normalizar(parte)))) return [];
+
+  // "Robert Downey Jr." -> começa em "Downey", não em "Jr.".
+  let inicio = partes.length - 1;
+  while (inicio > 0 && SUFIXOS.has(normalizar(partes[inicio]))) inicio--;
+  if (LIGACOES.has(normalizar(partes[inicio]))) return [];
+
+  const formas = [partes.slice(inicio).join(' ')];
+  if (inicio >= 2 && PARTICULAS.has(normalizar(partes[inicio - 1]))) {
+    formas.push(partes.slice(inicio - 1).join(' '));
+  }
+
+  const inteiro = normalizar(nome);
+  return formas.filter((f) => normalizar(f) !== inteiro);
 }
 
 /** Distância de Levenshtein (número mínimo de edições entre duas strings). */
@@ -176,6 +236,6 @@ function mascaraDeAcerto(palpite, resposta) {
 }
 
 module.exports = {
-  avaliar, normalizar, distancia, casarLetras, mascaraDeAcerto,
+  avaliar, normalizar, distancia, casarLetras, mascaraDeAcerto, sobrenomesDe,
   LIMITE_CERTO, LIMITE_QUASE
 };

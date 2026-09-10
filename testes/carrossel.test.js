@@ -182,5 +182,63 @@ function responderCerto(sala) {
   }
 }
 
+/* ---------- As cegas: errar nao elimina, repetir sim, e nada vaza ---------- */
+{
+  // O as cegas mostrava a resposta no chat e piscava a lista embaixo: o modo
+  // e sobre lembrar o que ja saiu, entao nenhum nome dito pode aparecer. E
+  // errar passou a so gastar o relogio — o que elimina e repetir.
+  const eventos = [];
+  const sala = new Sala('CEG1', {
+    categorias: ['geografia'], modo: 'carrossel-cego', metaPontos: 9999, segundosPorPergunta: 20
+  }, (evento, dados) => eventos.push({ evento, dados }));
+  sala.entrar('a', 'Ana');
+  sala.entrar('b', 'Bia');
+  sala.entrar('c', 'Caio');
+  sala.iniciar();
+  sala.limparTemporizador();
+  sala.mostrarPergunta();
+  sala.limparTemporizador();
+
+  // Lista fixa, para o teste nao depender do sorteio.
+  sala.perguntaAtual = {
+    ...sala.perguntaAtual,
+    itens: ['Argentina', 'Brasil', 'Colombia', 'Dinamarca', 'Equador', 'Finlandia']
+      .map((nome) => ({ oficial: nome, variantes: [] }))
+  };
+
+  const tentar = (quem, texto) => {
+    sala.jogadores.get(quem).ultimaMensagem = 0;
+    const r = sala.palpitar(quem, texto);
+    sala.limparTemporizador();
+    return r;
+  };
+
+  const primeiro = daVez(sala);
+  const errou = tentar(primeiro, 'abacaxi com bolinhas');
+  conferir('as cegas: errar nao elimina', errou.veredito, 'errado');
+  conferir('  quem errou continua viva', sala.vivos.has(primeiro), true);
+  conferir('  e continua com a vez', daVez(sala), primeiro);
+
+  const antesDoAcerto = eventos.length;
+  tentar(primeiro, 'Argentina');
+  const acerto = eventos.slice(antesDoAcerto)
+    .filter((e) => e.evento === 'chat:mensagem' && e.dados.tipo === 'acerto').pop();
+  conferir('as cegas: o acerto nao leva o nome no chat', acerto.dados.texto, null);
+  conferir('  mas continua marcado como item de lista', acerto.dados.item, true);
+
+  const segundo = daVez(sala);
+  // "Argentine" esta a uma letra de um item que JA saiu: nada de dica.
+  const quase = tentar(segundo, 'Argentine');
+  conferir('as cegas: quase de item ja dito nao vira dica', quase.veredito, 'errado');
+
+  const antesDaRepeticao = eventos.length;
+  const repetiu = tentar(segundo, 'Argentina');
+  conferir('as cegas: repetir elimina', [repetiu.veredito, repetiu.motivo], ['eliminado', 'repetiu']);
+  const vazou = eventos.slice(antesDaRepeticao).some((e) =>
+    e.evento === 'chat:mensagem' && /argentina/i.test(JSON.stringify(e.dados)));
+  conferir('  e o palpite repetido nao vai para o chat', vazou, false);
+  sala.destruir();
+}
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
 process.exit(falhas ? 1 : 0);

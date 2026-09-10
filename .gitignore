@@ -8,5 +8,9 @@ server/dados/
 # pasta bruta de imagens: as usadas ja foram copiadas para public/img
 immg jogo/
 
+# musicas inteiras em FLAC (dezenas de MB cada): o jogo usa so os trechos
+# curtos em MP3 de public/audio
+public/musicas/
+
 # pagina de trabalho: imagens ainda sem identificacao
 imagens-para-identificar.html

@@ -43,6 +43,8 @@ const criar = (tag, classe) => {
 
 function mostrarTela(id) {
   document.querySelectorAll('.tela').forEach((t) => t.classList.toggle('ativa', t.id === id));
+  // Voltou ao saguao: a lista de salas abertas atualiza na hora.
+  if (id === 'tela-lobby') carregarSalasAbertas();
 }
 
 function avisar(idElemento, mensagem) {
@@ -126,6 +128,47 @@ inputCodigo.addEventListener('keydown', (e) => { if (e.key === 'Enter') entrarNa
 inputNickname.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !$('painel-entrar').hidden) entrarNaSala();
 });
+
+/* --------------------------- Salas abertas --------------------------- */
+
+/**
+ * As salas que ainda aceitam gente, para entrar sem precisar que alguém dite
+ * o código. Atualiza sozinha enquanto o saguão está na tela.
+ */
+async function carregarSalasAbertas() {
+  if (!$('tela-lobby').classList.contains('ativa')) return;
+
+  let salas;
+  try {
+    const resposta = await fetch('/api/salas');
+    salas = await resposta.json();
+  } catch {
+    return; // sem rede: fica a lista que já está na tela
+  }
+
+  const lista = $('salas-lista');
+  lista.innerHTML = '';
+  for (const sala of salas) {
+    const item = criar('li', 'sala-aberta');
+    const quando = sala.estado === 'fim' ? ' · entre partidas' : '';
+    item.innerHTML = `
+      <span class="sala-aberta__lider">${sala.avatar} ${escapar(sala.lider)}</span>
+      <span class="sala-aberta__modo">${sala.icone} ${escapar(sala.modo)} · ${sala.codigo}${quando}</span>
+      <span class="sala-aberta__gente">${sala.jogadores}/${sala.max}</span>
+      <button class="btn btn--secundario sala-aberta__entrar" type="button">Entrar</button>`;
+    item.querySelector('button').addEventListener('click', () => {
+      inputCodigo.value = sala.codigo;
+      entrarNaSala();
+    });
+    lista.appendChild(item);
+  }
+
+  $('salas-vazio').hidden = salas.length > 0;
+  $('salas-contagem').textContent = salas.length ? String(salas.length) : '';
+}
+
+carregarSalasAbertas();
+setInterval(carregarSalasAbertas, 4000);
 
 /* =====================================================================
    2. CONFIGURAÇÃO DA SALA
@@ -805,7 +848,9 @@ function registrarDito(nome) {
 
 socket.on('carrossel:vez', (dados) => {
   estado.vivos = new Set(dados.vivos);
-  mostrarDitos(dados.ditos || []);
+  // O às cegas manda `null` de propósito. Trocar por [] fazia o registrarDito
+  // achar que havia lista e piscar a resposta embaixo até a próxima vez.
+  mostrarDitos(dados.ditos);
   montarFilaCarrossel(dados.ordem, dados.jogadorId);
 
   const minha = dados.jogadorId === socket.id;
@@ -1246,7 +1291,9 @@ socket.on('chat:mensagem', (msg) => {
   if (msg.tipo === 'acerto') {
     // Acerto com `texto` é um item de lista (Carrossel, Presente Grego): azul.
     // Sem `texto`, é a resposta fechada da rodada: verde.
-    const cor = msg.texto ? 'msg--item' : 'msg--acerto';
+    // No às cegas o item vem sem `texto` (o nome não pode vazar), mas continua
+    // sendo item de lista: `item` mantém o azul.
+    const cor = (msg.texto || msg.item) ? 'msg--item' : 'msg--acerto';
     const el = criar('div', `msg ${cor}` + (souEu ? ' msg--eu' : ''));
     const quando = msg.ms != null ? ` em ${(msg.ms / 1000).toFixed(1)}s` : '';
     // No Carrossel vem tambem O QUE foi respondido: sem isso ninguem sabe o
@@ -1289,11 +1336,17 @@ formChat.addEventListener('submit', (evento) => {
     } else if (resposta.veredito === 'repetido') {
       avisoParticular(`Voce ja tinha dito "${resposta.item}". Tente outra.`);
 
+    } else if (resposta.veredito === 'errado') {
+      // Carrossel às cegas: errar não elimina, só gasta o relógio.
+      avisoParticular('Nao vale. Tente outra — voce ainda tem tempo.');
+
     } else if (resposta.veredito === 'eliminado') {
-      // Carrossel: errou na sua vez e saiu da rodada.
-      avisoParticular(resposta.repetido
-        ? `"${resposta.repetido}" ja tinha sido dito. Voce saiu desta rodada.`
-        : 'Errou! Voce saiu desta rodada.');
+      // Carrossel: saiu da rodada — por errar (visível) ou repetir (às cegas).
+      avisoParticular(resposta.motivo === 'repetiu'
+        ? 'Essa ja tinha saido. Voce saiu desta rodada.'
+        : resposta.repetido
+          ? `"${resposta.repetido}" ja tinha sido dito. Voce saiu desta rodada.`
+          : 'Errou! Voce saiu desta rodada.');
 
     } else if (resposta.veredito === 'item') {
       // Um item de lista tem cara propria: azul, e no mesmo formato do acerto

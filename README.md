@@ -23,11 +23,17 @@ Todo jogador começa digitando um **nickname** e escolhendo entre:
 - **Criar sala** — abre a tela de configuração; o botão *Criar sala* fica no fim dela.
 - **Entrar na sala** — abre um campo para o código de 4 caracteres.
 
+Embaixo, o saguão lista as **salas abertas** — quem criou, o modo, a lotação e
+o código —, e dá para entrar com um clique, sem ninguém ditar o código. Só
+aparecem salas esperando gente ou entre uma partida e outra: partida rolando
+não aceita ninguém. A lista vem de `GET /api/salas` e se atualiza sozinha a
+cada 4 segundos enquanto o saguão está na tela.
+
 ### Configuração (só quem cria)
 
 | Ajuste | Opções |
 | --- | --- |
-| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, Cinema & TV, História, Ciência, Games, **Mainstream** |
+| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música (com a parte **Trechos**, que toca a música), Cinema & TV, História, Ciência, Games, **Mainstream**, **Marcas** |
 | Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas) ou **Presente Grego** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
@@ -156,8 +162,8 @@ parcial conta, então ninguém sai de mãos vazias por ter parado a um item do f
    entram três vezes no bolo do sorteio e as demais uma vez — as fechadas
    continuam mais prováveis, sem tirar as outras do jogo.
 
-São **221 listas escritas à mão** (mais de 6.700 itens) e outras **259 geradas**
-a partir delas — 480 no total. Cobrem futebol, geografia, música, cinema,
+São **223 listas escritas à mão** (7.366 itens) e outras **313 geradas**
+a partir delas — 536 no total. Cobrem futebol, geografia, música, cinema,
 séries, anime, games, ciência, história, filosofia, mitologia, política,
 esportes, objetos de casa e cultura pop.
 
@@ -256,6 +262,86 @@ Duas decisões que valem registrar:
 Rodada pulada **não alimenta a dificuldade adaptativa**: quase ninguém tentou
 responder, então ela não mede nada sobre a pergunta.
 
+### Categorias variadas (Modo Tempo)
+
+O sorteio escolhe primeiro a **categoria** e só depois a pergunta. Numa janela
+de **80% das categorias** escolhidas nenhuma se repete: com 10 categorias,
+quaisquer 8 perguntas seguidas são de 8 categorias diferentes; com todas as 16,
+quaisquer 13. Dentro da janela o sorteio é livre, então a ordem não vira um
+rodízio previsível.
+
+Antes o sorteio era por pergunta, num monte só — e a categoria mais recheada
+dominava: Cinema tem 543 perguntas e Rap 27, então uma rodada em cada quatro
+era de cinema. A regra antiga continua valendo por cima: resposta que já saiu
+na partida não volta.
+
+### Carrossel às cegas
+
+O mesmo carrossel, sem a lista do que já foi dito — e agora sem **nenhum**
+jeito de ver: o acerto vai para o chat sem o nome do item, e o palpite repetido
+não é publicado. Antes o nome aparecia no chat e a lista "já foi dito" piscava
+embaixo por um instante, o que acabava com o modo.
+
+As regras também mudaram: **errar não elimina**, só gasta os 7 segundos — dá
+para tentar de novo. O que tira da rodada é **repetir** uma resposta que já
+saiu, que é justamente o que o modo pede para lembrar. A dica do "quase" nunca
+aponta para um item já dito. O carrossel visível continua como era: errou,
+saiu.
+
+### Sobrenome basta
+
+Em qualquer resposta que seja nome de pessoa, **o sobrenome sozinho vale**:
+`Messi` por *Lionel Messi*, `Reeves` por *Keanu Reeves*, `Vinci` ou `da Vinci`
+por *Leonardo da Vinci*. Ninguém digita o nome inteiro com o relógio correndo.
+
+A variante não é escrita à mão — era assim que ela se perdia a cada lista nova.
+`sobrenomesDe` (em [`server/comparar.js`](server/comparar.js)) gera o atalho
+na carga: para toda lista de pessoas (jogadores, cantores, atores, políticos,
+pilotos…) e, no banco de perguntas, para as fotos de jogador e os enunciados
+"Quem…?" e "Qual ator/cantor/…". Sufixo de geração e numeral de rei vão junto
+(*Downey Jr.*, *Pedro I*); nome "X e Y" não tem atalho (*Claudinho e Buchecha*
+é dupla).
+
+Três travas, porque aceitar demais também é defeito:
+
+- sobrenome de **duas pessoas** da mesma lista não vale para nenhuma (*Rafael*
+  e *Diogo Portugal*). Cada lista decide por si: "Costa" é ambíguo em *cantores
+  brasileiros*, mas na lista dos que começam com G só existe Gal Costa;
+- no banco de perguntas, sobrenome que **acertaria outra pergunta** da categoria
+  também não — era assim que "Silva" virava chute que acertava metade das fotos
+  de jogador;
+- e o atalho **nunca pode estar no enunciado**: *"Quem massacrou o clã
+  Uchiha?"* não aceita `Uchiha`.
+
+### A pergunta não entrega a resposta
+
+Nenhuma pergunta pode trazer a resposta — nem uma variante aceita — escrita no
+enunciado. Cerca de cem foram reescritas: *"Qual cavalo de madeira derrubou a
+cidade de Troia?"* → *Cavalo de Troia*, a série que *"leva 3% ao Maralto"* →
+*3%*, *"Qual empresa fabrica o Nintendo Switch?"* → *Nintendo*, e variante que
+entregava sem ninguém ver: *"Qual é a fórmula química da água?"* aceitava
+`água`.
+
+Resposta de **um caractere** também saiu (fora da matemática, onde o número é a
+própria conta): com 350 ms entre mensagens, as 26 letras cabem numa rodada de
+20 s. Os símbolos químicos viraram pergunta ao contrário — *"Qual elemento tem
+o símbolo C?"* → *Carbono*.
+
+E o `%` passou a contar no corretor: *3%* virava só `3`, e na rodada *"Cite 3
+séries famosas"* digitar o número do próprio enunciado valia como a série.
+
+### Listas que contêm outras
+
+*"Cite super-heróis"* e *"Cite heróis da Marvel"* eram a mesma pergunta com
+respostas diferentes: *Gavião Arqueiro* valia numa e não na outra. Agora uma
+tabela (`INCLUSOES`, em [`server/escalada.js`](server/escalada.js)) diz que a
+lista genérica aceita tudo o que as específicas aceitam: super-heróis incluem
+os heróis da Marvel e da DC, vilões de quadrinhos os das duas, *capitais
+mundiais* todas as capitais por continente, *cantores brasileiros* os
+sertanejos, as cantoras, o funk, o pagode e o gospel, *objetos de uma casa*
+todos os cômodos. A união é feita na carga, sem copiar item a item — então não
+descola quando alguém edita só uma das listas.
+
 ### Durante a partida
 
 1. A **categoria aparece sozinha em tela cheia** por ~2,8s.
@@ -350,7 +436,7 @@ Duas famílias de pergunta que rendem muito com pouco conteúdo escrito:
 A*, *países com B* uma a uma, cada lista-fonte é fatiada pela primeira letra do
 nome. Só vira pergunta a letra que tiver ao menos 4 itens e que não pegue mais
 de um quarto da lista — uma letra que abocanha o repertório inteiro anuncia uma
-restrição que não restringe. Hoje 25 fontes viram **236 listas automáticas** —
+restrição que não restringe. Hoje 29 fontes viram **282 listas automáticas** —
 adicionar uma fruta nova ao repertório cria pergunta em todas as letras
 afetadas, sem tocar em mais nada.
 
@@ -373,8 +459,9 @@ dificuldade entre elas.
 
 ## Subcategorias
 
-Uma categoria pode ser dividida em partes escolhidas separadamente. Hoje só
-**Anime → Naruto** usa isso, mas a máquina serve para qualquer uma:
+Uma categoria pode ser dividida em partes escolhidas separadamente — por
+exemplo **Anime → Naruto**, **Música → Trechos** e **Marcas → Carros**. A
+máquina serve para qualquer uma:
 
 ```js
 { id: 'anime', nome: 'Anime', icone: '🍥', cor: '#ec4899',
@@ -395,7 +482,7 @@ inventado é descartado.
 
 ## Banco de perguntas
 
-**1991 perguntas em 16 categorias**, mais 27 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**2331 perguntas em 17 categorias**, mais 536 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -406,7 +493,8 @@ antes do fim da rodada — quem confere é o servidor.
   resposta: 'Johnny Depp',
   aceita: ['Depp'],        // opcional: outras formas válidas
   dif: 15,                 // opcional: dificuldade inicial 0-100 (padrão 40)
-  imagem: 'https://…',     // opcional
+  imagem: 'https://…',     // opcional (ou '/img/arquivo.jpg', de public/img)
+  audio: '/audio/….mp3',   // opcional: toca junto com a pergunta
   letra: 'trecho…'         // opcional: mostra um trecho de letra em destaque
 }
 ```
@@ -468,6 +556,38 @@ As fotos vêm do **Wikimedia Commons** (licença livre), buscadas pela API da
 Wikipédia e gravadas como URL em `questions.js` — nada é baixado para o projeto.
 Como são imagens de terceiros, dependem do Commons continuar no ar; o comando
 `npm run checar-imagens` percorre todas e avisa se alguma sair.
+
+### Categoria Marcas — logos
+
+**100 logos** em cinco partes: Carros, Tecnologia, Moda e esporte, Comida e
+bebida e Outras. O enunciado é sempre *"De quem é este logo?"*. Só entra logo
+**sem o nome da marca escrito**: se a palavra está na imagem, a pergunta entrega
+a resposta. Pelo mesmo motivo, sigla que aparece no logo (NB, LV, TS) não vale
+como resposta.
+
+As imagens ficam em `public/img/logo-*.jpg`, reduzidas para no máximo 480 px.
+Na mesma leva entraram os **29 times da NBA e o logo da liga** (Esportes → NBA, *"Qual time da NBA
+usa este logo?"*), os escudos de Manchester United e Liverpool no Futebol e o
+Snoopy em Cinema & TV. O fundo transparente vira branco: logo preto sobre
+transparente sumiria na tela escura do jogo.
+
+### Categoria Música — trechos de áudio
+
+A parte **Trechos** toca 15 segundos de uma música e pergunta *"Qual é o nome
+desta música?"*. São 22 músicas: Yellow, Shape of You, Blinding Lights, In the
+End, Mr. Brightside e outras.
+
+- Os arquivos inteiros (FLAC, dezenas de MB cada) ficam em `public/musicas/`,
+  que está no `.gitignore` e **não vai para o repositório**.
+- O jogo usa só os trechos, em `public/audio/trecho-*.mp3` (MP3 de 112 kbps,
+  ~200 KB cada, todos no mesmo volume e com entrada e saída suaves).
+- O trecho foi escolhido pela parte que mais se repete com mais volume — em
+  geral o refrão. Se algum ficou ruim, dá para cortar de novo a partir de um
+  segundo escolhido na mão.
+- Quando o navegador bloqueia o som automático, o tocador pede um toque.
+
+> São músicas com direito autoral. Para jogar entre amigos tudo bem, mas no site
+> público os trechos ficam acessíveis para qualquer um.
 
 ### Categoria Música — perguntas de letra
 

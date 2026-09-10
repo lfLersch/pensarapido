@@ -24,6 +24,11 @@ const MS_APOS_ULTIMO = 0;        // acertou geral, fecha na hora: a contagem é 
 const MS_POR_RESPOSTA_EXTRA = 3000;
 const MS_TETO_RODADA = 90000;
 
+// Pergunta simples (Modo Tempo e a rodada 1 dos outros): numa janela de 80%
+// das categorias escolhidas nenhuma se repete. Com 10 categorias, quaisquer 8
+// perguntas seguidas sao de 8 categorias diferentes.
+const VARIACAO_CATEGORIAS = 0.8;
+
 // Carrossel: a vez passa de jogador em jogador e quem não souber sai da
 // rodada. Cada pessoa tem 7s, e a cada 2 rodadas o carrossel dá uma volta a
 // mais — rodadas 1-2 uma volta, 3-4 duas, 5-6 três.
@@ -102,7 +107,7 @@ const MODOS = [
     id: 'carrossel-cego',
     nome: 'Carrossel as cegas',
     icone: '🙈',
-    descricao: 'O mesmo carrossel, mas sem a lista do que ja foi dito: quem repetir uma resposta que ja saiu esta fora.',
+    descricao: 'O mesmo carrossel, mas sem a lista do que ja foi dito. Errar nao elimina: da para tentar de novo dentro dos 7s. Quem repetir uma resposta que ja saiu esta fora.',
     disponivel: true
   },
   {
@@ -211,7 +216,8 @@ class Sala {
     this.ultimoTema = null;     // tema da rodada anterior, para não repetir
     this.jogadoresNaRodada = 0;
 
-    this.fila = [];             // perguntas embaralhadas ainda não usadas
+    this.filas = new Map();     // categoria -> perguntas embaralhadas ainda não usadas
+    this.ultimasCategorias = []; // de onde vieram as últimas perguntas, para variar
     // Respostas e listas que já caíram nesta partida. Duas cenas diferentes de
     // Star Wars são duas perguntas no banco, mas para quem joga são a mesma:
     // na segunda todo mundo digita na hora. "Star Wars" é resposta de 5
@@ -379,7 +385,8 @@ class Sala {
     }
 
     this.rodada = 0;
-    this.fila = [];
+    this.filas = new Map();
+    this.ultimasCategorias = [];
     this.respostasUsadas.clear();
     this.listasUsadas.clear();
     if (this.ehPresenteGrego()) this.formarDuplas();
@@ -467,57 +474,95 @@ class Sala {
     if (eraDaVez) this.avancarLance();
   }
 
-  /** Junta as perguntas das categorias escolhidas e embaralha. */
+  /**
+   * As perguntas das categorias escolhidas, numa fila embaralhada POR
+   * categoria.
+   *
+   * O sorteio escolhe primeiro a categoria e só depois a pergunta. Sorteando
+   * a pergunta direto de um monte só, a categoria mais recheada dominava:
+   * Cinema tem 543 perguntas e Rap 27, então uma rodada em cada quatro era de
+   * cinema e rap quase nunca aparecia.
+   */
   montarFila() {
-    const todas = [];
-    const subsEscolhidas = new Set(this.config.subs || []);
-
+    this.filas = new Map();
     for (const idCategoria of this.config.categorias) {
-      // Quais partes desta categoria foram marcadas? Nenhuma = a categoria toda.
-      const daCategoria = [...subsEscolhidas]
-        .filter((s) => s.startsWith(idCategoria + ':'))
-        .map((s) => s.slice(idCategoria.length + 1));
-      const filtrar = daCategoria.length > 0;
-
-      for (const pergunta of QUESTOES[idCategoria] || []) {
-        if (filtrar && !daCategoria.includes(pergunta.sub)) continue;
-        todas.push({ ...pergunta, categoria: idCategoria });
-      }
+      const perguntas = this.perguntasDaCategoria(idCategoria);
+      if (perguntas.length) this.filas.set(idCategoria, embaralhar(perguntas));
     }
+  }
 
-    this.fila = embaralhar(todas);
+  /** As perguntas de uma categoria, respeitando as partes marcadas. */
+  perguntasDaCategoria(idCategoria) {
+    const subsEscolhidas = new Set(this.config.subs || []);
+    // Quais partes desta categoria foram marcadas? Nenhuma = a categoria toda.
+    const daCategoria = [...subsEscolhidas]
+      .filter((s) => s.startsWith(idCategoria + ':'))
+      .map((s) => s.slice(idCategoria.length + 1));
+
+    const todas = (QUESTOES[idCategoria] || []).map((p) => ({ ...p, categoria: idCategoria }));
+    if (daCategoria.length === 0) return todas;
+    const filtradas = todas.filter((p) => daCategoria.includes(p.sub));
+    // Parte marcada sem pergunta nenhuma não pode matar a categoria inteira.
+    return filtradas.length ? filtradas : todas;
   }
 
   /**
-   * Tira a próxima pergunta da fila pulando as que repetem uma resposta já
+   * Tira a próxima pergunta, variando a categoria.
+   *
+   * Numa janela de 80% das categorias escolhidas nenhuma se repete: com 10
+   * categorias, quaisquer 8 perguntas seguidas são de 8 categorias
+   * diferentes. Dentro da janela o sorteio é livre, então a ordem não vira
+   * um rodízio previsível.
+   */
+  sacarDaFila() {
+    if (!this.filas || this.filas.size === 0) this.montarFila();
+    const categorias = [...this.filas.keys()];
+
+    const janela = Math.max(1, Math.ceil(categorias.length * VARIACAO_CATEGORIAS));
+    // Quem apareceu nas últimas (janela - 1) perguntas espera a vez.
+    const bloqueadas = new Set(janela > 1 ? this.ultimasCategorias.slice(-(janela - 1)) : []);
+    const livres = categorias.filter((c) => !bloqueadas.has(c));
+    const opcoes = livres.length ? livres : categorias;
+    const categoria = opcoes[Math.floor(Math.random() * opcoes.length)];
+
+    this.ultimasCategorias.push(categoria);
+    if (this.ultimasCategorias.length > categorias.length) this.ultimasCategorias.shift();
+
+    return this.sacarDaCategoria(categoria);
+  }
+
+  /**
+   * Tira uma pergunta da categoria pulando as que repetem uma resposta já
    * dada nesta partida.
    *
    * Resposta puramente numérica escapa da regra: "quanto e 6x5" e "quanto e
    * 27+3" dão 30, e ninguém sente isso como repetição — são contas diferentes.
    */
-  sacarDaFila() {
-    if (this.fila.length === 0) this.montarFila();
+  sacarDaCategoria(categoria) {
+    let fila = this.filas.get(categoria);
+    if (!fila || fila.length === 0) {
+      fila = embaralhar(this.perguntasDaCategoria(categoria));
+      this.filas.set(categoria, fila);
+    }
 
     const puladas = [];
-    while (this.fila.length > 0) {
-      const bruta = this.fila.shift();
+    while (fila.length > 0) {
+      const bruta = fila.shift();
       const chave = normalizar(bruta.resposta || '');
-
       if (/^[0-9]+$/.test(chave) || !this.respostasUsadas.has(chave)) {
         // As puladas voltam para o fim: podem servir numa partida seguinte.
-        if (puladas.length) this.fila.push(...puladas);
+        if (puladas.length) fila.push(...puladas);
         this.respostasUsadas.add(chave);
         return bruta;
       }
       puladas.push(bruta);
     }
 
-    // Sobrou só repetição — a partida é mais longa que o baralho escolhido.
-    // Recomeça uma passagem em vez de ficar sem pergunta.
-    this.respostasUsadas.clear();
-    this.fila = embaralhar(puladas);
-    if (this.fila.length === 0) this.montarFila();
-    const bruta = this.fila.shift();
+    // Só sobrou repetição nesta categoria — a partida é mais longa que o
+    // baralho dela. Recomeça a categoria em vez de ficar sem pergunta.
+    const nova = embaralhar(this.perguntasDaCategoria(categoria));
+    const bruta = nova.shift();
+    this.filas.set(categoria, nova);
     this.respostasUsadas.add(normalizar(bruta.resposta || ''));
     return bruta;
   }
@@ -1058,9 +1103,12 @@ class Sala {
       motivo,
       vivos: [...this.vivos]
     });
-    this.avisar(motivo === 'tempo'
-      ? `${jogador ? jogador.nickname : 'Alguem'} nao respondeu a tempo e saiu da rodada.`
-      : `${jogador ? jogador.nickname : 'Alguem'} errou e saiu da rodada.`);
+    const porque = {
+      tempo: 'nao respondeu a tempo',
+      repetiu: 'repetiu uma resposta que ja tinha saido',
+      errou: 'errou'
+    }[motivo] || 'errou';
+    this.avisar(`${jogador ? jogador.nickname : 'Alguem'} ${porque} e saiu da rodada.`);
 
     this.avancarVez();
   }
@@ -1175,6 +1223,9 @@ class Sala {
         if (jaTenho.has(i)) repetido = i;
         else if (novoItem < 0) novoItem = i;
       } else if (r.veredito === 'quase') {
+        // No Carrossel, "quase" de um item que JA saiu nao vale como dica: a
+        // mascara entregaria o que foi dito, e no as cegas lembrar e o jogo.
+        if (this.ehCarrossel() && jaTenho.has(i)) continue;
         perto = true;
         if (r.erro < quaseErro) {
           quaseErro = r.erro;
@@ -1184,13 +1235,23 @@ class Sala {
     }
     if (repetido >= 0) novoItem = -1;
 
-    // Carrossel: a vez se resolve aqui. Acertou, passa adiante; errou ou
-    // repetiu o que já foi dito, sai da rodada. "Quase" é só um aviso, e
-    // sobra tempo dos 7s para tentar de novo.
+    // Carrossel: a vez se resolve aqui. Acertou, passa adiante. "Quase" é só
+    // um aviso, e sobra tempo dos 7s para tentar de novo.
     if (this.ehCarrossel() && this.estado === 'pergunta') {
       if (novoItem >= 0) return this.acertoNoCarrossel(socketId, jogador, novoItem);
       if (perto) return { veredito: 'quase', dica: mascaraDeAcerto(limpo, quaseAlvo) };
 
+      // Às cegas: errar não tira ninguém — só queima o relógio. O que elimina
+      // é repetir o que já saiu, que é justamente o que o modo pede para
+      // lembrar. E o palpite repetido não vai para o chat: lá ele diria a
+      // todo mundo o que já foi dito.
+      if (!this.mostraDitos()) {
+        if (repetido < 0) return { veredito: 'errado' };
+        this.eliminar(socketId, 'repetiu');
+        return { veredito: 'eliminado', motivo: 'repetiu' };
+      }
+
+      // Visível: errar ou repetir o que está na tela, sai da rodada.
       const item = repetido >= 0 ? this.perguntaAtual.itens[repetido].oficial : null;
       this.publicarChat(jogador, limpo);
       this.eliminar(socketId, 'errou');
@@ -1320,15 +1381,18 @@ class Sala {
 
     const nomeItem = this.perguntaAtual.itens[indice].oficial;
 
-    // Aqui o acerto é público de propósito: os outros precisam saber o que já
-    // saiu para não repetir na vez deles.
+    // No visível o acerto é público de propósito: os outros precisam saber o
+    // que já saiu para não repetir na vez deles. No às cegas o nome NÃO vai —
+    // é o que cada um tem que lembrar sozinho, e mandar no chat era entregar
+    // a lista inteira.
     this.emitir('chat:mensagem', {
       tipo: 'acerto',
       jogadorId: socketId,
       nickname: jogador.nickname,
       avatar: jogador.avatar,
       pontos: PONTOS_POR_ITEM,
-      texto: nomeItem
+      texto: this.mostraDitos() ? nomeItem : null,
+      item: true
     });
     this.emitir('rodada:acertou', {
       jogadorId: socketId,

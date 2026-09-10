@@ -39,6 +39,34 @@ app.get('/api/dificuldades', (_req, res) => {
   res.json(dificuldade.resumo(indicePerguntas()));
 });
 
+// Salas que ainda aceitam gente, para o saguao listar e a pessoa entrar sem
+// precisar que alguem dite o codigo.
+app.get('/api/salas', (_req, res) => {
+  const abertas = [];
+  for (const sala of salas.values()) {
+    if (sala.vazia) continue;
+    // Partida rolando nao aceita ninguem; entre uma partida e outra, aceita.
+    if (sala.estado !== 'lobby' && sala.estado !== 'fim') continue;
+    if (sala.jogadores.size >= MAX_JOGADORES) continue;
+
+    const lider = [...sala.jogadores.values()].find((j) => j.lider);
+    const modo = MODOS.find((m) => m.id === sala.config.modo);
+    abertas.push({
+      codigo: sala.codigo,
+      lider: lider ? lider.nickname : '',
+      avatar: lider ? lider.avatar : '',
+      jogadores: sala.jogadores.size,
+      max: MAX_JOGADORES,
+      modo: modo ? modo.nome : sala.config.modo,
+      icone: modo ? modo.icone : '',
+      estado: sala.estado
+    });
+  }
+  // Sala mais cheia primeiro: e onde a partida comeca antes.
+  abertas.sort((a, b) => b.jogadores - a.jogadores);
+  res.json(abertas);
+});
+
 /** @type {Map<string, Sala>} */
 const salas = new Map();
 

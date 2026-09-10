@@ -591,7 +591,8 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   left: 6px;
   z-index: 20;
   width: max-content;
-  max-width: 280px;
+  /* Largo o bastante para 8 icones, e nunca mais largo que a tela. */
+  max-width: min(330px, calc(100vw - 32px));
   padding: 12px;
   background: rgba(24, 17, 52, 0.98);
   border: 1px solid var(--borda-forte);
@@ -608,13 +609,17 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   text-transform: uppercase;
   color: var(--texto-suave);
 }
+/* `minmax(0, 1fr)` e `min-width: 0` juntos: sem eles, item de grade nao
+   encolhe abaixo do proprio conteudo, e 8 icones de ~35px passavam da
+   largura do balao — vazavam pela direita. */
 .balao__grade {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 4px;
 }
 .balao__opcao {
-  padding: 5px;
+  min-width: 0;
+  padding: 5px 0;
   font-size: 21px;
   line-height: 1;
   background: rgba(0, 0, 0, 0.28);
@@ -630,7 +635,7 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 
 @media (max-width: 560px) {
-  .balao__grade { grid-template-columns: repeat(6, 1fr); }
+  .balao__grade { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 .jogador__nome   { font-size: 15.5px; font-weight: 600; }
 .jogador__voce   { margin-left: 6px; font-size: 12px; color: var(--texto-fraco); }
@@ -1828,4 +1833,99 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 @media (max-width: 560px) {
   .btn--pular { padding: 8px 11px; font-size: 12.5px; }
+}
+
+/* ----------------------------- Salas abertas ----------------------------- */
+
+.salas {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--borda);
+}
+
+.salas__topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.salas__titulo {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.salas__contagem {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--destaque);
+}
+
+.salas__lista {
+  display: grid;
+  gap: 7px;
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* Duas linhas: quem criou e o modo à esquerda, a lotação e o botão à direita. */
+.sala-aberta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'lider gente entrar'
+    'modo  gente entrar';
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  padding: 9px 10px 9px 13px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-peq);
+  animation: subir 220ms ease;
+}
+
+.sala-aberta__lider {
+  grid-area: lider;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sala-aberta__modo {
+  grid-area: modo;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--texto-suave);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sala-aberta__gente {
+  grid-area: gente;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--texto-suave);
+}
+
+.sala-aberta__entrar {
+  grid-area: entrar;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.salas__vazio {
+  margin: 4px 0 0;
+  font-size: 13px;
+  text-align: center;
+  color: var(--texto-fraco);
 }

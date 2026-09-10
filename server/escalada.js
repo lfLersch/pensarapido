@@ -22,6 +22,8 @@
  * até o tamanho da lista, e vale qualquer combinação de itens distintos.
  */
 
+const { normalizar, sobrenomesDe, distancia, LIMITE_CERTO } = require('./comparar');
+
 const LISTAS = [
   /* ---------------------- conjuntos fechados ---------------------- */
   {
@@ -450,20 +452,6 @@ const LISTAS = [
     ]
   },
   {
-    pergunta: 'Cite {n} filmes da Marvel',
-    minimo: 2, tema: 'cinema', dif: 40,
-    respostas: [
-      ['Homem de Ferro', 'Iron Man'], ['Vingadores', 'Avengers'],
-      ['Capitao America', 'Capitao America'], ['Thor'], ['Hulk'],
-      ['Guardioes da Galaxia', 'Guardioes da Galaxia'], ['Pantera Negra', 'Black Panther'],
-      ['Doutor Estranho', 'Doutor Strange'], ['Homem-Formiga', 'Homem Formiga'],
-      ['Capita Marvel', 'Capita Marvel'], ['Homem-Aranha', 'Homem Aranha', 'Spider-Man'],
-      ['Ultimato', 'Endgame'], ['Guerra Infinita', 'Infinity War'],
-      ['Eternos', 'Eternals'], ['Shang-Chi', 'Shang Chi'], ['Deadpool'],
-      ['Viuva Negra', 'Viuva Negra'], ['Wandavision']
-    ]
-  },
-  {
     pergunta: 'Cite {n} capitais de paises da America do Sul',
     minimo: 2, tema: 'geografia', dif: 55,
     respostas: [
@@ -613,80 +601,6 @@ const LISTAS = [
       'Inocentes',
       'Ratos de Porao',
       'Krisiun'
-    ]
-  },
-  {
-    pergunta: 'Cite {n} herois da Marvel',
-    tema: 'cinema', dif: 25,
-    respostas: [
-      ['Homem de Ferro', 'Iron Man'],
-      'Capitao America',
-      'Thor',
-      'Hulk',
-      ['Viuva Negra', 'Black Widow'],
-      ['Gaviao Arqueiro', 'Hawkeye'],
-      ['Homem-Aranha', 'Homem Aranha', 'Spider-Man'],
-      ['Doutor Estranho', 'Doutor Strange'],
-      ['Pantera Negra', 'Black Panther'],
-      'Capita Marvel',
-      ['Feiticeira Escarlate', 'Wanda'],
-      'Visao',
-      'Wolverine',
-      'Deadpool',
-      ['Homem-Formiga', 'Homem Formiga', 'Ant-Man'],
-      'Groot',
-      ['Rocket Raccoon', 'Rocket'],
-      ['Star-Lord', 'Star Lord'],
-      'Falcao',
-      ['Soldado Invernal', 'Bucky']
-    ]
-  },
-  {
-    pergunta: 'Cite {n} herois da DC',
-    tema: 'cinema', dif: 35,
-    respostas: [
-      ['Superman', 'Super-Homem'],
-      'Batman',
-      ['Mulher-Maravilha', 'Mulher Maravilha'],
-      'Flash',
-      'Aquaman',
-      'Lanterna Verde',
-      ['Ciborgue', 'Cyborg'],
-      'Robin',
-      'Batgirl',
-      ['Arqueiro Verde', 'Arrow'],
-      'Shazam',
-      'Supergirl',
-      'Nightwing',
-      ['Mulher-Gato', 'Mulher Gato', 'Catwoman'],
-      'Constantine',
-      'Zatanna'
-    ]
-  },
-  {
-    pergunta: 'Cite {n} viloes da DC',
-    tema: 'cinema', dif: 45,
-    respostas: [
-      'Coringa',
-      'Lex Luthor',
-      'Charada',
-      'Pinguim',
-      'Duas Caras',
-      'Espantalho',
-      'Mulher-Gato',
-      'Bane',
-      'Ras al Ghul',
-      'Arlequina',
-      'Darkseid',
-      'Deathstroke',
-      'Sinestro',
-      'Reverso-Flash',
-      'Capitao Frio',
-      'Hera Venenosa',
-      'Chapeleiro Louco',
-      'Exterminador',
-      'Brainiac',
-      'Ameaca Negra'
     ]
   },
   {
@@ -1017,34 +931,6 @@ const LISTAS = [
     ]
   },
   {
-    pergunta: 'Cite {n} marcas de carro',
-    tema: 'mainstream', dif: 25,
-    respostas: [
-      ['Volkswagen', 'VW'],
-      'Fiat',
-      'Chevrolet',
-      'Ford',
-      'Toyota',
-      'Honda',
-      'Hyundai',
-      'Renault',
-      'Nissan',
-      'Peugeot',
-      ['Citroen', 'Citroen'],
-      'BMW',
-      ['Mercedes-Benz', 'Mercedes'],
-      'Audi',
-      'Ferrari',
-      'Porsche',
-      'Lamborghini',
-      'Jeep',
-      'Volvo',
-      'Kia',
-      'Mitsubishi',
-      'Tesla'
-    ]
-  },
-  {
     pergunta: 'Cite {n} redes sociais ou aplicativos famosos',
     tema: 'mainstream', dif: 20,
     respostas: [
@@ -1251,26 +1137,6 @@ const LISTAS = [
       ['Luna Lovegood', 'Luna'],
       'Neville',
       'Bellatrix'
-    ]
-  },
-  {
-    pergunta: 'Cite {n} filmes de super-heroi',
-    tema: 'cinema', dif: 25,
-    respostas: [
-      ['Vingadores', 'Os Vingadores'],
-      'Homem de Ferro',
-      'Batman',
-      'Superman',
-      ['Homem-Aranha', 'Homem Aranha'],
-      'Pantera Negra',
-      ['Mulher-Maravilha', 'Mulher Maravilha'],
-      'Thor',
-      'Capitao America',
-      'Deadpool',
-      'Aquaman',
-      'Liga da Justica',
-      'Coringa',
-      'Logan'
     ]
   },
   {
@@ -2501,32 +2367,6 @@ const LISTAS = [
     ]
   },
   {
-    pergunta: 'Cite {n} marcas de carro de luxo',
-    tema: 'mainstream', dif: 40,
-    respostas: [
-      'Ferrari',
-      'Lamborghini',
-      'Porsche',
-      'Bugatti',
-      'Maserati',
-      'Bentley',
-      'Rolls-Royce',
-      'Aston Martin',
-      'McLaren',
-      'Jaguar',
-      'Mercedes-Benz',
-      'BMW',
-      'Audi',
-      'Lexus',
-      'Tesla',
-      'Land Rover',
-      'Alfa Romeo',
-      'Cadillac',
-      'Koenigsegg',
-      'Pagani'
-    ]
-  },
-  {
     pergunta: 'Cite {n} tipos de veiculo',
     tema: 'objetos', dif: 15,
     respostas: [
@@ -2545,51 +2385,6 @@ const LISTAS = [
       'Van',
       'Trator',
       'Submarino'
-    ]
-  },
-  {
-    pergunta: 'Cite {n} super-herois',
-    tema: 'cinema', dif: 20,
-    respostas: [
-      ['Superman', 'Super-Homem'],
-      'Batman',
-      ['Homem-Aranha', 'Homem Aranha'],
-      'Homem de Ferro',
-      'Capitao America',
-      'Thor',
-      'Hulk',
-      ['Mulher-Maravilha', 'Mulher Maravilha'],
-      'Flash',
-      'Aquaman',
-      'Pantera Negra',
-      'Wolverine',
-      'Deadpool',
-      'Doutor Estranho',
-      'Viuva Negra',
-      'Capita Marvel',
-      'Lanterna Verde',
-      'Ciborgue'
-    ]
-  },
-  {
-    pergunta: 'Cite {n} viloes de quadrinhos',
-    tema: 'cinema', dif: 40,
-    respostas: [
-      ['Coringa', 'Joker'],
-      'Thanos',
-      'Lex Luthor',
-      'Duende Verde',
-      'Magneto',
-      'Loki',
-      'Venom',
-      'Pinguim',
-      'Doutor Destino',
-      'Ultron',
-      'Caveira Vermelha',
-      'Darkseid',
-      'Bane',
-      ['Arlequina', 'Harley Quinn'],
-      'Doutor Octopus'
     ]
   },
   {
@@ -4688,32 +4483,6 @@ const LISTAS = [
     ]
   },
   {
-    pergunta: 'Cite {n} humoristas brasileiros',
-    tema: 'mainstream', dif: 40,
-    respostas: [
-      ['Renato Aragao', 'Didi'],
-      'Chico Anysio',
-      'Jo Soares',
-      ['Whindersson Nunes', 'Whindersson'],
-      'Paulo Gustavo',
-      ['Tata Werneck', 'Tata'],
-      ['Fabio Porchat', 'Porchat'],
-      'Rafinha Bastos',
-      ['Danilo Gentili', 'Danilo'],
-      ['Marcelo Adnet', 'Adnet'],
-      ['Leandro Hassum', 'Hassum'],
-      'Marcus Majella',
-      'Thiago Ventura',
-      'Afonso Padilha',
-      'Nilton Pinto',
-      'Costinha',
-      'Mussum',
-      'Zacarias',
-      'Deboche',
-      'Bruno Motta'
-    ]
-  },
-  {
     pergunta: 'Cite {n} personagens de Chaves',
     tema: 'cinema', dif: 30,
     respostas: [
@@ -5345,7 +5114,7 @@ const LISTAS = [
       ['MC G15', 'G15'],
       ['MC Don Juan', 'Don Juan'],
       ['MC Pedrinho', 'Pedrinho'],
-      ['MC Bruninho', 'Bruninho'],
+      'MC Bruninho',
       ['MC Menor da VG', 'Menor da VG'],
       ['MC Rodolfinho', 'Rodolfinho'],
       ['MC Joao', 'Joao Baiano'],
@@ -5399,7 +5168,7 @@ const LISTAS = [
       ['MC Duduzinho', 'Duduzinho'],
       ['MC Cebezinho', 'Cebezinho'],
       ['MC Paiva', 'Paiva'],
-      ['MC Davi', 'Davi'],
+      'MC Davi',
       ['MC Digu', 'Digu'],
       ['MC Levin', 'Levin'],
       ['MC Kadu', 'Kadu'],
@@ -6808,7 +6577,553 @@ const LISTAS = [
       'Regua', 'Compasso', 'Transferidor', 'Esquadro', 'Calculadora'
     ]
   },
+  {
+    pergunta: 'Cite {n} herois da Marvel',
+    tema: 'cinema', dif: 30,
+    respostas: [
+      ['Homem de Ferro', 'Iron Man', 'Tony Stark'],
+      ['Capitao America', 'Captain America', 'Steve Rogers'],
+      'Thor',
+      ['Hulk', 'Bruce Banner'],
+      ['Viuva Negra', 'Black Widow', 'Natasha Romanoff'],
+      ['Gaviao Arqueiro', 'Hawkeye', 'Clint Barton'],
+      ['Homem-Aranha', 'Spider-Man', 'Peter Parker'],
+      ['Doutor Estranho', 'Doctor Strange', 'Dr. Estranho'],
+      ['Pantera Negra', 'Black Panther', 'TChalla'],
+      ['Capita Marvel', 'Captain Marvel', 'Carol Danvers'],
+      ['Feiticeira Escarlate', 'Scarlet Witch', 'Wanda Maximoff', 'Wanda'],
+      ['Visao', 'Vision'],
+      ['Wolverine', 'Logan'],
+      'Deadpool',
+      ['Homem-Formiga', 'Ant-Man', 'Scott Lang'],
+      ['Vespa', 'Wasp'],
+      'Groot',
+      ['Rocket Raccoon', 'Rocket'],
+      ['Star-Lord', 'Senhor das Estrelas', 'Peter Quill'],
+      'Gamora',
+      ['Drax', 'Drax o Destruidor'],
+      'Mantis',
+      ['Falcao', 'Falcon', 'Sam Wilson'],
+      ['Soldado Invernal', 'Winter Soldier', 'Bucky'],
+      ['Maquina de Combate', 'War Machine'],
+      ['Ciclope', 'Cyclops'],
+      ['Jean Grey', 'Fenix', 'Phoenix'],
+      ['Tempestade', 'Storm'],
+      ['Fera', 'Beast'],
+      ['Noturno', 'Nightcrawler'],
+      ['Vampira', 'Rogue'],
+      'Gambit',
+      'Colossus',
+      ['Professor Xavier', 'Professor X', 'Charles Xavier'],
+      ['Homem de Gelo', 'Iceman'],
+      ['Lince Negra', 'Kitty Pryde'],
+      'Psylocke',
+      'Cable',
+      ['Demolidor', 'Daredevil', 'Matt Murdock'],
+      ['Justiceiro', 'Punisher', 'Frank Castle'],
+      'Jessica Jones',
+      'Luke Cage',
+      ['Punho de Ferro', 'Iron Fist'],
+      ['Motoqueiro Fantasma', 'Ghost Rider'],
+      'Blade',
+      ['Cavaleiro da Lua', 'Moon Knight'],
+      ['Senhor Fantastico', 'Mister Fantastic', 'Reed Richards'],
+      ['Mulher Invisivel', 'Invisible Woman', 'Sue Storm'],
+      ['Tocha Humana', 'Human Torch'],
+      ['O Coisa', 'Coisa', 'The Thing'],
+      ['Surfista Prateado', 'Silver Surfer'],
+      'Shang-Chi',
+      ['Ms. Marvel', 'Kamala Khan'],
+      'Miles Morales',
+      ['Mulher-Hulk', 'She-Hulk'],
+      ['Mulher-Aranha', 'Spider-Woman'],
+      'Namor',
+      ['Mercurio', 'Quicksilver'],
+      'Adam Warlock',
+      'Elektra'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} herois da DC',
+    tema: 'cinema', dif: 30,
+    respostas: [
+      ['Superman', 'Clark Kent'],
+      ['Batman', 'Bruce Wayne'],
+      ['Mulher-Maravilha', 'Wonder Woman', 'Diana Prince'],
+      ['Flash', 'Barry Allen'],
+      'Aquaman',
+      ['Lanterna Verde', 'Green Lantern', 'Hal Jordan'],
+      ['Ciborgue', 'Cyborg'],
+      'Robin',
+      'Batgirl',
+      ['Asa Noturna', 'Nightwing'],
+      ['Arqueiro Verde', 'Green Arrow', 'Oliver Queen'],
+      'Shazam',
+      'Supergirl',
+      'Superboy',
+      ['Mulher-Gato', 'Catwoman'],
+      ['Constantine', 'John Constantine'],
+      'Zatanna',
+      ['Cacador de Marte', 'Martian Manhunter'],
+      ['Canario Negro', 'Black Canary'],
+      ['Gaviao Negro', 'Hawkman'],
+      ['Mulher-Gaviao', 'Hawkgirl'],
+      ['Besouro Azul', 'Blue Beetle'],
+      ['Atomo', 'Atom'],
+      ['Homem-Borracha', 'Plastic Man'],
+      'Batwoman',
+      ['Capuz Vermelho', 'Red Hood'],
+      ['Ravena', 'Raven'],
+      ['Estelar', 'Starfire'],
+      ['Mutano', 'Beast Boy'],
+      'Kid Flash',
+      ['Monstro do Pantano', 'Swamp Thing'],
+      ['Pacificador', 'Peacemaker'],
+      ['Raio Negro', 'Black Lightning'],
+      'Vixen',
+      'Katana',
+      ['Arlequina', 'Harley Quinn'],
+      'Jonah Hex',
+      ['Senhor Destino', 'Doctor Fate']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} viloes da Marvel',
+    tema: 'cinema', dif: 35,
+    respostas: [
+      'Thanos',
+      'Loki',
+      'Ultron',
+      'Magneto',
+      ['Duende Verde', 'Green Goblin', 'Norman Osborn'],
+      ['Doutor Octopus', 'Doctor Octopus', 'Doc Ock', 'Dr. Octopus'],
+      'Venom',
+      ['Carnificina', 'Carnage'],
+      ['Doutor Destino', 'Doctor Doom', 'Dr. Destino'],
+      ['Caveira Vermelha', 'Red Skull'],
+      ['Rei do Crime', 'Kingpin', 'Wilson Fisk'],
+      ['Abominavel', 'Abomination'],
+      'Galactus',
+      ['Apocalipse', 'Apocalypse'],
+      ['Mistica', 'Mystique'],
+      ['Dentes de Sabre', 'Sabretooth'],
+      ['Fanatico', 'Juggernaut'],
+      ['Senhor Sinistro', 'Mister Sinister'],
+      'Mandarim',
+      ['Barao Zemo', 'Zemo'],
+      'Kang',
+      'Dormammu',
+      ['Mefisto', 'Mephisto'],
+      'Hela',
+      'Ego',
+      ['Killmonger', 'Erik Killmonger'],
+      ['Abutre', 'Vulture'],
+      'Electro',
+      ['Homem-Areia', 'Sandman'],
+      ['Rino', 'Rhino'],
+      'Mysterio',
+      ['Lagarto', 'Lizard'],
+      ['Kraven', 'Kraven o Cacador'],
+      ['Escorpiao', 'Scorpion'],
+      ['Duende Macabro', 'Hobgoblin'],
+      ['Mercenario', 'Bullseye'],
+      ['Ronan', 'Ronan o Acusador'],
+      ['Ossos Cruzados', 'Crossbones'],
+      ['Jaqueta Amarela', 'Yellowjacket'],
+      ['Treinador', 'Taskmaster'],
+      'Morbius',
+      'Knull',
+      'Onslaught'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} viloes da DC',
+    tema: 'cinema', dif: 35,
+    respostas: [
+      ['Coringa', 'Joker'],
+      ['Lex Luthor', 'Luthor'],
+      ['Charada', 'Riddler'],
+      ['Pinguim', 'Penguin'],
+      ['Duas Caras', 'Two-Face', 'Harvey Dent'],
+      ['Espantalho', 'Scarecrow'],
+      ['Mulher-Gato', 'Catwoman'],
+      'Bane',
+      'Ras al Ghul',
+      ['Arlequina', 'Harley Quinn'],
+      'Darkseid',
+      // Exterminador E Deathstroke eram dois itens: sao o mesmo personagem.
+      ['Exterminador', 'Deathstroke'],
+      'Sinestro',
+      ['Flash Reverso', 'Reverse-Flash', 'Reverso-Flash'],
+      ['Capitao Frio', 'Captain Cold'],
+      ['Hera Venenosa', 'Poison Ivy'],
+      ['Chapeleiro Louco', 'Mad Hatter'],
+      'Brainiac',
+      ['Adao Negro', 'Black Adam'],
+      ['General Zod', 'Zod'],
+      'Doomsday',
+      'Metallo',
+      ['Parasita', 'Parasite'],
+      ['Cara-de-Barro', 'Clayface'],
+      ['Crocodilo', 'Killer Croc'],
+      ['Senhor Frio', 'Mr. Freeze', 'Sr. Frio'],
+      ['Pistoleiro', 'Deadshot'],
+      ['Capitao Bumerangue', 'Captain Boomerang'],
+      ['Gorila Grodd', 'Grodd'],
+      ['Mulher-Leopardo', 'Cheetah'],
+      'Trigon',
+      ['Mascara Negra', 'Black Mask'],
+      'Anti-Monitor',
+      ['Amanda Waller', 'Waller'],
+      'Mongul',
+      'Eclipso'
+    ]
+  },
+  {
+    // Vale qualquer heroi da Marvel ou da DC: a inclusao vem de INCLUSOES.
+    pergunta: 'Cite {n} super-herois',
+    tema: 'cinema', dif: 20,
+    respostas: [
+      ['Invencivel', 'Invincible', 'Mark Grayson'],
+      'Spawn',
+      'Hellboy',
+      ['Sr. Incrivel', 'Senhor Incrivel', 'Mr. Incredible'],
+      ['Mulher-Elastica', 'Elastigirl'],
+      'Kick-Ass',
+      'Rorschach',
+      ['Doutor Manhattan', 'Dr. Manhattan']
+    ]
+  },
+  {
+    // Vale qualquer vilao da Marvel ou da DC: a inclusao vem de INCLUSOES.
+    pergunta: 'Cite {n} viloes de quadrinhos',
+    tema: 'cinema', dif: 30,
+    respostas: [
+      ['Capitao Patria', 'Homelander'],
+      ['Omni-Man', 'Omniman'],
+      'Ozymandias'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} filmes da Marvel',
+    tema: 'cinema', dif: 30,
+    respostas: [
+      'Homem de Ferro',
+      'Vingadores',
+      'Capitao America',
+      'Thor',
+      'Hulk',
+      'Guardioes da Galaxia',
+      'Pantera Negra',
+      'Doutor Estranho',
+      'Homem-Formiga',
+      'Capita Marvel',
+      'Homem-Aranha',
+      ['Ultimato', 'Vingadores: Ultimato'],
+      ['Guerra Infinita', 'Vingadores: Guerra Infinita'],
+      'Eternos',
+      'Shang-Chi',
+      'Deadpool',
+      'Viuva Negra',
+      // Wandavision saiu: e serie, nao filme.
+      ['Era de Ultron', 'Vingadores: Era de Ultron'],
+      ['Guerra Civil', 'Capitao America: Guerra Civil'],
+      ['Thor: Ragnarok', 'Ragnarok'],
+      ['Sem Volta para Casa', 'Homem-Aranha: Sem Volta para Casa'],
+      ['Multiverso da Loucura', 'Doutor Estranho no Multiverso da Loucura'],
+      ['Wakanda para Sempre', 'Pantera Negra: Wakanda para Sempre'],
+      ['Homem-Aranha no Aranhaverso', 'Aranhaverso'],
+      'Logan',
+      'X-Men',
+      ['Quarteto Fantastico', 'Fantastic Four'],
+      'Venom',
+      'Blade',
+      'Thunderbolts'
+    ]
+  },
+  {
+    // Vale qualquer filme da Marvel: a inclusao vem de INCLUSOES.
+    pergunta: 'Cite {n} filmes de super-heroi',
+    tema: 'cinema', dif: 25,
+    respostas: [
+      'Batman',
+      'Batman Begins',
+      ['O Cavaleiro das Trevas', 'Cavaleiro das Trevas', 'The Dark Knight'],
+      'The Batman',
+      ['Batman vs Superman', 'Batman v Superman'],
+      'Superman',
+      ['O Homem de Aco', 'Homem de Aco', 'Man of Steel'],
+      ['Liga da Justica', 'Justice League'],
+      ['Mulher-Maravilha', 'Wonder Woman'],
+      'Aquaman',
+      'Shazam',
+      ['Coringa', 'Joker'],
+      // "Esquadrao Suicida" e "O Esquadrao Suicida" diferem em uma letra:
+      // para o corretor sao a mesma resposta, entao sao um item so.
+      ['Esquadrao Suicida', 'Suicide Squad', 'The Suicide Squad'],
+      'Flash',
+      ['Adao Negro', 'Black Adam'],
+      ['Aves de Rapina', 'Birds of Prey'],
+      ['Besouro Azul', 'Blue Beetle'],
+      ['Os Incriveis', 'Incriveis', 'The Incredibles'],
+      'Hellboy',
+      'Kick-Ass',
+      'Watchmen',
+      ['Corpo Fechado', 'Unbreakable'],
+      'Hancock',
+      ['Megamente', 'Megamind']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} humoristas brasileiros',
+    tema: 'mainstream', dif: 35,
+    respostas: [
+      ['Renato Aragao', 'Didi'],
+      'Dede Santana',
+      'Mussum',
+      'Zacarias',
+      'Chico Anysio',
+      'Jo Soares',
+      'Tom Cavalcante',
+      'Ronald Golias',
+      'Grande Otelo',
+      'Oscarito',
+      'Mazzaropi',
+      'Ary Toledo',
+      'Agildo Ribeiro',
+      'Costinha',
+      'Nilton Pinto',
+      'Tiririca',
+      'Moacyr Franco',
+      'Carlos Alberto de Nobrega',
+      'Paulo Silvino',
+      'Lucio Mauro',
+      'Lucio Mauro Filho',
+      'Castrinho',
+      'Bussunda',
+      'Helio de la Pena',
+      'Marcelo Madureira',
+      'Claudio Manoel',
+      'Hubert',
+      'Beto Silva',
+      'Regina Case',
+      'Marisa Orth',
+      'Pedro Cardoso',
+      'Luis Fernando Guimaraes',
+      'Heloisa Perisse',
+      'Ingrid Guimaraes',
+      'Monica Martelli',
+      'Maria Clara Gueiros',
+      'Katiuscia Canoro',
+      'Claudia Rodrigues',
+      'Bruno Mazzeo',
+      'Leandro Hassum',
+      'Marcus Majella',
+      'Paulo Gustavo',
+      ['Tata Werneck', 'Tata'],
+      'Fabio Porchat',
+      'Gregorio Duvivier',
+      'Antonio Tabet',
+      'Joao Vicente de Castro',
+      'Luis Lobianco',
+      'Rafael Portugal',
+      'Marcelo Adnet',
+      'Rafinha Bastos',
+      'Danilo Gentili',
+      'Marcelo Tas',
+      'Rafael Cortez',
+      'Oscar Filho',
+      'Murilo Couto',
+      'Diogo Portugal',
+      'Nany People',
+      'Paulo Vieira',
+      'Dani Calabresa',
+      'Fabio Rabin',
+      'Mauricio Meirelles',
+      'Rodrigo Marques',
+      'Victor Sarro',
+      'Thiago Ventura',
+      'Afonso Padilha',
+      ['Whindersson Nunes', 'Whindersson'],
+      'Carlinhos Maia',
+      ['Kefera', 'Kefera Buchmann'],
+      ['Rodrigo Santanna', 'Rodrigo Sant Anna'],
+      'Tirullipa',
+      'Marco Luque',
+      'Paulinho Serra',
+      'Gustavo Mendes',
+      'Marcos Veras',
+      'Samantha Schmutz',
+      'Rafael Infante',
+      'Bruno Motta',
+      'Evandro Santo'
+    ]
+  },
+  {
+    // A lista geral aceita as de luxo tambem: a inclusao vem de INCLUSOES.
+    pergunta: 'Cite {n} marcas de carro',
+    tema: 'mainstream', dif: 20,
+    respostas: [
+      ['Volkswagen', 'VW'],
+      'Fiat',
+      ['Chevrolet', 'GM'],
+      'Ford',
+      'Toyota',
+      'Honda',
+      'Hyundai',
+      'Renault',
+      'Nissan',
+      'Peugeot',
+      'Citroen',
+      'Jeep',
+      'Kia',
+      'Mitsubishi',
+      'Suzuki',
+      'Subaru',
+      'Mazda',
+      'Volvo',
+      'Tesla',
+      'Mini',
+      'Dodge',
+      'RAM',
+      'Chrysler',
+      ['Chery', 'Caoa Chery'],
+      'BYD',
+      ['GWM', 'Great Wall'],
+      'JAC',
+      'Troller',
+      'Gurgel',
+      'Seat',
+      'Skoda',
+      'Opel',
+      'Smart',
+      'Dacia',
+      'Lada',
+      'Scania',
+      'Pontiac',
+      'Buick',
+      'GMC',
+      'Lincoln',
+      'Infiniti',
+      'Acura',
+      'Saab',
+      'Daewoo',
+      'Tata',
+      'Mahindra',
+      'Geely',
+      'Lotus'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} marcas de carro de luxo',
+    tema: 'mainstream', dif: 30,
+    respostas: [
+      'Ferrari',
+      'Lamborghini',
+      'Porsche',
+      'Bugatti',
+      'Maserati',
+      'Bentley',
+      'Rolls-Royce',
+      'Aston Martin',
+      'McLaren',
+      'Jaguar',
+      ['Mercedes-Benz', 'Mercedes'],
+      'BMW',
+      'Audi',
+      'Lexus',
+      'Land Rover',
+      'Alfa Romeo',
+      'Cadillac',
+      'Koenigsegg',
+      'Pagani',
+      'Maybach'
+    ]
+  },
 ];
+
+/* ------------------------------------------------------------------ *
+ * Listas que contem outras.
+ *
+ * "Cite super-herois" e "Cite herois da Marvel" eram duas perguntas com
+ * respostas diferentes para a mesma coisa: quem dissesse Gaviao Arqueiro
+ * para "super-herois" ouvia que errou, porque ele so estava na lista da
+ * Marvel. Aqui a lista generica passa a aceitar tudo o que as especificas
+ * aceitam — sem copiar item a item, e sem descolar quando alguem editar so
+ * uma delas.
+ * ------------------------------------------------------------------ */
+
+const INCLUSOES = {
+  'Cite {n} super-herois': ['Cite {n} herois da Marvel', 'Cite {n} herois da DC'],
+  'Cite {n} viloes de quadrinhos': ['Cite {n} viloes da Marvel', 'Cite {n} viloes da DC'],
+  'Cite {n} filmes de super-heroi': ['Cite {n} filmes da Marvel'],
+  'Cite {n} marcas de carro': ['Cite {n} marcas de carro de luxo'],
+  'Cite {n} marcas famosas': [
+    'Cite {n} marcas de celular', 'Cite {n} marcas de roupa ou tenis', 'Cite {n} marcas de carro'
+  ],
+  'Cite {n} capitais mundiais': [
+    'Cite {n} capitais europeias', 'Cite {n} capitais da Asia', 'Cite {n} capitais da Africa',
+    'Cite {n} capitais de paises da America do Sul'
+  ],
+  'Cite {n} series de TV famosas': ['Cite {n} series famosas da Netflix', 'Cite {n} sitcoms'],
+  'Cite {n} cantores brasileiros': [
+    'Cite {n} cantores sertanejos', 'Cite {n} cantoras brasileiras', 'Cite {n} artistas de funk brasileiro',
+    'Cite {n} artistas de samba ou pagode', 'Cite {n} cantores gospel'
+  ],
+  'Cite {n} instrumentos musicais': [
+    'Cite {n} instrumentos de corda', 'Cite {n} instrumentos de sopro', 'Cite {n} instrumentos de percussao'
+  ],
+  'Cite {n} profissoes': ['Cite {n} profissoes da area da saude'],
+  'Cite {n} animais selvagens': ['Cite {n} animais da savana africana'],
+  'Cite {n} cores': ['Cite {n} cores do arco-iris'],
+  'Cite {n} pontos turisticos do mundo': ['Cite {n} das sete maravilhas do mundo moderno'],
+  'Cite {n} jogadores nascidos na Argentina': ['Cite {n} jogadores da Argentina campea da Copa de 2022'],
+  'Cite {n} jogadores nascidos no Brasil': ['Cite {n} campeoes da Copa do Mundo pelo Brasil em 2002'],
+  'Cite {n} objetos de uma casa': [
+    'Cite {n} coisas que tem em uma cozinha', 'Cite {n} coisas que tem em um banheiro',
+    'Cite {n} coisas que tem em um quarto', 'Cite {n} coisas que tem em uma sala de estar',
+    'Cite {n} coisas que tem em uma area de servico', 'Cite {n} coisas que tem em um escritorio'
+  ]
+};
+
+const incluidas = new Set();
+
+/**
+ * Junta na lista tudo o que as listas incluidas aceitam. Item repetido nao
+ * duplica: as variantes das duas versoes se somam no mesmo item.
+ */
+function resolverInclusoes(lista, caminho = []) {
+  const fontes = INCLUSOES[lista.pergunta];
+  if (!fontes || incluidas.has(lista)) return;
+  if (caminho.includes(lista)) throw new Error(`INCLUSOES em circulo: ${lista.pergunta}`);
+
+  const posicao = new Map();
+  lista.respostas.forEach((bruto, i) => posicao.set(normalizar(itemDe(bruto).oficial), i));
+
+  for (const pergunta of fontes) {
+    const outra = LISTAS.find((l) => l.pergunta === pergunta);
+    if (!outra) throw new Error(`INCLUSOES: lista que nao existe: ${pergunta}`);
+    resolverInclusoes(outra, [...caminho, lista]);
+
+    for (const bruto of outra.respostas) {
+      const item = itemDe(bruto);
+      const chave = normalizar(item.oficial);
+      if (!posicao.has(chave)) {
+        posicao.set(chave, lista.respostas.length);
+        lista.respostas.push(bruto);
+        continue;
+      }
+      const i = posicao.get(chave);
+      const atual = itemDe(lista.respostas[i]);
+      const conhecidas = new Set([atual.oficial, ...atual.variantes].map(normalizar));
+      const novas = item.variantes.filter((v) => !conhecidas.has(normalizar(v)));
+      if (novas.length) lista.respostas[i] = [atual.oficial, ...atual.variantes, ...novas];
+    }
+  }
+  incluidas.add(lista);
+}
+
+LISTAS.forEach((lista) => resolverInclusoes(lista));
 
 /**
  * Devolve as listas que servem para uma rodada que pede `n` respostas.
@@ -6992,10 +7307,64 @@ for (const [enunciadoFonte, rotulo, tema] of FONTES_POR_TAMANHO) {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Sobrenome basta.
+ *
+ * Ninguem responde "Lionel Messi" num jogo de velocidade: responde "Messi".
+ * Em vez de escrever a variante em cada um dos mais de mil nomes — e
+ * esquecer nos proximos —, toda lista de pessoas ganha o sobrenome sozinha.
+ *
+ * So entra o atalho que identifica UMA pessoa da lista. Onde dois nomes
+ * dividem o sobrenome (Ingrid e Luis Fernando Guimaraes, Rafael e Diogo
+ * Portugal), nenhum dos dois ganha: aceitar seria dizer "voce ja disse
+ * isso" para quem acertou o outro.
+ *
+ * Roda depois dos recortes por letra, e cada lista decide os seus atalhos:
+ * "Costa" e de duas pessoas em "cantores brasileiros", mas so de Gal Costa
+ * na lista dos que comecam com G.
+ * ------------------------------------------------------------------ */
+
+const LISTAS_DE_PESSOAS = new RegExp([
+  'jogador', 'cantor', 'cantora', 'atores', 'atrizes', 'filosofos', 'pilotos', 'ditadores',
+  'lideres mundiais', 'humoristas', 'apresentadores', 'artistas', 'divas', 'presidentes',
+  'imperadores', 'campeoes', 'youtubers', 'influenciador', 'personagens'
+].join('|'), 'i');
+
+/** O atalho acertaria outra pessoa da lista? */
+function acertaOutro(forma, candidatosDosOutros) {
+  const f = normalizar(forma);
+  for (const candidatos of candidatosDosOutros) {
+    for (const c of candidatos) {
+      // Distancia nunca e menor que a diferenca de tamanho: poda barata.
+      if (Math.abs(f.length - c.length) >= LIMITE_CERTO * c.length) continue;
+      if (distancia(f, c) / c.length < LIMITE_CERTO) return true;
+    }
+  }
+  return false;
+}
+
+for (const lista of LISTAS) {
+  if (lista.fixo || !LISTAS_DE_PESSOAS.test(lista.pergunta) || /duplas/i.test(lista.pergunta)) continue;
+
+  const itens = lista.respostas.map(itemDe);
+  const atalhos = itens.map((item) => sobrenomesDe(item.oficial));
+  const candidatos = itens.map((item, i) =>
+    [item.oficial, ...item.variantes, ...atalhos[i]].map(normalizar).filter(Boolean));
+
+  lista.respostas = itens.map((item, i) => {
+    const conhecidas = new Set([item.oficial, ...item.variantes].map(normalizar));
+    const outros = candidatos.filter((_, j) => j !== i);
+    const novos = atalhos[i].filter((forma) =>
+      !conhecidas.has(normalizar(forma)) && !acertaOutro(forma, outros));
+    if (!novos.length) return item.variantes.length ? [item.oficial, ...item.variantes] : item.oficial;
+    return [item.oficial, ...item.variantes, ...novos];
+  });
+}
+
 /** Normaliza um item para { oficial, variantes }. */
 function itemDe(bruto) {
   const formas = Array.isArray(bruto) ? bruto : [bruto];
   return { oficial: formas[0], variantes: formas.slice(1) };
 }
 
-module.exports = { LISTAS, paraRodada, itemDe, tetoDeTamanho };
+module.exports = { LISTAS, INCLUSOES, LISTAS_DE_PESSOAS, paraRodada, itemDe, tetoDeTamanho };
