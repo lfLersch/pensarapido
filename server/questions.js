@@ -2524,7 +2524,10 @@ const QUESTOES = {
     { pergunta: 'De quem e este logo?', sub: 'tecnologia', imagem: '/img/logo-nintendoswitch.jpg', resposta: 'Nintendo Switch', aceita: ['Switch'], dif: 30 },
     { pergunta: 'De quem e este logo?', sub: 'tecnologia', imagem: '/img/logo-xiaomi.jpg', resposta: 'Xiaomi', dif: 40 },
     { pergunta: 'De quem e este logo?', sub: 'tecnologia', imagem: '/img/logo-github.jpg', resposta: 'GitHub', dif: 55 },
-    { pergunta: 'De quem e este logo?', sub: 'comida', imagem: '/img/logo-pringles.jpg', resposta: 'Pringles', dif: 30 }
+    { pergunta: 'De quem e este logo?', sub: 'comida', imagem: '/img/logo-pringles.jpg', resposta: 'Pringles', dif: 30 },
+    { pergunta: 'De quem e este logo?', sub: 'outras', imagem: '/img/logo-fedex.jpg', resposta: 'FedEx', aceita: ['Fed Ex', 'Federal Express'], dif: 45 },
+    { pergunta: 'De quem e este logo?', sub: 'outras', imagem: '/img/logo-visa.jpg', resposta: 'Visa', dif: 40 },
+    { pergunta: 'De quem e este logo?', sub: 'comida', imagem: '/img/logo-danone.jpg', resposta: 'Danone', dif: 45 }
   ],
   animais: [
     { pergunta: 'Qual e o maior animal terrestre?', resposta: 'Elefante', dif: 15 },

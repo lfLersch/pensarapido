@@ -482,7 +482,7 @@ inventado é descartado.
 
 ## Banco de perguntas
 
-**2331 perguntas em 17 categorias**, mais 536 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**2334 perguntas em 17 categorias**, mais 536 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -559,7 +559,7 @@ Como são imagens de terceiros, dependem do Commons continuar no ar; o comando
 
 ### Categoria Marcas — logos
 
-**100 logos** em cinco partes: Carros, Tecnologia, Moda e esporte, Comida e
+**103 logos** em cinco partes: Carros, Tecnologia, Moda e esporte, Comida e
 bebida e Outras. O enunciado é sempre *"De quem é este logo?"*. Só entra logo
 **sem o nome da marca escrito**: se a palavra está na imagem, a pergunta entrega
 a resposta. Pelo mesmo motivo, sigla que aparece no logo (NB, LV, TS) não vale
