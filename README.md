@@ -162,8 +162,8 @@ parcial conta, então ninguém sai de mãos vazias por ter parado a um item do f
    entram três vezes no bolo do sorteio e as demais uma vez — as fechadas
    continuam mais prováveis, sem tirar as outras do jogo.
 
-São **223 listas escritas à mão** (7.366 itens) e outras **313 geradas**
-a partir delas — 536 no total. Cobrem futebol, geografia, música, cinema,
+São **263 listas escritas à mão** (13.044 itens) e outras **339 geradas**
+a partir delas — 602 no total. Cobrem futebol, geografia, música, cinema,
 séries, anime, games, ciência, história, filosofia, mitologia, política,
 esportes, objetos de casa e cultura pop.
 
@@ -488,7 +488,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**2334 perguntas em 18 categorias**, mais 536 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**2356 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -579,9 +579,12 @@ transparente sumiria na tela escura do jogo.
 
 ### Categoria Ouvir músicas
 
-A categoria **Ouvir músicas** toca os 20 primeiros segundos de uma música e pergunta *"Qual é o nome
-desta música?"*. São 22 músicas: Yellow, Shape of You, Blinding Lights, In the
-End, Mr. Brightside e outras.
+A categoria **Ouvir músicas** toca os 20 primeiros segundos de uma música. São 22
+músicas (Yellow, Shape of You, Blinding Lights, In the End, Mr. Brightside e
+outras), e cada trecho tem **duas perguntas**: *"Qual é o nome desta música?"* e
+*"Quem canta esta música?"* — ou *"Qual banda canta…"*, para banda não ganhar
+atalho de sobrenome ("Park" valendo por Linkin Park). Em dueto vale qualquer um
+dos dois nomes.
 
 - Os arquivos inteiros (FLAC, dezenas de MB cada) ficam em `public/musicas/`,
   que está no `.gitignore` e **não vai para o repositório**.

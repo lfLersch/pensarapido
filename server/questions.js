@@ -1254,7 +1254,30 @@ const QUESTOES = {
     { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-sunflower.mp3', resposta: 'Sunflower', dif: 30 },
     { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-sweater-weather.mp3', resposta: 'Sweater Weather', dif: 35 },
     { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-the-night-we-met.mp3', resposta: 'The Night We Met', aceita: ['Night We Met'], dif: 45 },
-    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-yellow.mp3', resposta: 'Yellow', dif: 25 }
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/trecho-yellow.mp3', resposta: 'Yellow', dif: 25 },
+    // O mesmo trecho, agora perguntando quem canta.
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-as-it-was.mp3', resposta: 'Harry Styles', dif: 30 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-baby.mp3', resposta: 'Justin Bieber', dif: 20 },
+    { pergunta: 'Qual banda canta esta musica?', audio: '/audio/trecho-believer.mp3', resposta: 'Imagine Dragons', dif: 25 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-birds-of-a-feather.mp3', resposta: 'Billie Eilish', dif: 30 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-blinding-lights.mp3', resposta: 'The Weeknd', aceita: ['Weeknd'], dif: 25 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-die-with-a-smile.mp3', resposta: 'Lady Gaga', aceita: ['Bruno Mars', 'Lady Gaga e Bruno Mars', 'Mars'], dif: 30 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-dont-start-now.mp3', resposta: 'Dua Lipa', dif: 30 },
+    { pergunta: 'Qual banda canta esta musica?', audio: '/audio/trecho-heat-waves.mp3', resposta: 'Glass Animals', dif: 45 },
+    { pergunta: 'Qual banda canta esta musica?', audio: '/audio/trecho-i-wanna-be-yours.mp3', resposta: 'Arctic Monkeys', dif: 40 },
+    { pergunta: 'Qual banda canta esta musica?', audio: '/audio/trecho-in-the-end.mp3', resposta: 'Linkin Park', dif: 25 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-love-yourself.mp3', resposta: 'Justin Bieber', dif: 30 },
+    { pergunta: 'Qual banda canta esta musica?', audio: '/audio/trecho-mr-brightside.mp3', resposta: 'The Killers', aceita: ['Killers'], dif: 40 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-one-dance.mp3', resposta: 'Drake', dif: 35 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-perfect.mp3', resposta: 'Ed Sheeran', dif: 30 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-shape-of-you.mp3', resposta: 'Ed Sheeran', dif: 20 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-someone-you-loved.mp3', resposta: 'Lewis Capaldi', dif: 35 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-starboy.mp3', resposta: 'The Weeknd', aceita: ['Weeknd', 'Daft Punk'], dif: 30 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-stay.mp3', resposta: 'Justin Bieber', aceita: ['The Kid LAROI', 'Kid LAROI'], dif: 30 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/trecho-sunflower.mp3', resposta: 'Post Malone', aceita: ['Swae Lee', 'Post Malone e Swae Lee'], dif: 35 },
+    { pergunta: 'Qual banda canta esta musica?', audio: '/audio/trecho-sweater-weather.mp3', resposta: 'The Neighbourhood', aceita: ['Neighbourhood', 'The Neighborhood'], dif: 45 },
+    { pergunta: 'Qual banda canta esta musica?', audio: '/audio/trecho-the-night-we-met.mp3', resposta: 'Lord Huron', dif: 55 },
+    { pergunta: 'Qual banda canta esta musica?', audio: '/audio/trecho-yellow.mp3', resposta: 'Coldplay', dif: 25 }
   ],
 
   rap: [
