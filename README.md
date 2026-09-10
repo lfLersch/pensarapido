@@ -573,17 +573,16 @@ transparente sumiria na tela escura do jogo.
 
 ### Categoria Música — trechos de áudio
 
-A parte **Trechos** toca 15 segundos de uma música e pergunta *"Qual é o nome
+A parte **Trechos** toca os 20 primeiros segundos de uma música e pergunta *"Qual é o nome
 desta música?"*. São 22 músicas: Yellow, Shape of You, Blinding Lights, In the
 End, Mr. Brightside e outras.
 
 - Os arquivos inteiros (FLAC, dezenas de MB cada) ficam em `public/musicas/`,
   que está no `.gitignore` e **não vai para o repositório**.
 - O jogo usa só os trechos, em `public/audio/trecho-*.mp3` (MP3 de 112 kbps,
-  ~200 KB cada, todos no mesmo volume e com entrada e saída suaves).
-- O trecho foi escolhido pela parte que mais se repete com mais volume — em
-  geral o refrão. Se algum ficou ruim, dá para cortar de novo a partir de um
-  segundo escolhido na mão.
+  ~270 KB cada, todos no mesmo volume e com entrada e saída suaves).
+- O trecho é sempre o começo da música, de 0:00 a 0:20. Dá para trocar o de
+  qualquer música por outro ponto, escolhendo o segundo na mão.
 - Quando o navegador bloqueia o som automático, o tocador pede um toque.
 
 > São músicas com direito autoral. Para jogar entre amigos tudo bem, mas no site

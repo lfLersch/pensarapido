@@ -1229,7 +1229,7 @@ const QUESTOES = {
     { pergunta: 'Qual e o instrumento de sopro tipico do jazz, com chaves e boquilha?', resposta: 'Saxofone', dif: 30 },
     { pergunta: 'Qual compositor alemao ficou surdo e mesmo assim escreveu a Nona Sinfonia?', resposta: 'Beethoven', dif: 25 },
     { pergunta: 'Qual ritmo baiano dos anos 1980 misturou frevo, reggae e ritmos afro e lancou Daniela Mercury?', resposta: 'Axe', dif: 45 },
-    // Trechos de 15s (o refrao, quase sempre) cortados das musicas em FLAC
+    // Os 20 primeiros segundos de cada musica, cortados das musicas em FLAC
     // de public/musicas, que fica fora do git. O audio toca com a pergunta.
     { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-as-it-was.mp3', resposta: 'As It Was', dif: 30 },
     { pergunta: 'Qual e o nome desta musica?', sub: 'trechos', audio: '/audio/trecho-baby.mp3', resposta: 'Baby', dif: 20 },
