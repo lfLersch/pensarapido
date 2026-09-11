@@ -167,12 +167,26 @@ function calcularPontos(msNaRodada, posicao) {
   return Math.max(PONTOS_MIN, base - (posicao - 1));
 }
 
+/**
+ * Id de uma pergunta comum, para a estatistica de dificuldade.
+ *
+ * "Quem canta esta musica?" -> Justin Bieber vale para tres trechos, e "Que
+ * filme e este?" -> Batman para tres imagens: o audio ou a imagem entra no id
+ * para cada uma ter a sua estatistica. (No Render o disco zera a cada deploy,
+ * entao trocar o id nao perde nada que ja estivesse aprendido la.)
+ */
+function idDaPergunta(categoria, q) {
+  const midia = q.audio || q.imagem;
+  const resposta = midia ? `${q.resposta}|${midia}` : q.resposta;
+  return dificuldade.idDe(categoria, q.pergunta, resposta);
+}
+
 /** Índice de todas as perguntas, para o painel de dificuldades. */
 function indicePerguntas() {
   const mapa = new Map();
   for (const categoria of CATEGORIAS) {
     for (const q of QUESTOES[categoria.id] || []) {
-      mapa.set(dificuldade.idDe(categoria.id, q.pergunta, q.resposta), {
+      mapa.set(idDaPergunta(categoria.id, q), {
         categoria: categoria.id,
         pergunta: q.pergunta,
         resposta: q.resposta,
@@ -560,7 +574,7 @@ class Sala {
   /** Uma pergunta comum: uma resposta só. */
   perguntaSimples() {
     const bruta = this.sacarDaFila();
-    const id = dificuldade.idDe(bruta.categoria, bruta.pergunta, bruta.resposta);
+    const id = idDaPergunta(bruta.categoria, bruta);
     const difBase = bruta.dif ?? 40;
 
     return {

@@ -61,7 +61,7 @@ const contar = (filtro) => cinema.filter(filtro).length;
 /* ---------- Ouvir musicas ---------- */
 {
   const ouvir = perguntasEscolhidas({ categorias: ['ouvir'] }, 'ouvir');
-  conferir('Ouvir musicas: 44 perguntas, todas com audio', [ouvir.length, ouvir.every((p) => p.audio)], [44, true]);
+  conferir('Ouvir musicas: todas as perguntas tem audio', ouvir.every((p) => p.audio), true);
   // Cada trecho tem duas perguntas: o nome da musica e quem canta.
   const porTrecho = {};
   for (const p of ouvir) porTrecho[p.audio] = (porTrecho[p.audio] || 0) + 1;

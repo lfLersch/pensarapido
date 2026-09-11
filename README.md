@@ -488,7 +488,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**2356 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**2489 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -579,8 +579,8 @@ transparente sumiria na tela escura do jogo.
 
 ### Categoria Ouvir músicas
 
-A categoria **Ouvir músicas** toca os 20 primeiros segundos de uma música. São 22
-músicas (Yellow, Shape of You, Blinding Lights, In the End, Mr. Brightside e
+A categoria **Ouvir músicas** toca os 40 primeiros segundos de uma música. São 93
+músicas, do rock ao sertanejo e ao funk (Yellow, Waka Waka, Billie Jean, Racionais e
 outras), e cada trecho tem **duas perguntas**: *"Qual é o nome desta música?"* e
 *"Quem canta esta música?"* — ou *"Qual banda canta…"*, para banda não ganhar
 atalho de sobrenome ("Park" valendo por Linkin Park). Em dueto vale qualquer um
@@ -589,8 +589,8 @@ dos dois nomes.
 - Os arquivos inteiros (FLAC, dezenas de MB cada) ficam em `public/musicas/`,
   que está no `.gitignore` e **não vai para o repositório**.
 - O jogo usa só os trechos, em `public/audio/trecho-*.mp3` (MP3 de 112 kbps,
-  ~270 KB cada, todos no mesmo volume e com entrada e saída suaves).
-- O trecho é sempre o começo da música, de 0:00 a 0:20. Dá para trocar o de
+  ~550 KB cada, todos no mesmo volume e com entrada e saída suaves).
+- O trecho é sempre o começo da música, de 0:00 a 0:40 (Wish You Were Here, de 0:17 a 0:57). Dá para trocar o de
   qualquer música por outro ponto, escolhendo o segundo na mão.
 - Quando o navegador bloqueia o som automático, o tocador pede um toque.
 

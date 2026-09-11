@@ -73,7 +73,16 @@ const todas = CATEGORIAS.flatMap((c) => (QUESTOES[c.id] || []).map((q) => ({ ...
   conferir('"3%" continua acertando', avaliar('3%', '3%').veredito, 'certo');
 }
 
-/* ---------- 4. imagem e audio locais existem ---------- */
+/* ---------- 4. cada pergunta tem um id so dela ---------- */
+{
+  // O id guarda a dificuldade aprendida. "Quem canta esta musica?" -> Justin
+  // Bieber vale para tres trechos diferentes: sem o audio no id, os tres
+  // dividiam uma estatistica so.
+  const { indicePerguntas } = require('../server/sala.js');
+  conferir('nenhuma pergunta divide o id com outra', indicePerguntas().size, todas.length);
+}
+
+/* ---------- 5. imagem e audio locais existem ---------- */
 {
   // Pergunta apontando para arquivo que nao existe fica sem imagem ou muda
   // no meio da partida.
