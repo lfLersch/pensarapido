@@ -245,11 +245,23 @@ apenas o que a mesa acertou, senão as duas voltas seguintes seriam cópia da
 tela. Como uma rodada dessas não tem "resposta certa" única, ela **não alimenta
 a dificuldade adaptativa**.
 
-São **15 listas** em [`server/rankings.js`](server/rankings.js) — países por
-população, área e PIB, cidades do Brasil e do mundo, rios, estádios, jogos mais
-vendidos, artistas do Spotify, canais do YouTube, línguas faladas, medalhas
-olímpicas —, cada uma com a **fonte e o ano** anotados. A ordem é o que vale,
-então atualizar significa trocar a lista inteira, nunca um item no meio.
+São **25 listas** em [`server/rankings.js`](server/rankings.js), 1.390 itens:
+países por população, área e PIB, cidades do Brasil e do mundo, estados
+brasileiros, rios, estádios, jogos mais vendidos, artistas e músicas do
+Spotify, álbuns e livros mais vendidos, filmes de maior bilheteria, canais do
+YouTube, contas do Instagram (mundo e Brasil), empresas mais valiosas,
+artilheiros da história e da Seleção, jogadores com mais títulos, línguas
+faladas e medalhas olímpicas. Cada uma com a **fonte e o ano** anotados: a
+ordem é o que vale, então atualizar significa trocar a lista inteira, nunca um
+item no meio.
+
+Duas listas perderam um item de propósito: *Lose Yourself* e *Velozes e
+Furiosos 8*, que o corretor não distingue de *Love Yourself* e do *7*. Sem
+isso, quem dissesse um levaria a pontuação do outro. A `fonte` da lista diz
+qual item saiu.
+
+Nas listas de gente, **o sobrenome basta** — *Marquezine* vale por Bruna
+Marquezine —, desde que ele não acerte outro item da mesma lista.
 
 ### 1 é bom 2 ok 3 é demais
 

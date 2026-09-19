@@ -17,7 +17,7 @@
 
 const NOTAS = [
   {
-    versao: '1.11',
+    versao: '1.12',
     data: '2026-09-19',
     titulo: 'Equipes do tamanho que voce quiser',
     itens: [
@@ -28,6 +28,23 @@ const NOTAS = [
       'O modo Veni, Vidi, Vici agora se chama "1 eh bom 2 ok 3 eh demais", que e o que a pontuacao dele faz.',
       'Nesse modo as respostas travadas aparecem logo abaixo das dicas, com o nome de quem escreveu embaixo de cada uma.',
       'E elas abrem assim que a mesa inteira responde, sem esperar os 15 segundos acabarem. Em compensacao, so da para trocar de ideia enquanto alguem ainda nao respondeu.'
+    ]
+  },
+  {
+    versao: '1.11',
+    data: '2026-09-19',
+    titulo: 'Dez listas novas no Mais ou Menos Pontos',
+    itens: [
+      'As 99 musicas mais ouvidas da historia do Spotify e os 80 albuns mais vendidos de todos os tempos.',
+      'Os 98 livros mais vendidos da historia, com os titulos em portugues: O Alquimista em terceiro, atras de Um Conto de Duas Cidades e O Pequeno Principe.',
+      'As 100 empresas mais valiosas do mundo, por valor de mercado.',
+      'As 50 contas mais seguidas do Instagram e os 20 brasileiros mais seguidos.',
+      'Os maiores artilheiros da historia do futebol (82 nomes) e os 25 maiores da Selecao Brasileira.',
+      'Os 25 jogadores com mais titulos na carreira — a ordem e aproximada, porque as fontes divergem no total de cada um.',
+      'Os 27 estados do Brasil, do mais populoso ao menos.',
+      'A lista de bilheteria passou de 30 para 49 filmes.',
+      'O banco foi de 15 para 25 listas e de 765 para 1.390 itens.',
+      'Nas listas de gente o sobrenome basta: "Marquezine" vale por Bruna Marquezine, desde que nao acerte outro nome da mesma lista.'
     ]
   },
   {
