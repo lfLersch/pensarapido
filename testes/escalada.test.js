@@ -31,6 +31,18 @@ function distintos(pergunta, quantos) {
   return escolhidos;
 }
 
+/** Uma frase que nao chega perto de nenhum item da lista sorteada. */
+function conversaDistante(pergunta) {
+  const candidatas = [
+    'xilofone quadrado de nuvem', 'guarda-chuva de tijolo molhado',
+    'trombone com gosto de manta', 'bicicleta de vidro fervendo',
+    'martelo azul de algodao doce'
+  ];
+  const longe = (frase) => pergunta.itens.every((item) =>
+    avaliar(frase, item.oficial, item.variantes).veredito === 'chat');
+  return candidatas.find(longe) || candidatas[0];
+}
+
 const eventos = [];
 const sala = new Sala('ESC1', {
   categorias: ['geografia'],
@@ -95,7 +107,8 @@ const p2 = sala.palpitar('luiz', primeiro);
 conferir('repetir o mesmo item -> repetido', p2.veredito, 'repetido');
 
 for (const j of sala.jogadores.values()) j.ultimaMensagem = 0;
-const p3 = sala.palpitar('luiz', 'xilofone quadrado de nuvem');
+const conversa = conversaDistante(pergunta);
+const p3 = sala.palpitar('luiz', conversa);
 conferir('palpite distante -> vai para o chat', p3.veredito, 'chat');
 
 for (const j of sala.jogadores.values()) j.ultimaMensagem = 0;
@@ -110,7 +123,7 @@ const textosDoChat = eventos
 const vazou = [primeiro, segundo].some((item) =>
   textosDoChat.some((t) => t.includes(item.toLowerCase())));
 conferir('nenhum item correto vazou no chat', vazou, false);
-conferir('a conversa distante apareceu no chat', textosDoChat.includes('xilofone quadrado de nuvem'), true);
+conferir('a conversa distante apareceu no chat', textosDoChat.includes(conversa), true);
 
 sala.encerrarRodada();
 sala.limparTemporizador();
