@@ -423,7 +423,9 @@ function atualizarResumo() {
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
-    ${modo && modo.equipes ? '<span>👥 <b>4+</b> jogadores</span>' : ''}`;
+    ${modo && modo.equipes
+      ? `<span>👥 <b>4+</b> jogadores${modo.duplas ? ' (par)' : ''}</span>`
+      : ''}`;
 
   $('btn-criar').disabled = total === 0;
 }
@@ -505,16 +507,22 @@ function renderizarSala() {
   $('btn-iniciar').hidden = !souLider;
   $('texto-espera').hidden = souLider;
 
-  // Presente Grego: nao adianta apertar iniciar com a sala impar — o servidor
-  // recusa. Melhor dizer isso antes.
+  // Nao adianta apertar iniciar com a sala torta — o servidor recusa. Melhor
+  // dizer isso antes. Nas duplas a caixa vazia do fim e so o convite para a
+  // proxima dupla: o que trava e alguem sozinho num time.
   const quantos = sala.jogadores.length;
-  const minguada = (sala.equipes || []).some((e) => e.jogadores.length < 2);
+  const emDuplas = Boolean(modo && modo.duplas);
+  const minguada = (sala.equipes || [])
+    .some((e) => (emDuplas ? e.jogadores.length === 1 : e.jogadores.length < 2));
   const faltaFechar = porEquipes && (quantos < 4 || minguada);
   const dica = $('dica-equipes');
   dica.hidden = !faltaFechar;
   dica.textContent = quantos < 4
-    ? `${modo ? modo.nome : 'Este modo'} e em equipes: faltam ${4 - quantos} para comecar.`
-    : 'Cada equipe precisa de pelo menos duas pessoas — uma leiloa e a outra responde.';
+    ? `${modo ? modo.nome : 'Este modo'} e em ${emDuplas ? 'duplas' : 'equipes'}: faltam ${
+      4 - quantos} para comecar.`
+    : emDuplas
+      ? 'Toda dupla precisa de duas pessoas: com a sala impar, alguem fica sem par.'
+      : 'Cada equipe precisa de pelo menos duas pessoas — uma leiloa e a outra responde.';
   $('btn-iniciar').disabled = faltaFechar;
 }
 
@@ -552,13 +560,16 @@ function crachaDeJogador(jogador) {
 }
 
 /**
- * As duas equipes do Presente Grego, com o botao de entrar embaixo de cada
- * uma. O teto vem do servidor: e metade da sala, mais um.
+ * Os times da sala, com o botao de entrar embaixo de cada um. O teto vem do
+ * servidor: metade da sala mais um no Presente Grego, dois no Dando dicas —
+ * onde a lista cresce junto com quem chega, uma dupla de cada vez.
  */
 function desenharEquipesDaSala(caixa) {
   const sala = estado.sala;
   const teto = sala.tetoEquipe || 1;
   const porId = new Map(sala.jogadores.map((j) => [j.id, j]));
+  const modo = estado.config.modos.find((m) => m.id === sala.config.modo);
+  const time = modo && modo.duplas ? 'dupla' : 'equipe';
 
   for (const equipe of sala.equipes || []) {
     const bloco = criar('div', 'equipe-sala');
@@ -582,7 +593,9 @@ function desenharEquipesDaSala(caixa) {
     const botao = criar('button', 'btn btn--fantasma equipe-sala__entrar');
     botao.type = 'button';
     botao.disabled = minha || cheia;
-    botao.textContent = minha ? 'Voce joga aqui' : (cheia ? 'Equipe cheia' : 'Entrar nesta equipe');
+    botao.textContent = minha
+      ? 'Voce joga aqui'
+      : (cheia ? `${time === 'dupla' ? 'Dupla' : 'Equipe'} cheia` : `Entrar nesta ${time}`);
     botao.addEventListener('click', () => {
       socket.emit('sala:equipe', { equipeId: equipe.id }, (r) => {
         if (r?.erro) avisar('aviso-sala', r.erro);
@@ -900,7 +913,7 @@ socket.on('rodada:pergunta', (dados) => {
   // Presente Grego: o leilao acabou, a pergunta abriu para a mesa inteira e
   // agora so quem foi desafiado escreve.
   if (dados.presente) abrirEntregaDoPresente(dados.presente);
-  else $('presente').hidden = true;
+  else { $('presente').hidden = true; $('segredo').hidden = true; }
 
   if (!dados.presente) mensagemSistema(`Rodada ${dados.rodada} · ${dados.categoria.nome}`);
 
@@ -1051,6 +1064,7 @@ function limparTabuleiro() {
   $('dicas').innerHTML = '';
   $('ranking-aviso').hidden = true;
   $('pergunta-figura').hidden = true;
+  $('segredo').hidden = true;
   $('mascara').textContent = '';
   $('status-respostas').textContent = '';
   montarAudio(null);
@@ -1087,6 +1101,9 @@ socket.on('veni:dica', (dados) => {
 /** No Leilao Geral cada um leiloa por si: nao ha parceiro, nem duvido. */
 const leilaoGeral = () => estado.sala?.config.modo === 'leilao-geral';
 
+/** Dando dicas: leilao ao contrario, em duplas — o lance desce. */
+const dandoDicas = () => estado.sala?.config.modo === 'dando-dicas';
+
 socket.on('leilao:comeco', (dados) => {
   revelacao.hidden = true;
   jogo.hidden = false;
@@ -1094,15 +1111,19 @@ socket.on('leilao:comeco', (dados) => {
 
   estado.acertou = false;
   estado.carrossel = null;
-  estado.presente = { equipes: dados.equipes, aposta: 0, equipeAposta: null, maxAposta: dados.maxAposta, fora: [] };
+  estado.presente = {
+    equipes: dados.equipes, aposta: 0, equipeAposta: null,
+    maxAposta: dados.maxAposta, reverso: Boolean(dados.reverso), fora: []
+  };
 
   $('jogo-codigo').textContent = estado.sala?.codigo || '----';
   $('jogo-rodada').textContent = dados.rodada;
   $('jogo-meta').textContent = `${estado.sala?.config.metaPontos ?? '—'} pts`;
 
-  $('pergunta-categoria').style.setProperty('--cor-categoria', '#f59e0b');
-  $('pergunta-categoria-icone').textContent = leilaoGeral() ? '🔨' : '🎁';
-  $('pergunta-categoria-nome').textContent = leilaoGeral() ? 'Leilao geral' : 'Leilao';
+  $('pergunta-categoria').style.setProperty('--cor-categoria', dandoDicas() ? '#38bdf8' : '#f59e0b');
+  $('pergunta-categoria-icone').textContent = dandoDicas() ? '💡' : (leilaoGeral() ? '🔨' : '🎁');
+  $('pergunta-categoria-nome').textContent = dandoDicas()
+    ? 'Dando dicas' : (leilaoGeral() ? 'Leilao geral' : 'Leilao');
 
   limparTabuleiro();
 
@@ -1110,28 +1131,48 @@ socket.on('leilao:comeco', (dados) => {
   // chega só no fim do leilão, pelo `rodada:pergunta`.
   const souLeiloeiro = dados.equipes.some((d) => d.leiloeiro && d.leiloeiro.id === socket.id);
   $('pergunta-texto').textContent = souLeiloeiro
-    ? 'Lendo a pergunta…'
-    : 'Seu parceiro esta leiloando por voce. Voce so ve a pergunta quando o leilao acabar.';
+    ? (dandoDicas() ? 'Vendo a palavra…' : 'Lendo a pergunta…')
+    : dandoDicas()
+      ? 'Seu parceiro esta leiloando por voce. Voce so descobre a palavra pelas dicas dele.'
+      : 'Seu parceiro esta leiloando por voce. Voce so ve a pergunta quando o leilao acabar.';
   $('pergunta-texto').classList.toggle('pergunta__texto--segredo', !souLeiloeiro);
 
   $('presente').hidden = false;
   $('presente-entrega').hidden = true;
   $('presente-forma').hidden = true;
   $('presente-itens').innerHTML = '';
-  $('presente-fase').textContent = 'Leilao';
+  $('presente-itens').classList.toggle('presente__itens--dicas', dandoDicas());
+  $('presente-fase').textContent = dandoDicas() ? 'Leilao ao contrario' : 'Leilao';
   $('presente-lance').textContent = 'sem lance ainda';
   desenharEquipes(null, null);
 
   trancarChat('O leilao esta rolando…');
-  mensagemSistema(`Rodada ${dados.rodada} · ${leilaoGeral() ? 'leilao geral' : 'leilao em equipes'}`);
+  mensagemSistema(`Rodada ${dados.rodada} · ${
+    dandoDicas() ? 'leilao ao contrario, em duplas'
+      : leilaoGeral() ? 'leilao geral' : 'leilao em equipes'}`);
   pararContagem();
 });
 
 // Chega só para quem está leiloando.
 socket.on('leilao:pergunta', (dados) => {
-  $('pergunta-texto').textContent = dados.pergunta;
+  // Dando dicas: quem leiloa nao le um enunciado — le a palavra que vai ter
+  // que arrancar do parceiro, e ela fica a vista ate a rodada acabar.
+  if (dados.segredo) {
+    if (estado.presente) estado.presente.segredo = dados.segredo;
+    $('pergunta-texto').textContent = 'Faca seu parceiro dizer:';
+    mostrarSegredo(dados.segredo);
+  } else {
+    $('pergunta-texto').textContent = dados.pergunta;
+  }
   $('pergunta-texto').classList.remove('pergunta__texto--segredo');
 });
+
+/** A palavra secreta em destaque, so na tela de quem da as dicas. */
+function mostrarSegredo(palavra) {
+  const caixa = $('segredo');
+  caixa.textContent = palavra;
+  caixa.hidden = !palavra;
+}
 
 /** Desenha as equipes com os papéis da rodada e quem está com a palavra. */
 function desenharEquipes(equipeDaVez, equipeDoLance) {
@@ -1153,19 +1194,27 @@ function desenharEquipes(equipeDaVez, equipeDoLance) {
     if (fora) item.classList.add('fora');
 
     const lance = estado.presente.lances?.[equipe.id];
+    const selo = lance ? `<span class="presente__valor">${lance}</span>` : '';
+    const nomes = (icone, titulo, pessoa) => `<span class="presente__papel" title="${titulo}">${
+      icone} ${escapar(pessoa ? pessoa.nickname : '—')}</span>`;
+
     item.innerHTML = leilaoGeral()
       ? `
       <span class="presente__equipe-nome">${equipe.icone} ${
         escapar(equipe.leiloeiro ? equipe.leiloeiro.nickname : equipe.nome)}</span>
       <span class="presente__papel">${fora ? 'passou' : 'no leilao'}</span>
-      ${lance ? `<span class="presente__valor">${lance}</span>` : ''}`
-      : `
+      ${selo}`
+      : dandoDicas()
+        ? `
       <span class="presente__equipe-nome">${equipe.icone} ${escapar(equipe.nome)}</span>
-      <span class="presente__papel" title="leiloa esta rodada">🔨 ${
-        escapar(equipe.leiloeiro ? equipe.leiloeiro.nickname : '—')}</span>
-      <span class="presente__papel" title="responde esta rodada, sem ver a pergunta">🎁 ${
-        escapar(equipe.respondedor ? equipe.respondedor.nickname : '—')}</span>
-      ${lance ? `<span class="presente__valor">${lance}</span>` : ''}`;
+      ${nomes('💡', 'leiloa e da as dicas', equipe.leiloeiro)}
+      ${nomes('🤔', 'adivinha, sem ver a palavra', equipe.respondedor)}
+      ${selo}`
+        : `
+      <span class="presente__equipe-nome">${equipe.icone} ${escapar(equipe.nome)}</span>
+      ${nomes('🔨', 'leiloa esta rodada', equipe.leiloeiro)}
+      ${nomes('🎁', 'responde esta rodada, sem ver a pergunta', equipe.respondedor)}
+      ${selo}`;
     lista.appendChild(item);
   }
 }
@@ -1181,28 +1230,39 @@ socket.on('leilao:vez', (dados) => {
   desenharEquipes(dados.equipeId, estado.presente.equipeAposta);
 
   $('presente-lance').textContent = dados.aposta > 0
-    ? `lance na mesa: ${dados.aposta}`
+    ? `lance na mesa: ${dandoDicas() ? plural(dados.aposta, 'dica', 'dicas') : dados.aposta}`
     : 'sem lance ainda';
 
   const vez = $('presente-vez');
   vez.classList.toggle('minha', minha);
   vez.textContent = minha
-    ? (leilaoGeral()
-      ? 'Sua vez: quantas voce consegue dizer sozinho?'
-      : 'Sua vez: quantas o seu parceiro consegue dizer?')
+    ? (dandoDicas()
+      ? 'Sua vez: em quantas dicas voce faz seu parceiro acertar?'
+      : leilaoGeral()
+        ? 'Sua vez: quantas voce consegue dizer sozinho?'
+        : 'Sua vez: quantas o seu parceiro consegue dizer?')
     : `Vez de ${equipe && equipe.leiloeiro ? equipe.leiloeiro.nickname : '…'}`;
 
   const forma = $('presente-forma');
   forma.hidden = !minha;
   if (minha) {
     const campo = $('presente-input');
+    const teto = dados.maximo ?? estado.presente.maxAposta ?? 60;
     campo.min = String(dados.minimo);
-    campo.max = String(estado.presente.maxAposta || 60);
-    campo.value = String(dados.minimo);
+    campo.max = String(teto);
+    // No leilao ao contrario o campo abre no lance mais seguro que ainda
+    // cobre — um a menos que o da mesa; nos outros, no minimo para cobrir.
+    campo.value = String(dandoDicas() ? teto : dados.minimo);
+    campo.disabled = dados.podeApostar === false;
+    $('presente-campo-rotulo').textContent = dandoDicas()
+      ? 'Acerta em' : (leilaoGeral() ? 'Eu digo' : 'Meu parceiro diz');
+    $('presente-apostar').disabled = dados.podeApostar === false;
+    $('presente-apostar').textContent = dandoDicas() ? 'Faco em menos' : 'Apostar';
+
     const duvidar = $('presente-duvidar');
     const passar = $('presente-passar');
-    duvidar.hidden = leilaoGeral();
-    passar.hidden = !leilaoGeral();
+    duvidar.hidden = leilaoGeral() || dandoDicas();
+    passar.hidden = !leilaoGeral() && !dandoDicas();
     duvidar.disabled = !dados.podeDuvidar;
     duvidar.title = dados.podeDuvidar
       ? `Duvido que a outra equipe faca ${dados.aposta}`
@@ -1211,7 +1271,7 @@ socket.on('leilao:vez', (dados) => {
     passar.title = dados.podePassar
       ? 'Sai do leilao desta rodada'
       : 'Quem abre o leilao tem que apostar';
-    if (!('ontouchstart' in window)) campo.focus();
+    if (!('ontouchstart' in window) && !campo.disabled) campo.focus();
   }
 
   pararContagem();
@@ -1230,7 +1290,8 @@ socket.on('leilao:lance', (dados) => {
   estado.presente.equipeAposta = dados.equipeId;
   estado.presente.lances = { [dados.equipeId]: dados.aposta };
 
-  $('presente-lance').textContent = `lance na mesa: ${dados.aposta}`;
+  $('presente-lance').textContent = `lance na mesa: ${
+    dandoDicas() ? plural(dados.aposta, 'dica', 'dicas') : dados.aposta}`;
   $('presente-forma').hidden = true;
   desenharEquipes(null, dados.equipeId);
 });
@@ -1241,20 +1302,32 @@ socket.on('leilao:fim', (dados) => {
   estado.presente.respondedor = dados.respondedor;
 
   $('presente-forma').hidden = true;
-  $('presente-fase').textContent = leilaoGeral() ? 'Ninguem cobriu!' : 'Duvidaram!';
-  $('presente-lance').textContent = `aposta cobrada: ${dados.aposta}`;
+  $('presente-fase').textContent = dandoDicas()
+    ? 'Ninguem foi mais baixo!'
+    : leilaoGeral() ? 'Ninguem cobriu!' : 'Duvidaram!';
+  $('presente-lance').textContent = dandoDicas()
+    ? `${plural(dados.aposta, 'dica', 'dicas')} para entregar`
+    : `aposta cobrada: ${dados.aposta}`;
   desenharEquipes(dados.equipeDuvidou, dados.equipeAposta);
 
   const vez = $('presente-vez');
   const souEu = dados.respondedor === socket.id;
-  vez.classList.toggle('minha', souEu);
-  vez.textContent = leilaoGeral()
-    ? (souEu
-      ? `Voce levou o leilao! Prepare-se para dizer ${dados.aposta}.`
-      : `${dados.nicknameRespondedor} levou o leilao e tem que dizer ${dados.aposta}`)
-    : (souEu
-      ? `${dados.nicknameDuvidou} duvidou de voce! Prepare-se para dizer ${dados.aposta}.`
-      : `${dados.nicknameDuvidou} duvidou · ${dados.nicknameRespondedor} tem que dizer ${dados.aposta}`);
+  const souODicador = dados.dicador === socket.id;
+  vez.classList.toggle('minha', souEu || souODicador);
+  vez.textContent = dandoDicas()
+    ? (souODicador
+      ? `A dupla e sua! Prepare ${plural(dados.aposta, 'dica', 'dicas')} para ${dados.nicknameRespondedor}.`
+      : souEu
+        ? `${dados.nicknameDicador} vai te dar ${plural(dados.aposta, 'dica', 'dicas')}. Prepare-se!`
+        : `${dados.nicknameDicador} tem ${plural(dados.aposta, 'dica', 'dicas')} para ${
+          dados.nicknameRespondedor} acertar`)
+    : leilaoGeral()
+      ? (souEu
+        ? `Voce levou o leilao! Prepare-se para dizer ${dados.aposta}.`
+        : `${dados.nicknameRespondedor} levou o leilao e tem que dizer ${dados.aposta}`)
+      : (souEu
+        ? `${dados.nicknameDuvidou} duvidou de voce! Prepare-se para dizer ${dados.aposta}.`
+        : `${dados.nicknameDuvidou} duvidou · ${dados.nicknameRespondedor} tem que dizer ${dados.aposta}`);
 
   pararContagem();
   contarTempo(barraTempo, dados.duracaoMs, true);
@@ -1265,7 +1338,10 @@ function abrirEntregaDoPresente(presente) {
   if (!estado.presente) estado.presente = { equipes: [] };
   estado.presente.aposta = presente.aposta;
   estado.presente.respondedor = presente.respondedor;
+  estado.presente.dicador = presente.dicador;
   estado.presente.entregues = [];
+
+  if (dandoDicas()) return abrirEntregaDasDicas(presente);
 
   const souEu = presente.respondedor === socket.id;
   const quem = (estado.placar || []).find((j) => j.id === presente.respondedor);
@@ -1291,6 +1367,73 @@ function abrirEntregaDoPresente(presente) {
   if (souEu) destrancarChat(`Diga ${plural(presente.aposta, 'resposta', 'respostas')}…`);
   else trancarChat(`${quem ? quem.nickname : 'Quem foi desafiado'} esta respondendo…`);
 }
+
+/**
+ * Dando dicas: a entrega tem duas pessoas escrevendo.
+ *
+ * Quem deu o lance manda as palavras — uma de cada vez, e só as que prometeu
+ * — e o parceiro chuta. A mesa assiste: quem leiloou pelas outras duplas já
+ * viu a palavra e entregaria tudo numa frase.
+ */
+function abrirEntregaDasDicas(presente) {
+  const cracha = (id) => (estado.placar || []).find((j) => j.id === id);
+  const adivinha = cracha(presente.respondedor);
+  const dicador = cracha(presente.dicador);
+  const souODicador = presente.dicador === socket.id;
+  const souEu = presente.respondedor === socket.id;
+
+  $('presente').hidden = false;
+  $('presente-forma').hidden = true;
+  $('presente-fase').textContent = 'Dicas';
+  $('presente-lance').textContent = `teto de ${plural(presente.aposta, 'dica', 'dicas')}`;
+  desenharEquipes(presente.equipeAposta, presente.equipeAposta);
+
+  // A palavra continua a vista para quem esta dando as dicas, e so para ele.
+  $('pergunta-texto').textContent = souODicador
+    ? 'Faca seu parceiro dizer:'
+    : 'Adivinhe a palavra pelas dicas.';
+  mostrarSegredo(souODicador ? estado.presente.segredo : null);
+
+  const vez = $('presente-vez');
+  vez.classList.toggle('minha', souEu || souODicador);
+  vez.textContent = souODicador
+    ? `Uma palavra por dica. Voce tem ${plural(presente.aposta, 'dica', 'dicas')}.`
+    : souEu
+      ? `${dicador ? dicador.nickname : 'Seu parceiro'} esta te dando as dicas. Chute a vontade!`
+      : `${dicador ? dicador.nickname : 'A dupla'} tenta em ${
+        plural(presente.aposta, 'dica', 'dicas')} · ${adivinha ? adivinha.nickname : '…'} adivinha`;
+
+  $('presente-entrega').hidden = false;
+  $('presente-itens').innerHTML = '';
+  $('presente-itens').classList.add('presente__itens--dicas');
+  $('presente-rotulo').textContent = 'dicas dadas';
+  atualizarEntrega(0, presente.aposta);
+
+  if (souODicador) destrancarChat('Uma palavra por dica…');
+  else if (souEu) destrancarChat('Chute a palavra!');
+  else trancarChat(`${dicador ? dicador.nickname : 'A dupla'} esta dando as dicas…`);
+}
+
+socket.on('dicas:nova', (dados) => {
+  const el = criar('li', 'presente__item presente__item--dica');
+  el.textContent = `${dados.indice}. ${dados.dica}`;
+  $('presente-itens').appendChild(el);
+  atualizarEntrega(dados.indice, dados.total);
+
+  // Gastou a ultima: quem deu as dicas nao tem mais o que fazer a nao ser
+  // torcer, e o campo diz isso em vez de ficar convidando a escrever.
+  if (dados.indice >= dados.total && dados.jogadorId === socket.id) {
+    trancarChat('Suas dicas acabaram. Agora e torcer!');
+  }
+});
+
+socket.on('dicas:acertou', (dados) => {
+  $('presente-fase').textContent = 'Acertou!';
+  $('presente-lance').textContent = `na dica ${dados.dicas} de ${dados.prometidas}`;
+  const vez = $('presente-vez');
+  vez.classList.add('minha');
+  vez.textContent = `A palavra era ${dados.palavra}.`;
+});
 
 function atualizarEntrega(quantos, aposta) {
   const contador = $('presente-contador');
@@ -1536,6 +1679,13 @@ formChat.addEventListener('submit', (evento) => {
           ? `"${resposta.repetido}" ja tinha sido dito. Voce saiu desta rodada.`
           : 'Errou! Voce saiu desta rodada.');
 
+    } else if (resposta.veredito === 'dica') {
+      // Dando dicas: a palavra já foi para a mesa pelo chat; aqui só fica o
+      // lembrete de quantas ainda restam.
+      inputChat.placeholder = resposta.restam > 0
+        ? `Restam ${plural(resposta.restam, 'dica', 'dicas')}…`
+        : 'Era a ultima dica. Agora e torcer!';
+
     } else if (resposta.veredito === 'item') {
       // Um item de lista tem cara propria: azul, e no mesmo formato do acerto
       // — verde continua sendo "fechou a resposta inteira".
@@ -1584,6 +1734,7 @@ socket.on('rodada:resultado', (dados) => {
   // Fim do Presente Grego: o painel do leilao sai e o chat volta para todos.
   if (estado.presente) {
     $('presente').hidden = true;
+    $('segredo').hidden = true;
     estado.presente = null;
     destrancarChat('Digite uma mensagem…');
   }
@@ -1598,19 +1749,26 @@ socket.on('rodada:resultado', (dados) => {
   selo.title = 'Dificuldade da pergunta: sobe quando pouca gente acerta ou quando demoram muito. '
              + 'Nao altera a pontuacao.';
 
-  // Repertório aberto ("paises da Africa") mostra uma amostra do que valia.
-  if (dados.listaParcial && dados.listaCompleta && dados.listaCompleta.length) {
-    $('resultado-aceita').textContent = 'Algumas que valiam: ' + dados.listaCompleta.join(', ');
-  } else if (dados.aceita && dados.aceita.length) {
-    $('resultado-aceita').textContent = 'Tambem valia: ' + dados.aceita.join(', ');
-  } else {
-    $('resultado-aceita').textContent = '';
+  // O que ainda cabe contar da rodada: as dicas que foram gastas, uma amostra
+  // do repertório aberto ou as outras grafias que valiam.
+  const rodape = [];
+  if (dados.dicasDadas && dados.dicasDadas.length) {
+    rodape.push('As dicas foram: ' + dados.dicasDadas.join(' · '));
   }
+  if (dados.listaParcial && dados.listaCompleta && dados.listaCompleta.length) {
+    rodape.push('Algumas que valiam: ' + dados.listaCompleta.join(', '));
+  } else if (dados.aceita && dados.aceita.length) {
+    rodape.push('Tambem valia: ' + dados.aceita.join(', '));
+  }
+  $('resultado-aceita').textContent = rodape.join(' — ');
 
   const lista = $('resultado-lista');
   lista.innerHTML = '';
 
-  const PAPEIS = { apostou: '🔨 apostou', duvidou: '🤨 duvidou', respondeu: '🎁 respondeu', passou: '🚪 passou' };
+  const PAPEIS = {
+    apostou: '🔨 apostou', duvidou: '🤨 duvidou', respondeu: '🎁 respondeu',
+    passou: '🚪 passou', dicou: '💡 deu as dicas', adivinhou: '🤔 adivinhou'
+  };
 
   for (const detalhe of dados.detalhes) {
     const item = criar('li', 'resultado__item ' + (detalhe.acertou ? 'acertou' : 'errou'));

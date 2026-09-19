@@ -44,7 +44,7 @@ e que a versão do topo seja a do jogo.
 | Ajuste | Opções |
 | --- | --- |
 | Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História, Ciência, Games, **Mainstream**, **Marcas** |
-| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **Veni, Vidi, Vici**, **Mais ou Menos Pontos**, **Presente Grego** ou **Leilão Geral** (Equipes aparece como *em breve*) |
+| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **Veni, Vidi, Vici**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral** ou **Dando dicas** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
 
@@ -56,7 +56,10 @@ cada pessoa** para tirá-la da sala — vale em todos os modos, e quem é tirado
 volta para o saguão com um aviso.
 
 No **Presente Grego** a lista vira duas, uma por equipe, com o botão de trocar
-de lado embaixo de cada uma (ver [Presente Grego](#presente-grego)).
+de lado embaixo de cada uma (ver [Presente Grego](#presente-grego)). No
+**Dando dicas** ela vira uma caixa por dupla, e as duplas aparecem uma de cada
+vez: sempre as que já têm gente mais uma vazia, para a sala crescer junto com
+quem chega (ver [Dando dicas](#dando-dicas)).
 
 ### O chat é a resposta
 
@@ -358,6 +361,84 @@ Apostar 5 e dizer 5 vale 10 pontos e deixa a mesa a zero; apostar 5 e dizer 2
 vale 4 pontos — e dá 5 para cada uma das outras pessoas. Entregar tudo é o
 único jeito de não pagar ninguém.
 
+### Dando dicas
+
+O leilão **ao contrário**, jogado em **duplas**. Nos outros leilões o lance sobe
+e ganha quem promete mais; aqui ele **desce**, e ganha quem se compromete a
+fazer o parceiro acertar com **menos palavras**.
+
+A sala precisa de **4 jogadores, em número par**. Cada dupla tem exatamente
+dois — o terceiro não teria papel na rodada —, e dá para até **seis duplas**
+(o teto de 12 pessoas da sala). Na sala de espera aparecem as duplas que já
+têm gente mais uma vazia; com alguém sozinho num time, o botão de iniciar fica
+travado.
+
+Os dois papéis **giram a cada rodada**, então quem deu as dicas na rodada 1
+adivinha na rodada 2:
+
+- **💡 quem dá as dicas** — vê a palavra secreta e leiloa por ela;
+- **🤔 quem adivinha** — não vê nada, nem a categoria.
+
+**A palavra.** Sai do mesmo banco das outras rodadas, mas o que interessa é a
+**resposta**, não o enunciado: *"Quem ganhou a Copa de 2002?"* vira a palavra
+`Brasil` e a pergunta é jogada fora. Nem toda resposta serve de alvo — número
+puro viraria charada de aritmética e frase comprida ninguém arranca do
+parceiro —, então o sorteio insiste até achar uma de até três palavras com
+letra. A **categoria de verdade fica escondida** (a tela diz só *Dando dicas*):
+saber que é Geografia já faria metade do trabalho da dica.
+
+A palavra sai do servidor **uma a uma, só para quem leiloa**. Não é a tela que
+esconde: a mensagem nem chega a quem vai adivinhar. Durante o leilão o chat
+fica trancado para todo mundo, e a rodada abre **sem máscara** — o formato da
+palavra entregaria o que se está tentando arrancar a duras penas.
+
+**O leilão ao contrário.** A palavra passa de dupla em dupla, **6s para cada**:
+
+- **cobrir** — prometer um número **menor** que o lance na mesa. O teto de
+  abertura é **10 dicas** e o chão é **1**;
+- **passar** — sair do leilão desta rodada. Não há *duvido*: quem não quer
+  descer mais, desiste.
+
+Quem abre é obrigado a apostar, e deixar o tempo acabar sem lance na mesa abre
+no **teto**, que é o lance mais seguro. Com lance na mesa, o tempo esgotado vale
+como passar. Um lance de **1 não tem como ser coberto**: só resta a todo mundo
+passar, e a dupla entrega com uma palavra só.
+
+**A entrega.** Fechado o leilão, a dupla inteira escreve — é a única rodada do
+jogo com duas bocas ao mesmo tempo:
+
+- quem deu o lance manda **dicas**, e cada dica é **uma palavra só**. São
+  exatamente as que prometeu; a décima primeira de um lance de dez não entra;
+- o parceiro manda **palpites**, à vontade. O chute errado **vai para o chat**
+  de propósito: quem dá as dicas precisa ouvir por onde o outro está indo.
+
+O resto da mesa assiste calado — os leiloeiros das outras duplas já viram a
+palavra e a entregariam numa frase. **Dica que carrega a resposta é recusada**,
+nos dois sentidos: `senna` dentro de *Ayrton Senna* e `formigueiro` em volta de
+*Formiga*. Três letras já bastam para entregar (`sol` dentro de `solar`), e a
+dica recusada **não gasta** nada do orçamento.
+
+O relógio da entrega é `15s + 9s por dica prometida`, com teto de 105s: quem
+prometeu 1 tem 24 segundos, quem prometeu 8 tem 87. Gastar as dicas cedo deixa o
+resto do relógio para o parceiro pensar.
+
+**Pontuação: por rodada, não por dica.** A rodada vale **10 pontos**, custe uma
+dica ou dez:
+
+| O que aconteceu | Quem leva |
+| --- | --- |
+| A palavra saiu dentro do orçamento | os **dois** da dupla que levou o leilão |
+| As dicas acabaram e a palavra não saiu | **cada uma** das outras duplas |
+
+É aí que o leilão ao contrário morde: descer o lance **não rende mais ponto**,
+rende o direito de tentar. Fechar em 1 paga igual a fechar em 8 — o que muda é
+o risco de a palavra não sair e a rodada inteira ir para quem passou.
+
+Rodada de Dando dicas **não alimenta a dificuldade adaptativa**: adivinha uma
+pessoa só, e o que ela tem na frente não é a pergunta, são as palavras que o
+parceiro escolheu. Se quem dá as dicas ou quem adivinha sai no meio, a rodada é
+**cancelada** sem ninguém pontuar.
+
 ### Pular a rodada
 
 Qualquer pessoa pode votar para **pular a rodada**, e com **metade mais um**
@@ -521,7 +602,8 @@ lobby → categoria → pergunta → resultado → (categoria… ou fim)
                                               └─────────────┘
 ```
 
-O **Presente Grego** entra com um estado a mais entre a categoria e a pergunta:
+Os modos de leilão — **Presente Grego**, **Leilão Geral** e **Dando dicas** —
+entram com um estado a mais entre a categoria e a pergunta:
 
 ```
 lobby → categoria → leilao → pergunta → resultado → …
@@ -761,6 +843,8 @@ npm test
 Cobre a régua de acerto/quase/chat (36 casos), a pontuação por atraso numa
 rodada com relógio controlado, o Modo Escalada da rodada 1 à 6 — incluindo a
 checagem de que nenhum item correto vaza para o chat —, o Carrossel, o
+**Dando dicas** (duplas completas, o lance que desce, a palavra que não vaza,
+a dica de uma palavra só e a rodada que paga igual custe 1 ou 10),
 **Presente Grego** (formação das equipes, regras do lance, o segredo do
 enunciado, as duas pontas do "duvido" e o que acontece quando alguém sai no
 meio), o **Leilão Geral** (a pergunta pública, passar o lance, o leilão que

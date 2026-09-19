@@ -17,6 +17,18 @@
 
 const NOTAS = [
   {
+    versao: '1.9',
+    data: '2026-09-19',
+    titulo: 'Dando dicas: o leilao ao contrario',
+    itens: [
+      'Dando dicas: jogado em duplas, com leilao AO CONTRARIO. Uma metade de cada dupla ve a mesma palavra secreta e leiloa em quantas dicas faz a outra metade acertar.',
+      'O lance desce: cobrir e prometer MENOS dicas que a mesa. Quem nao quer descer mais passa, e quando sobra uma dupla so, ela tem que entregar.',
+      'Cada dica e uma palavra solta, e palavra que carrega a resposta nao vale — nem um pedaco dela. Quem adivinha chuta a vontade, e o chute errado vai para o chat para o parceiro saber por onde puxar.',
+      'A pontuacao e por rodada, nao por dica: a rodada vale 10 pontos, custe uma dica ou dez. Se a palavra nao sair, os 10 vao para cada uma das outras duplas.',
+      'As duplas aparecem na sala de espera uma de cada vez, e a partida so comeca com todas completas — sao de dois, e o lance de abertura tem teto de 10 dicas.'
+    ]
+  },
+  {
     versao: '1.8',
     data: '2026-09-18',
     titulo: 'Dois modos novos: Veni, Vidi, Vici e Mais ou Menos Pontos',

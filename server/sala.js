@@ -71,17 +71,43 @@ const EQUIPES_VISUAL = [
   { icone: '🟡', cor: '#fbbf24' }
 ];
 
-/** As duas equipes do Presente Grego. Existem desde a sala: quem entra ja cai numa. */
-function criarEquipes() {
-  return [0, 1].map((i) => ({
-    id: `e${i + 1}`,
-    nome: `Equipe ${i + 1}`,
+/**
+ * As equipes da sala. Existem desde o comeco: quem entra ja cai numa.
+ *
+ * O Presente Grego joga com duas equipes que crescem ate metade da sala mais
+ * uma. O Dando dicas joga com DUPLAS, entao sao seis times de dois — o teto
+ * de jogadores da sala — e a sala de espera mostra so os que ja tem gente.
+ */
+function criarEquipes(modo) {
+  const duplas = modo === 'dando-dicas';
+  const quantas = duplas ? EQUIPES_VISUAL.length : 2;
+
+  return Array.from({ length: quantas }, (_, i) => ({
+    id: duplas ? `d${i + 1}` : `e${i + 1}`,
+    nome: duplas ? `Dupla ${i + 1}` : `Equipe ${i + 1}`,
     ...EQUIPES_VISUAL[i],
     // De quem comeca leiloando; dai em diante o papel gira a cada rodada.
     giro: 0,
     jogadores: []
   }));
 }
+
+// Dando dicas: leilao AO CONTRARIO, jogado em duplas. As duas metades de cada
+// dupla tem papeis opostos — uma ve a palavra secreta e leiloa em quantas
+// dicas faz a outra acertar. O lance DESCE: quem se compromete com menos
+// palavras leva o leilao, e o resto passa. A rodada vale sempre o mesmo,
+// tenha custado uma dica ou dez: o que se disputa e a rodada, nao a dica.
+const MAX_DICAS = 10;              // teto do lance de abertura
+const MS_BASE_DICAS = 15000;       // relogio da entrega: 15s
+const MS_POR_DICA = 9000;          //  + 9s por dica prometida
+const MS_TETO_DICAS = 105000;
+const PONTOS_POR_RODADA_DICAS = 10; // o que a rodada paga, valha 1 dica ou 10
+const MIN_JOGADORES_DUPLA = 4;      // duas duplas
+const TAMANHO_DA_DUPLA = 2;
+// Dica que carrega a resposta esta fora. Tres letras ja bastam para entregar
+// (`sol` dentro de `solar`), e recusar uma dica boa custa menos do que deixar
+// a palavra escapar.
+const MIN_LETRAS_ENTREGA = 3;
 
 /* Veni, Vidi, Vici: uma palavra e tres dicas, da mais vaga para a mais obvia. */
 const PONTOS_VENI = [10, 6, 3];  // quanto vale acertar em cada dica
@@ -160,6 +186,15 @@ const MODOS = [
     disponivel: true
   },
   {
+    id: 'dando-dicas',
+    nome: 'Dando dicas',
+    icone: '💡',
+    descricao: 'Leilao ao contrario, em duplas. Uma metade de cada dupla ve a mesma palavra secreta e leiloa em quantas dicas faz a outra metade acertar — e cada dica e UMA palavra. O lance desce ate todos passarem; quem ficou tem que entregar. A rodada vale 10 pontos, custe 1 dica ou 10: se a palavra nao sair, os 10 vao para as outras duplas.',
+    disponivel: true,
+    equipes: true,
+    duplas: true
+  },
+  {
     id: 'equipes',
     nome: 'Equipes',
     icone: '🤝',
@@ -220,6 +255,20 @@ function idDaPergunta(categoria, q) {
   const midia = q.audio || q.imagem;
   const resposta = midia ? `${q.resposta}|${midia}` : q.resposta;
   return dificuldade.idDe(categoria, q.pergunta, resposta);
+}
+
+/**
+ * A resposta serve de palavra secreta do Dando dicas?
+ *
+ * O alvo tem que ser explicavel em palavras soltas. `1969` e `42` nao sao: a
+ * dica viraria charada de aritmetica. Frase comprida tambem nao — ninguem
+ * arranca "Guerra dos Cem Anos entre Inglaterra e Franca" do parceiro.
+ */
+function serveDeAlvo(resposta) {
+  const texto = String(resposta || '').trim();
+  if (!texto) return false;
+  if (!/[a-zA-ZÀ-ɏ]/.test(texto)) return false;   // numero puro, data, placar
+  return texto.split(/\s+/).length <= 3 && normalizar(texto).length >= 3;
 }
 
 /** Índice de todas as perguntas, para o painel de dificuldades. */
@@ -288,9 +337,9 @@ class Sala {
     this.voltasFeitas = 0;
     this.inicioVez = 0;
 
-    // Presente Grego: as equipes são montadas na sala e duram a partida
-    // inteira; o leilão dura uma rodada.
-    this.equipes = criarEquipes();
+    // Presente Grego e Dando dicas: as equipes são montadas na sala e duram a
+    // partida inteira; o leilão dura uma rodada.
+    this.equipes = criarEquipes(config.modo);
     this.leilao = null;
 
     // Veni, Vidi, Vici: qual das tres dicas está na tela agora.
@@ -443,6 +492,17 @@ class Sala {
     if (this.ehLeilaoGeral() && this.jogadores.size < 2) {
       return { erro: 'O Leilao Geral precisa de pelo menos dois jogadores: alguem tem que cobrir o lance.' };
     }
+    if (this.ehDandoDicas()) {
+      const cheias = this.equipes.filter((d) => d.jogadores.length === TAMANHO_DA_DUPLA);
+      const tortas = this.equipes.filter((d) => d.jogadores.length === 1);
+      if (cheias.length < 2) {
+        return { erro: `Dando dicas precisa de duas duplas completas: sao ${MIN_JOGADORES_DUPLA} jogadores.` };
+      }
+      // Sobrou gente sem par: a pessoa nao teria para quem dar dica nenhuma.
+      if (tortas.length > 0) {
+        return { erro: 'Toda dupla precisa de duas pessoas. Com a sala impar, alguem fica sem par.' };
+      }
+    }
 
     for (const jogador of this.jogadores.values()) {
       jogador.pontos = 0;
@@ -478,9 +538,23 @@ class Sala {
     return this.config.modo === 'leilao-geral';
   }
 
-  /** Os dois modos de leilao: em equipes (Presente Grego) ou cada um por si. */
+  ehDandoDicas() {
+    return this.config.modo === 'dando-dicas';
+  }
+
+  /** O leilao do Dando dicas anda para tras: ganha quem pedir MENOS. */
+  ehLeilaoReverso() {
+    return this.ehDandoDicas();
+  }
+
+  /** Os modos de leilao: em equipes, em duplas ou cada um por si. */
   ehLeilao() {
-    return this.ehPresenteGrego() || this.ehLeilaoGeral();
+    return this.ehPresenteGrego() || this.ehLeilaoGeral() || this.ehDandoDicas();
+  }
+
+  /** Os modos em que a sala se divide em times antes de a partida comecar. */
+  temEquipes() {
+    return this.ehPresenteGrego() || this.ehDandoDicas();
   }
 
   /** Quantas pessoas uma equipe precisa ter para entrar no leilao. */
@@ -496,7 +570,28 @@ class Sala {
    * lado só — sem gente do outro lado não existe leilão.
    */
   tetoEquipe() {
+    // Dupla e dupla: o terceiro nao teria papel na rodada.
+    if (this.ehDandoDicas()) return TAMANHO_DA_DUPLA;
     return Math.max(1, Math.floor(this.jogadores.size / 2) + 1);
+  }
+
+  /**
+   * As equipes que a sala de espera mostra.
+   *
+   * No Presente Grego sao sempre as duas. No Dando dicas existem seis duplas
+   * guardadas, mas so aparecem as que ja tem gente mais UMA vazia — a sala
+   * cresce junto com quem chega, em vez de nascer com quatro caixas vazias.
+   */
+  equipesVisiveis() {
+    if (!this.ehDandoDicas()) return this.equipes;
+
+    const mostrar = [];
+    let jaTemVaga = false;
+    for (const dupla of this.equipes) {
+      if (dupla.jogadores.length > 0) mostrar.push(dupla);
+      else if (!jaTemVaga) { mostrar.push(dupla); jaTemVaga = true; }
+    }
+    return mostrar.length >= 2 ? mostrar : this.equipes.slice(0, 2);
   }
 
   equipeDoJogador(socketId) {
@@ -505,9 +600,18 @@ class Sala {
 
   /** Quem chega cai na equipe menor, para a sala nascer equilibrada. */
   encaixarNaEquipe(socketId) {
-    // Fora do Presente Grego a sala nao tem equipes para escolher.
-    if (!this.ehPresenteGrego()) return;
+    // Fora dos modos em equipe a sala nao tem times para escolher.
+    if (!this.temEquipes()) return;
     if (this.equipeDoJogador(socketId)) return;
+
+    // Duplas se fecham uma de cada vez: espalhar um por dupla deixaria seis
+    // pessoas sozinhas e nenhuma rodada de pe.
+    if (this.ehDandoDicas()) {
+      const comVaga = this.equipes.find((d) => d.jogadores.length < TAMANHO_DA_DUPLA);
+      if (comVaga) comVaga.jogadores.push(socketId);
+      return;
+    }
+
     const menor = this.equipes.reduce((a, b) => (b.jogadores.length < a.jogadores.length ? b : a));
     menor.jogadores.push(socketId);
   }
@@ -614,6 +718,11 @@ class Sala {
     // Quem ia entregar o presente sumiu: a rodada não tem como terminar.
     if (this.leilao && this.leilao.respondedor === socketId) {
       return this.cancelarRodada('quem tinha sido desafiado saiu da sala');
+    }
+    // Dando dicas: sem quem da as dicas a outra metade fica olhando para o teto.
+    if (this.ehDandoDicas() && this.leilao && this.leilao.fechado
+        && this.leilao.quemApostou === socketId) {
+      return this.cancelarRodada('quem ia dar as dicas saiu da sala');
     }
     if (!this.leilaoAberto()) return;
     // A equipe do maior lance só perde a rodada se ficar sem dois: com três
@@ -929,6 +1038,41 @@ class Sala {
     return pergunta;
   }
 
+  /**
+   * Dando dicas: a palavra secreta da rodada.
+   *
+   * Sai do mesmo banco das outras rodadas, mas o que interessa e a RESPOSTA e
+   * nao o enunciado: "Quem ganhou a Copa de 2002?" vira a palavra `Brasil`, e
+   * o enunciado e jogado fora. Nem toda resposta serve de alvo — numero puro e
+   * frase comprida nao se explicam em palavras soltas —, entao o sorteio
+   * insiste algumas vezes antes de cair no banco do Veni, que e feito so de
+   * palavras adivinhaveis.
+   */
+  perguntaDica() {
+    let escolhida = this.perguntaSimples();
+    for (let tentativa = 1; tentativa < 8 && !serveDeAlvo(escolhida.resposta); tentativa++) {
+      escolhida = this.perguntaSimples();
+    }
+    if (!serveDeAlvo(escolhida.resposta)) escolhida = this.perguntaVeni();
+
+    return {
+      ...escolhida,
+      // O enunciado publico nao diz nada: quem adivinha so tem as dicas.
+      pergunta: 'Adivinhe a palavra pelas dicas do seu parceiro.',
+      // A palavra em si sai daqui para quem leiloa, um a um, e nunca para a sala.
+      segredo: escolhida.resposta,
+      imagem: null,
+      audio: null,
+      letra: null,
+      dicas: null,
+      necessarias: 1,
+      fixo: true,
+      // A categoria de verdade tambem fica escondida: sabendo que e Geografia,
+      // metade do trabalho da dica ja estaria feito.
+      categoria: { id: 'dando-dicas', nome: 'Dando dicas', icone: '💡', cor: '#38bdf8' }
+    };
+  }
+
   /** Monta a fila de vezes do carrossel para a rodada que vai começar. */
   prepararCarrossel() {
     const ids = [...this.jogadores.keys()];
@@ -954,7 +1098,7 @@ class Sala {
     this.rodada += 1;
 
     if (this.ehLeilao()) {
-      this.perguntaAtual = this.perguntaPresente();
+      this.perguntaAtual = this.ehDandoDicas() ? this.perguntaDica() : this.perguntaPresente();
       this.prepararLeilao();
     } else if (this.ehRanking()) {
       this.perguntaAtual = this.perguntaRanking();
@@ -994,8 +1138,15 @@ class Sala {
     const base = this.config.segundosPorPergunta * 1000;
     const extras = Math.max(0, (this.perguntaAtual.necessarias || 1) - 1);
 
-    // Nos dois leilões o relógio não é o da sala: é uma pessoa só digitando, e
-    // o tamanho da entrega é que diz quanto tempo ela precisa.
+    // Dando dicas: o relogio cresce com o numero de dicas prometidas, porque
+    // cada dica e uma ida e volta — a palavra sai, o parceiro chuta, erra,
+    // pensa de novo. Quem prometeu 3 tem 42s; quem prometeu 8, 87s.
+    if (this.ehDandoDicas()) {
+      const dicas = (this.leilao && this.leilao.aposta) || 1;
+      return Math.min(MS_BASE_DICAS + dicas * MS_POR_DICA, MS_TETO_DICAS);
+    }
+    // Nos outros leilões o relógio não é o da sala: é uma pessoa só digitando,
+    // e o tamanho da entrega é que diz quanto tempo ela precisa.
     if (this.ehLeilao()) {
       const pedidas = this.perguntaAtual.necessarias || 1;
       return Math.min(MS_BASE_LEILAO + pedidas * MS_POR_ITEM_PRESENTE, MS_TETO_PRESENTE);
@@ -1030,7 +1181,10 @@ class Sala {
       // Em lista com várias respostas não há máscara: entregaria demais.
       // No Veni, Vidi, Vici a máscara entregaria o tamanho da palavra, e o
       // jogo ali é adivinhar pelas dicas.
-      mascara: !this.ehVeni() && this.perguntaAtual.necessarias === 1 && this.perguntaAtual.resposta
+      // No Dando dicas a mascara entregaria o tamanho da palavra que o
+      // parceiro esta tentando arrancar a duras penas.
+      mascara: !this.ehVeni() && !this.ehDandoDicas()
+        && this.perguntaAtual.necessarias === 1 && this.perguntaAtual.resposta
         ? this.perguntaAtual.resposta.replace(/[\p{L}\p{N}]/gu, '•')
         : null,
       duracaoMs: this.ehCarrossel() ? null : duracaoMs,
@@ -1052,7 +1206,10 @@ class Sala {
             aposta: this.leilao.aposta,
             respondedor: this.leilao.respondedor,
             equipeAposta: this.leilao.equipeAposta,
-            equipeDuvidou: this.leilao.equipeDuvidou
+            equipeDuvidou: this.leilao.equipeDuvidou,
+            // Dando dicas: aqui a dupla inteira escreve — uma metade manda as
+            // palavras e a outra chuta —, entao a tela precisa dos dois nomes.
+            dicador: this.ehDandoDicas() ? this.leilao.quemApostou : null
           }
         : null
     });
@@ -1088,11 +1245,14 @@ class Sala {
       // segundos depois. Sem esta trava, um lance atrasado entrava nessa
       // brecha e trocava quem tinha sido desafiado.
       fechado: false,
-      fora: [],          // Leilao Geral: quem ja saiu do leilao desta rodada
+      fora: [],          // Leilao Geral e Dando dicas: quem ja saiu do leilao
       historico: [],
       conseguiu: false,
       ditas: 0,
-      premio: 0
+      premio: 0,
+      // Dando dicas: as palavras ja gastas e em qual delas o parceiro acertou.
+      dicasUsadas: [],
+      acertouEm: null
     };
   }
 
@@ -1103,8 +1263,10 @@ class Sala {
     this.emitir('leilao:comeco', {
       rodada: this.rodada,
       msPorLance: MS_POR_LANCE,
-      maxAposta: MAX_APOSTA,
-      pontosPorAposta: PONTOS_POR_APOSTA,
+      maxAposta: this.ehDandoDicas() ? MAX_DICAS : MAX_APOSTA,
+      pontosPorAposta: this.ehDandoDicas() ? PONTOS_POR_RODADA_DICAS : PONTOS_POR_APOSTA,
+      // Leilao ao contrario: a tela precisa saber que o lance desce.
+      reverso: this.ehLeilaoReverso(),
       equipes: this.leilao.equipes.map((id) => this.equipePublica(this.equipePorId(id)))
     });
 
@@ -1113,13 +1275,20 @@ class Sala {
     for (const id of this.leilao.equipes) {
       const leiloeiro = this.leiloeiroDe(this.equipePorId(id));
       if (leiloeiro) {
-        this.emitirPara(leiloeiro, 'leilao:pergunta', { pergunta: this.perguntaAtual.pergunta });
+        this.emitirPara(leiloeiro, 'leilao:pergunta', {
+          pergunta: this.perguntaAtual.pergunta,
+          // No Dando dicas quem leiloa nao le um enunciado: le a palavra que
+          // vai ter que arrancar do parceiro.
+          segredo: this.ehDandoDicas() ? this.perguntaAtual.segredo : null
+        });
       }
     }
 
-    this.avisar(this.ehLeilaoGeral()
-      ? 'Leilao aberto! Cada um aposta quantas consegue dizer sozinho.'
-      : 'Leilao aberto! Quem esta leiloando ja viu a pergunta.');
+    this.avisar(this.ehDandoDicas()
+      ? 'Leilao aberto! O lance DESCE: leva quem topar fazer o parceiro acertar com menos dicas.'
+      : this.ehLeilaoGeral()
+        ? 'Leilao aberto! Cada um aposta quantas consegue dizer sozinho.'
+        : 'Leilao aberto! Quem esta leiloando ja viu a pergunta.');
     this.abrirLance();
   }
 
@@ -1158,17 +1327,28 @@ class Sala {
     const quem = this.leiloeiroDe(equipe);
     if (!equipe || !quem) return this.cancelarRodada('uma equipe se desfez no meio do leilao');
 
+    const reverso = this.ehLeilaoReverso();
+    const naMesa = this.leilao.aposta;
+    // Leilao normal o lance sobe a partir do que esta na mesa; no reverso ele
+    // desce, e o chao e uma dica so — abaixo disso nao ha o que prometer.
+    const minimo = reverso ? 1 : naMesa + 1;
+    const maximo = reverso ? (naMesa > 0 ? naMesa - 1 : MAX_DICAS) : MAX_APOSTA;
+    // Cobrir um lance de 1 no reverso e impossivel: so resta passar.
+    const daParaCobrir = maximo >= minimo;
+
     this.emitir('leilao:vez', {
       equipeId: equipe.id,
       jogadorId: quem,
-      aposta: this.leilao.aposta,
-      minimo: this.leilao.aposta + 1,
-      // Ninguém duvida do nada, nem do próprio lance. No Leilao Geral nao ha
-      // duvido: quem nao quer cobrir passa, e sai da rodada.
-      podeDuvidar: !this.ehLeilaoGeral()
-        && this.leilao.aposta > 0 && this.leilao.equipeAposta !== equipe.id,
-      podePassar: this.ehLeilaoGeral()
-        && this.leilao.aposta > 0 && this.leilao.equipeAposta !== equipe.id,
+      aposta: naMesa,
+      minimo,
+      maximo,
+      podeApostar: daParaCobrir,
+      // Ninguém duvida do nada, nem do próprio lance. No Leilao Geral e no
+      // Dando dicas nao ha duvido: quem nao quer cobrir passa, e sai da rodada.
+      podeDuvidar: !this.ehLeilaoGeral() && !reverso
+        && naMesa > 0 && this.leilao.equipeAposta !== equipe.id,
+      podePassar: (this.ehLeilaoGeral() || reverso)
+        && naMesa > 0 && this.leilao.equipeAposta !== equipe.id,
       msPorLance: MS_POR_LANCE
     });
 
@@ -1184,7 +1364,7 @@ class Sala {
     if (!quem) return this.cancelarRodada('uma equipe se desfez no meio do leilao');
 
     if (this.leilao.aposta > 0 && this.leilao.equipeAposta !== equipeId) {
-      if (this.ehLeilaoGeral()) {
+      if (this.ehLeilaoGeral() || this.ehLeilaoReverso()) {
         this.avisar('Tempo! Quem nao cobre sai do leilao.');
         return this.registrarPasso(equipeId, quem);
       }
@@ -1193,6 +1373,11 @@ class Sala {
     }
 
     // Quem abre é obrigado a apostar: sem lance na mesa não há o que duvidar.
+    // No reverso, abrir calado sai pelo lance mais seguro — o teto de dicas.
+    if (this.ehLeilaoReverso()) {
+      this.avisar('Tempo! O leilao abriu no teto de dicas.');
+      return this.registrarLance(quem, equipeId, MAX_DICAS);
+    }
     this.avisar('Tempo! O leilao abriu no lance minimo.');
     this.registrarLance(quem, equipeId, this.leilao.aposta + 1);
   }
@@ -1209,10 +1394,20 @@ class Sala {
 
     const aposta = Number(valor);
     if (!Number.isInteger(aposta)) return { erro: 'A aposta e um numero inteiro.' };
-    if (aposta <= this.leilao.aposta) {
-      return { erro: `A aposta precisa ser maior que ${this.leilao.aposta}.` };
+
+    if (this.ehLeilaoReverso()) {
+      // Ao contrario: cobrir e prometer MENOS dicas que o lance na mesa.
+      if (aposta < 1) return { erro: 'O minimo e uma dica.' };
+      if (aposta > MAX_DICAS) return { erro: `O teto e ${MAX_DICAS} dicas.` };
+      if (this.leilao.aposta > 0 && aposta >= this.leilao.aposta) {
+        return { erro: `O lance precisa ser menor que ${this.leilao.aposta}.` };
+      }
+    } else {
+      if (aposta <= this.leilao.aposta) {
+        return { erro: `A aposta precisa ser maior que ${this.leilao.aposta}.` };
+      }
+      if (aposta > MAX_APOSTA) return { erro: `O teto do leilao e ${MAX_APOSTA}.` };
     }
-    if (aposta > MAX_APOSTA) return { erro: `O teto do leilao e ${MAX_APOSTA}.` };
 
     this.registrarLance(socketId, equipe.id, aposta);
     return { ok: true, aposta };
@@ -1238,16 +1433,21 @@ class Sala {
       historico: this.leilao.historico
     });
     const nome = jogador ? jogador.nickname : 'Alguem';
-    this.avisar(this.ehLeilaoGeral()
-      ? `${nome} apostou que diz ${aposta} sozinho.`
-      : `${nome} apostou que ${parceiro ? parceiro.nickname : 'o parceiro'} diz ${aposta}.`);
+    const outro = parceiro ? parceiro.nickname : 'o parceiro';
+    this.avisar(this.ehDandoDicas()
+      ? `${nome} faz ${outro} acertar em ${aposta} ${aposta === 1 ? 'dica' : 'dicas'}.`
+      : this.ehLeilaoGeral()
+        ? `${nome} apostou que diz ${aposta} sozinho.`
+        : `${nome} apostou que ${outro} diz ${aposta}.`);
 
     this.avancarLance();
   }
 
   /** "Duvido": encerra o leilão e cobra o último lance. */
   duvidar(socketId) {
-    if (this.ehLeilaoGeral()) return { erro: 'No Leilao Geral nao ha duvido: ou cobre, ou passa.' };
+    if (this.ehLeilaoGeral() || this.ehLeilaoReverso()) {
+      return { erro: 'Neste modo nao ha duvido: ou cobre, ou passa.' };
+    }
     if (!this.leilaoAberto()) return { erro: 'O leilao nao esta aberto.' };
 
     const equipe = this.equipePorId(this.leilao.equipes[this.leilao.vez]);
@@ -1264,7 +1464,9 @@ class Sala {
    * ha parceiro para desafiar — quem nao cobre simplesmente desiste.
    */
   passar(socketId) {
-    if (!this.ehLeilaoGeral()) return { erro: 'Neste modo nao da para passar: ou cobre, ou duvida.' };
+    if (!this.ehLeilaoGeral() && !this.ehLeilaoReverso()) {
+      return { erro: 'Neste modo nao da para passar: ou cobre, ou duvida.' };
+    }
     if (!this.leilaoAberto()) return { erro: 'O leilao nao esta aberto.' };
 
     const posto = this.equipePorId(this.leilao.equipes[this.leilao.vez]);
@@ -1329,11 +1531,15 @@ class Sala {
     this.leilao.quemDuvidou = quemDuvidou;
     this.leilao.equipeDuvidou = equipeDuvidou;
     this.leilao.respondedor = respondedor;
-    // A rodada passa a pedir exatamente o que foi prometido.
-    this.perguntaAtual.necessarias = this.leilao.aposta;
+    // A rodada passa a pedir exatamente o que foi prometido. No Dando dicas
+    // nao: la a rodada pede UMA palavra, e o lance e o teto de dicas que quem
+    // ganhou tem para arrancar essa palavra do parceiro.
+    if (!this.ehDandoDicas()) this.perguntaAtual.necessarias = this.leilao.aposta;
 
     const duvidoso = this.jogadores.get(quemDuvidou);
     const vitima = this.jogadores.get(respondedor);
+    const dicador = this.jogadores.get(this.leilao.quemApostou);
+    const quantas = `${this.leilao.aposta} ${this.leilao.aposta === 1 ? 'dica' : 'dicas'}`;
 
     this.emitir('leilao:fim', {
       aposta: this.leilao.aposta,
@@ -1343,12 +1549,18 @@ class Sala {
       nicknameDuvidou: duvidoso ? duvidoso.nickname : '',
       respondedor,
       nicknameRespondedor: vitima ? vitima.nickname : '',
+      // Dando dicas: a mesa acompanha os dois lados da dupla que levou.
+      dicador: this.ehDandoDicas() ? this.leilao.quemApostou : null,
+      nicknameDicador: dicador ? dicador.nickname : '',
       duracaoMs: MS_APOS_LEILAO
     });
-    this.avisar(this.ehLeilaoGeral()
-      ? `Ninguem cobriu! ${vitima ? vitima.nickname : 'Quem levou o leilao'} tem que dizer ${this.leilao.aposta}.`
-      : `${duvidoso ? duvidoso.nickname : 'Alguem'} duvidou! ${
-        vitima ? vitima.nickname : 'O parceiro'} tem que dizer ${this.leilao.aposta}.`, true);
+    this.avisar(this.ehDandoDicas()
+      ? `Ninguem foi mais baixo! ${dicador ? dicador.nickname : 'Quem levou o leilao'} tem ${
+        quantas} para fazer ${vitima ? vitima.nickname : 'o parceiro'} acertar.`
+      : this.ehLeilaoGeral()
+        ? `Ninguem cobriu! ${vitima ? vitima.nickname : 'Quem levou o leilao'} tem que dizer ${this.leilao.aposta}.`
+        : `${duvidoso ? duvidoso.nickname : 'Alguem'} duvidou! ${
+          vitima ? vitima.nickname : 'O parceiro'} tem que dizer ${this.leilao.aposta}.`, true);
 
     // Agora a pergunta pode ser pública: a mesa inteira assiste à entrega.
     // O desvio do `mostrarPergunta` só vale saindo da tela de categoria, então
@@ -1482,6 +1694,13 @@ class Sala {
     if (!rodadaViva) {
       this.publicarChat(jogador, limpo);
       return { veredito: 'chat' };
+    }
+
+    // Dando dicas tem duas bocas na rodada, e elas dizem coisas diferentes:
+    // uma manda palavras soltas, a outra chuta a palavra secreta. Resolve tudo
+    // ali, antes da conta de itens que os outros modos fazem.
+    if (this.ehDandoDicas() && this.estado === 'pergunta') {
+      return this.falarNaEntrega(socketId, jogador, limpo);
     }
 
     // Nos leilões quem responde é só quem levou o leilão. Se os outros
@@ -1736,6 +1955,118 @@ class Sala {
   }
 
   /**
+   * Dando dicas: tudo que a dupla vencedora digita durante a entrega.
+   *
+   * Quem deu o lance manda DICAS — uma palavra de cada vez, e so tem as que
+   * prometeu. O parceiro manda PALPITES. O resto da mesa assiste calado: quem
+   * leiloou pelas outras duplas ja viu a palavra e entregaria tudo numa frase.
+   */
+  falarNaEntrega(socketId, jogador, texto) {
+    const leilao = this.leilao;
+    if (!leilao || !leilao.respondedor) return { veredito: 'bloqueado' };
+
+    if (socketId === leilao.quemApostou) return this.darDica(socketId, jogador, texto);
+    if (socketId === leilao.respondedor) return this.chutarPalavra(socketId, jogador, texto);
+    return { erro: 'So a dupla que levou o leilao fala nesta rodada.' };
+  }
+
+  /** Uma dica na mesa: uma palavra, e nunca a resposta disfarcada. */
+  darDica(socketId, jogador, texto) {
+    const leilao = this.leilao;
+    if (leilao.acertouEm !== null) return { erro: 'Seu parceiro ja acertou!' };
+    if (/\s/.test(texto)) return { erro: 'Cada dica e uma palavra so.' };
+    if (leilao.dicasUsadas.length >= leilao.aposta) {
+      return { erro: 'Suas dicas acabaram. Agora e torcer.' };
+    }
+    if (this.dicaEntregaAPalavra(texto)) {
+      return { erro: 'Essa palavra entrega a resposta. Escolha outra — esta nao conta.' };
+    }
+
+    leilao.dicasUsadas.push(texto);
+    const restam = leilao.aposta - leilao.dicasUsadas.length;
+
+    // A dica vai para a mesa inteira: e o espetaculo da rodada, e quem esta
+    // de fora precisa ver do que a dupla foi capaz.
+    this.publicarChat(jogador, texto);
+    this.emitir('dicas:nova', {
+      jogadorId: socketId,
+      dica: texto,
+      indice: leilao.dicasUsadas.length,
+      total: leilao.aposta
+    });
+
+    return { veredito: 'dica', dica: texto, quantas: leilao.dicasUsadas.length, restam };
+  }
+
+  /** O palpite de quem esta adivinhando. Errar so queima relogio. */
+  chutarPalavra(socketId, jogador, texto) {
+    if (this.leilao.acertouEm !== null) return { veredito: 'bloqueado' };
+
+    const alvo = this.perguntaAtual.itens[0];
+    const r = avaliar(texto, alvo.oficial, alvo.variantes);
+
+    if (r.veredito === 'certo') return this.acertoNaDica(socketId, jogador);
+    if (r.veredito === 'quase') return { veredito: 'quase', dica: mascaraDeAcerto(texto, r.alvo) };
+
+    // Errou: vai para o chat de propósito. Quem esta dando as dicas precisa
+    // ouvir o chute torto para saber por onde puxar a proxima palavra.
+    this.publicarChat(jogador, texto);
+    return { veredito: 'chat' };
+  }
+
+  /**
+   * A palavra saiu: a rodada acaba aqui e a conta e feita no `pagarDicas`.
+   *
+   * Guarda em que dica veio o acerto — nao muda a pontuacao (a rodada vale o
+   * mesmo por uma dica ou por dez), mas e a historia que a tela conta.
+   */
+  acertoNaDica(socketId, jogador) {
+    const palavra = this.perguntaAtual.resposta;
+    this.leilao.acertouEm = this.leilao.dicasUsadas.length;
+    this.progresso.set(socketId, new Set([0]));
+
+    this.emitir('chat:mensagem', {
+      tipo: 'acerto',
+      jogadorId: socketId,
+      nickname: jogador.nickname,
+      avatar: jogador.avatar,
+      pontos: 0,
+      texto: palavra,
+      item: true
+    });
+    this.emitir('dicas:acertou', {
+      jogadorId: socketId,
+      palavra,
+      dicas: this.leilao.acertouEm,
+      prometidas: this.leilao.aposta
+    });
+
+    this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
+    return { veredito: 'certo', item: palavra, quantos: 1, necessarias: 1, pontos: 0 };
+  }
+
+  /**
+   * A dica esta carregando a resposta?
+   *
+   * Vale para os dois lados: `senna` dentro de "Ayrton Senna" e "formigueiro"
+   * em volta de `Formiga`. Tres letras ja bastam para entregar (`sol` dentro
+   * de `solar`), e perder uma dica boa por excesso de zelo custa menos do que
+   * ver a palavra escapar de graca.
+   */
+  dicaEntregaAPalavra(texto) {
+    const limpa = normalizar(texto);
+    if (!limpa) return false;
+
+    const formas = [this.perguntaAtual.resposta, ...(this.perguntaAtual.aceita || [])]
+      .map(normalizar)
+      .filter(Boolean);
+
+    return formas.some((forma) => forma === limpa
+      || (forma.length >= MIN_LETRAS_ENTREGA && limpa.includes(forma))
+      || (limpa.length >= MIN_LETRAS_ENTREGA && forma.includes(limpa)));
+  }
+
+  /**
    * Presente Grego: um item entregue. Ainda não vale ponto nenhum — no fim é
    * tudo ou nada, e quem leva é a equipe que apostou ou a que duvidou.
    */
@@ -1819,6 +2150,43 @@ class Sala {
   }
 
   /**
+   * Fecha a conta do Dando dicas: a rodada e que vale, nao a dica.
+   *
+   * Sair em uma dica ou em dez paga igual — o lance baixo nao rende mais
+   * ponto, rende o direito de tentar. O que ele compra e o risco: se a palavra
+   * nao sai, a rodada inteira vai para as OUTRAS duplas, que passaram
+   * justamente por acharem a promessa grande demais.
+   */
+  pagarDicas() {
+    const leilao = this.leilao;
+    if (!leilao || !leilao.respondedor) return;
+
+    leilao.ditas = leilao.dicasUsadas.length;
+    leilao.conseguiu = leilao.acertouEm !== null;
+    leilao.premio = PONTOS_POR_RODADA_DICAS;
+
+    // Só as duplas que estavam no leilão dividem a rodada; uma dupla que se
+    // desfez no meio não leva nada.
+    const donas = leilao.conseguiu
+      ? [this.equipePorId(leilao.equipeAposta)]
+      : leilao.equipes.filter((id) => id !== leilao.equipeAposta).map((id) => this.equipePorId(id));
+
+    for (const dupla of donas) {
+      if (!dupla) continue;
+      for (const id of this.presentesDe(dupla)) {
+        const jogador = this.jogadores.get(id);
+        if (!jogador) continue;
+        jogador.pontos += leilao.premio;
+        this.pontosRodada.set(id, (this.pontosRodada.get(id) || 0) + leilao.premio);
+        this.acertos.set(id, { ms: null, pontos: leilao.premio, posicao: null, bonus: 0 });
+      }
+    }
+
+    const adivinhou = this.jogadores.get(leilao.respondedor);
+    if (adivinhou && leilao.conseguiu) adivinhou.acertos += 1;
+  }
+
+  /**
    * Leilao Geral: quem levou o leilao ganha 2 pontos por resposta que deu.
    * Se nao chegou no que prometeu, cada um dos outros leva a aposta — e ele
    * fica so com o que entregou.
@@ -1899,6 +2267,15 @@ class Sala {
   /** O que esta pessoa fez na rodada de leilao, para o resultado. */
   papelNoPresente(socketId) {
     if (!this.ehLeilao() || !this.leilao) return null;
+
+    // No Dando dicas os dois lados da dupla trabalham, e cada um do seu jeito.
+    if (this.ehDandoDicas()) {
+      if (this.leilao.quemApostou === socketId) return 'dicou';
+      if (this.leilao.respondedor === socketId) return 'adivinhou';
+      const dupla = this.equipeDe(socketId);
+      return dupla && this.leilao.fora.includes(dupla.id) ? 'passou' : null;
+    }
+
     if (this.leilao.respondedor === socketId) return 'respondeu';
     if (this.leilao.quemApostou === socketId) return 'apostou';
     if (this.leilao.quemDuvidou === socketId && !this.ehLeilaoGeral()) return 'duvidou';
@@ -1925,7 +2302,10 @@ class Sala {
       equipeDuvidou: l.equipeDuvidou,
       equipeVencedora: l.conseguiu ? l.equipeAposta : l.equipeDuvidou,
       historico: l.historico,
-      equipes: this.equipes.map((d) => ({ id: d.id, nome: d.nome, icone: d.icone, cor: d.cor }))
+      // Dando dicas: as palavras que foram gastas e em qual delas a ficha caiu.
+      dicasUsadas: l.dicasUsadas,
+      acertouEm: l.acertouEm,
+      equipes: this.equipesVisiveis().map((d) => ({ id: d.id, nome: d.nome, icone: d.icone, cor: d.cor }))
     };
   }
 
@@ -2058,7 +2438,8 @@ class Sala {
     if (this.estado !== 'pergunta') return;
     this.limparTemporizador();
 
-    if (this.ehLeilaoGeral()) this.pagarLeilaoGeral();
+    if (this.ehDandoDicas()) this.pagarDicas();
+    else if (this.ehLeilaoGeral()) this.pagarLeilaoGeral();
     else if (this.ehPresenteGrego()) this.pagarPresente();
 
     // Carrossel: quem chegou vivo ao fim da rodada leva o bônus.
@@ -2111,8 +2492,8 @@ class Sala {
         necessarias: pergunta.necessarias,
         // Carrossel: quem sobreviveu à rodada e quem caiu no caminho.
         eliminado: this.ehCarrossel() ? !this.vivos.has(jogador.id) : false,
-        // Presente Grego: de que equipe é e o que fez nesta rodada.
-        equipe: this.ehPresenteGrego() ? (this.equipeDe(jogador.id) || {}).id || null : null,
+        // Presente Grego e Dando dicas: de que time é e o que fez nesta rodada.
+        equipe: this.temEquipes() ? (this.equipeDe(jogador.id) || {}).id || null : null,
         papel: this.papelNoPresente(jogador.id)
       };
     });
@@ -2126,7 +2507,18 @@ class Sala {
     let textoResposta;
     let listaCompleta = [];
 
-    if (this.ehLeilaoGeral()) {
+    if (this.ehDandoDicas()) {
+      const l = this.leilao;
+      const dicador = this.jogadores.get(l.quemApostou);
+      const adivinhou = this.jogadores.get(l.respondedor);
+      const dupla = this.equipePorId(l.equipeAposta);
+      const quantas = `${l.aposta} ${l.aposta === 1 ? 'dica' : 'dicas'}`;
+      textoResposta = l.conseguiu
+        ? `${adivinhou ? adivinhou.nickname : 'O parceiro'} disse "${pergunta.resposta}" na dica ${
+          l.acertouEm} de ${l.aposta} — a ${dupla ? dupla.nome : 'dupla'} leva ${l.premio} pts`
+        : `a palavra era ${pergunta.resposta}, e ${quantas} nao bastaram — ${
+          l.premio} pts para cada uma das outras duplas`;
+    } else if (this.ehLeilaoGeral()) {
       const l = this.leilao;
       const dono = this.jogadores.get(l.respondedor);
       const nome = dono ? dono.nickname : 'Quem levou o leilao';
@@ -2186,6 +2578,8 @@ class Sala {
       presente: this.ehLeilao() ? this.resumoDoPresente() : null,
       // Veni, Vidi, Vici: no fim aparecem as tres, ate as que nao deu tempo de ler.
       dicas: this.ehVeni() ? pergunta.dicas : null,
+      // Dando dicas: as palavras que a dupla gastou, na ordem em que sairam.
+      dicasDadas: this.ehDandoDicas() && this.leilao ? this.leilao.dicasUsadas : null,
       listaCompleta,
       listaParcial: !pergunta.fixo && pergunta.necessarias > 1,
       necessarias: pergunta.necessarias,
@@ -2242,7 +2636,7 @@ class Sala {
   placar() {
     return [...this.jogadores.values()]
       .map((j) => {
-        const equipe = this.ehPresenteGrego() ? this.equipeDe(j.id) : null;
+        const equipe = this.temEquipes() ? this.equipeDe(j.id) : null;
         return {
           id: j.id,
           nickname: j.nickname,
@@ -2250,7 +2644,7 @@ class Sala {
           pontos: j.pontos,
           acertos: j.acertos,
           lider: j.lider,
-          // No Presente Grego os dois integrantes pontuam juntos, então o
+          // Nos modos em equipe todo mundo do time pontua junto, então o
           // placar precisa dizer quem é de quem.
           equipe: equipe ? equipe.id : null,
           equipeNome: equipe ? equipe.nome : null,
@@ -2267,7 +2661,7 @@ class Sala {
       config: this.config,
       rodada: this.rodada,
       jogadores: this.placar(),
-      equipes: this.equipes.map((e) => ({
+      equipes: this.equipesVisiveis().map((e) => ({
         id: e.id, nome: e.nome, icone: e.icone, cor: e.cor, jogadores: e.jogadores
       })),
       tetoEquipe: this.tetoEquipe(),

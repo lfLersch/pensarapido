@@ -1905,6 +1905,40 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   animation: subir 240ms ease;
 }
 
+/* ---------------------------- Dando dicas ----------------------------- */
+
+/* As dicas gastas ficam em fila, cada uma com o numero da vez. Sao palavras
+   soltas, entao a pilula e mais larga que a de item de lista. */
+.presente__itens--dicas { gap: 9px; }
+
+.presente__item--dica {
+  color: #e0f2fe;
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.5);
+  border-radius: var(--raio-peq);
+  letter-spacing: .2px;
+}
+
+/* A palavra secreta, no lugar do enunciado e SO na tela de quem da as dicas.
+   Grande de proposito: e o unico texto que essa pessoa precisa ler. */
+.segredo {
+  display: inline-block;
+  max-width: 100%;
+  /* Nome comprido ("Guarda-chuva", "Ender Dragon") quebra dentro da caixa em
+     vez de empurrar a tela para o lado no celular. */
+  overflow-wrap: anywhere;
+  margin: 4px 0 0;
+  padding: 10px 22px;
+  font-size: clamp(24px, 4vw, 38px);
+  font-weight: 800;
+  letter-spacing: .5px;
+  color: #e0f2fe;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: var(--raio-peq);
+  animation: subir 260ms ease;
+}
+
 /* Quem vai responder não lê o enunciado: no lugar dele fica só o aviso. */
 .pergunta__texto--segredo {
   font-size: clamp(16px, 2.2vw, 20px);

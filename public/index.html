@@ -217,6 +217,9 @@
 
           <h2 class="pergunta__texto" id="pergunta-texto">…</h2>
 
+          <!-- Dando dicas: a palavra secreta, so para quem vai dar as dicas -->
+          <p class="segredo" id="segredo" hidden></p>
+
           <blockquote class="letra" id="letra" hidden></blockquote>
 
           <ol class="dicas" id="dicas" hidden></ol>
@@ -272,7 +275,7 @@
 
             <form class="presente__forma" id="presente-forma" hidden autocomplete="off">
               <label class="presente__campo">
-                <span>Meu parceiro diz</span>
+                <span id="presente-campo-rotulo">Meu parceiro diz</span>
                 <input id="presente-input" type="number" min="1" max="60" step="1"
                        inputmode="numeric" />
               </label>
