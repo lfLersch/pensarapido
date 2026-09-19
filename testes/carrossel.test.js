@@ -6,6 +6,7 @@
  */
 
 const { Sala } = require('../server/sala.js');
+const { avaliar } = require('../server/comparar.js');
 
 let falhas = 0;
 const conferir = (nome, obtido, esperado) => {
@@ -34,10 +35,24 @@ function novaSala(quantos = 3) {
 /** Quem esta na vez agora. */
 const daVez = (sala) => sala.ordem[sala.vez];
 
+/**
+ * Um item livre que nenhum outro da lista imita.
+ *
+ * Repetir um item parecido com outro ("Nintendo DS" e "Nintendo 3DS") cai na
+ * faixa do "quase" antes de contar como repeticao, e o teste falhava de vez
+ * em quando conforme a lista sorteada.
+ */
+function itemSoDele(sala) {
+  const itens = sala.perguntaAtual.itens;
+  const indice = itens.findIndex((item, i) => !sala.itensUsados.has(i) && itens.every((outro, j) =>
+    j === i || avaliar(item.oficial, outro.oficial, outro.variantes).veredito === 'chat'));
+  return indice >= 0 ? indice : itens.findIndex((_, i) => !sala.itensUsados.has(i));
+}
+
 /** Responde certo pelo jogador da vez, pegando um item ainda livre. */
 function responderCerto(sala) {
   const quem = daVez(sala);
-  const livre = sala.perguntaAtual.itens.findIndex((_, i) => !sala.itensUsados.has(i));
+  const livre = itemSoDele(sala);
   sala.jogadores.get(quem).ultimaMensagem = 0;
   const r = sala.palpitar(quem, sala.perguntaAtual.itens[livre].oficial);
   sala.limparTemporizador();
@@ -101,7 +116,7 @@ function responderCerto(sala) {
   const { sala, eventos } = novaSala(3);
   const quem = daVez(sala);
   sala.jogadores.get(quem).ultimaMensagem = 0;
-  const r = sala.palpitar(quem, 'abacaxi com bolinhas');
+  const r = sala.palpitar(quem, 'xilofone quadrado de nuvem');
 
   conferir('resposta errada elimina', r.veredito, 'eliminado');
   conferir('  com motivo "errou"', r.motivo, 'errou');
@@ -214,7 +229,7 @@ function responderCerto(sala) {
   };
 
   const primeiro = daVez(sala);
-  const errou = tentar(primeiro, 'abacaxi com bolinhas');
+  const errou = tentar(primeiro, 'xilofone quadrado de nuvem');
   conferir('as cegas: errar nao elimina', errou.veredito, 'errado');
   conferir('  quem errou continua viva', sala.vivos.has(primeiro), true);
   conferir('  e continua com a vez', daVez(sala), primeiro);

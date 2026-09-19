@@ -29,14 +29,34 @@ aparecem salas esperando gente ou entre uma partida e outra: partida rolando
 não aceita ninguém. A lista vem de `GET /api/salas` e se atualiza sozinha a
 cada 4 segundos enquanto o saguão está na tela.
 
+No rodapé fica o link **Novidades**, com a versão que está no ar ao lado. Ele
+abre a lista de notas de versão, da mais nova para a mais antiga — o que mudou
+em cada leva que foi publicada.
+
+As notas ficam em [`server/notas.js`](server/notas.js) e viajam junto com
+`GET /api/config`. Publicou uma leva? Acrescente uma entrada **no topo** da
+lista, com `versao`, `data` (ano-mês-dia), `titulo` e os `itens` em frases
+curtas, sem jargão de código — `testes/notas.test.js` cobra o formato, a ordem
+e que a versão do topo seja a do jogo.
+
 ### Configuração (só quem cria)
 
 | Ajuste | Opções |
 | --- | --- |
 | Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História, Ciência, Games, **Mainstream**, **Marcas** |
-| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas) ou **Presente Grego** (Equipes aparece como *em breve*) |
+| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **Veni, Vidi, Vici**, **Mais ou Menos Pontos**, **Presente Grego** ou **Leilão Geral** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
+
+### Sala de espera
+
+Enquanto ninguém aperta *Iniciar*, a sala mostra quem já chegou. O **líder**
+(quem criou a sala, ou quem herdou o posto se ele saiu) tem um **✕ ao lado de
+cada pessoa** para tirá-la da sala — vale em todos os modos, e quem é tirado
+volta para o saguão com um aviso.
+
+No **Presente Grego** a lista vira duas, uma por equipe, com o botão de trocar
+de lado embaixo de cada uma (ver [Presente Grego](#presente-grego)).
 
 ### O chat é a resposta
 
@@ -187,14 +207,80 @@ substantivo, paroxítona, crase e oração de um lado; Bhaskara, incógnita,
 potenciação e hipotenusa do outro. As duas dividem o mesmo `tema`, então
 nunca caem em rodadas seguidas.
 
+### Mais ou Menos Pontos
+
+Uma **lista em ordem** — os 60 países mais populosos, as 50 maiores cidades do
+Brasil, os 30 filmes de maior bilheteria. **A posição é a pontuação**:
+
+| Resposta | Vale |
+| --- | --- |
+| o 1º da lista | **1 ponto** |
+| o 30º da lista | **30 pontos** |
+| o último da lista | **o tamanho dela** |
+| qualquer coisa fora da lista | **0** |
+
+Dizer *Índia* nos países mais populosos rende 1 ponto; lembrar da *Romênia*, que
+fecha a lista, rende 60. O óbvio quase não pontua, e o nome que ninguém lembra
+vale uma rodada inteira — daí o nome do modo.
+
+Duas regras seguram a esperteza:
+
+- **Cada pessoa responde uma vez por rodada.** A primeira resposta que bate na
+  lista é a que conta; depois dela o chat fica só para conversa.
+- **Resposta que já saiu não conta de novo.** O acerto vai público no chat com
+  a posição ("Mogi das Cruzes — 50º da lista"), então copiar do vizinho devolve
+  *"já foi dito"*.
+
+No fim da rodada a mesa vê o **topo da lista** e até onde ia a pontuação. Como
+uma rodada dessas não tem "resposta certa" única, ela **não alimenta a
+dificuldade adaptativa**.
+
+As listas ficam em [`server/rankings.js`](server/rankings.js), cada uma com a
+**fonte e o ano** anotados — a ordem é o que vale, então atualizar significa
+trocar a lista inteira, nunca um item no meio.
+
+### Veni, Vidi, Vici
+
+Uma palavra e **três dicas**, que entram uma por terço da rodada. A rodada dura
+**50% a mais** que a da sala (30s na configuração padrão), então cada dica fica
+uns 10 segundos sozinha na tela antes de a próxima aparecer.
+
+| Quando acertou | Vale |
+| --- | --- |
+| ainda na 1ª dica | **10** |
+| na 2ª dica | **6** |
+| na 3ª dica | **3** |
+
+Desconta **1 ponto para cada pessoa que acertou antes**, como no Modo Tempo, e
+o acerto nunca vale menos que 1. Quem erra continua tentando até o tempo acabar.
+
+**A dica é solta, não é frase.** Cada uma é um nome ou um detalhe que só fecha
+junto com os outros dois: *Michael Jackson · Mike Tyson · Taffarel* levam a
+**Luva**; *Kill Bill · táxi de Nova York · Pikachu* levam a **Amarelo**. A
+primeira é a mais enviesada e a terceira é a que chega mais perto — definição de
+dicionário estraga o jogo.
+
+O banco fica em [`server/dicas.js`](server/dicas.js), com **107 palavras**. As
+regras estão no topo do arquivo, e `testes/veni.test.js` cobra as duas
+principais: **a dica nunca pode conter a resposta**, nem em outra forma (foi
+assim que "formigueiro" saiu da dica de *Formiga*), e **nenhuma dica passa de
+cinco palavras**.
+
 ### Presente Grego
 
-Joga-se **em duplas**, e a sala precisa de um número **par a partir de 4**. As
-duplas são sorteadas quando a partida começa e duram até o fim dela.
+Joga-se em **duas equipes**, a partir de 4 pessoas na sala. As equipes aparecem
+na sala de espera, uma ao lado da outra: quem entra cai na menor e pode mudar de
+lado no botão embaixo da lista, enquanto a partida não começou.
 
-Cada rodada tem dois papéis dentro da dupla, e eles **trocam a cada rodada**:
+**Cada equipe leva metade da sala, mais uma pessoa** — com 4 ou 5 na sala, até
+3; com 6 ou 7, até 4. A folga de um permite time desigual (3 contra 2), e o teto
+impede a sala inteira de ficar do mesmo lado, o que deixaria o leilão sem
+adversário. Para começar, **cada equipe precisa de pelo menos duas pessoas**.
 
-- **🔨 quem leiloa** — vê a pergunta e aposta quantas respostas o parceiro faz;
+Cada rodada tem dois papéis dentro da equipe, e eles **giram a cada rodada** —
+numa equipe de três, em três rodadas cada um leiloa uma vez:
+
+- **🔨 quem leiloa** — vê a pergunta e aposta quantas respostas o colega faz;
 - **🎁 quem responde** — não vê nada até o leilão acabar.
 
 O enunciado sai do servidor **um a um, só para quem leiloa**. Não é a tela que
@@ -202,29 +288,30 @@ esconde: a mensagem nem chega a quem vai responder, então não adianta abrir o
 inspetor. Durante o leilão o chat fica trancado para todo mundo — quem leiloa
 já leu a pergunta, e uma frase solta entregaria o assunto.
 
-**O leilão.** A palavra passa de dupla em dupla, **15s para cada uma**:
+**O leilão.** A palavra passa de uma equipe para a outra, **6s para cada**:
 
 - **cobrir** — apostar qualquer número **maior** que o lance na mesa (de 4 pode
   ir para 5 ou direto para 11);
 - **duvidar** — encerrar o leilão e cobrar o último lance. Não dá para duvidar
-  antes do primeiro lance nem do próprio lance da dupla.
+  antes do primeiro lance nem do próprio lance da equipe.
 
 Deixar o tempo acabar tem dois significados: **sem lance na mesa** o leilão abre
 no mínimo (quem começa é obrigado a apostar); **com lance na mesa** vale como
 *duvido*, porque ninguém cobriu.
 
 **A entrega.** Fechado o leilão, a pergunta abre para a mesa inteira, mas só
-**quem foi desafiado** escreve. A rodada dura `20s + 6s por resposta além da
-primeira`, com teto de 120s — o dobro do peso da Escalada, porque aqui é uma
-pessoa só digitando a lista sozinha. Errar não elimina: só queima relógio.
+**quem foi desafiado** escreve. O relógio não é o da sala: a entrega dura
+`2s + 4s por resposta prometida`, com teto de 120s. Quem prometeu 5 tem 22
+segundos; quem prometeu 12, 50 — o tempo cresce com o tamanho do que foi
+prometido, porque é uma pessoa só digitando a lista. Errar não elimina: só queima relógio.
 
 **Pontuação: tudo ou nada.** O prêmio é `aposta × 2`, e vai inteiro para uma das
-duplas — as duas pessoas dela recebem:
+equipes — todo mundo dela recebe:
 
 | O que aconteceu | Quem leva |
 | --- | --- |
-| Entregou as respostas prometidas | a dupla que **apostou** |
-| Faltou uma que seja | a dupla que **duvidou** |
+| Entregou as respostas prometidas | a equipe que **apostou** |
+| Faltou uma que seja | a equipe que **duvidou** |
 
 Parar a um item do combinado vale o mesmo que parar em zero. É isso que torna o
 lance alto tentador e perigoso na mesma medida: apostar 12 e não entregar dá 24
@@ -237,7 +324,39 @@ Presente Grego **não alimenta a dificuldade adaptativa**: responde uma pessoa
 só, contra um alvo que ela nem escolheu.
 
 Se alguém sai no meio e a rodada fica sem quem responder, ela é **cancelada**
-sem ninguém pontuar. Sem duas duplas inteiras, a partida termina.
+sem ninguém pontuar. A equipe do maior lance só perde a rodada se ficar com
+menos de duas pessoas; com três, ainda sobra quem entregue o presente. Sem duas
+equipes de dois, a partida termina.
+
+### Leilão Geral
+
+O mesmo leilão do Presente Grego, só que **cada um por si**: a pergunta é
+pública desde o começo e cada pessoa aposta **quantas respostas ela mesma
+consegue dizer**. A sala precisa de duas pessoas, porque alguém tem que ter a
+chance de cobrir o lance.
+
+**O leilão.** A palavra passa de pessoa em pessoa, 6s para cada, e na sua vez
+há duas saídas:
+
+- **cobrir** — apostar um número maior que o lance na mesa;
+- **passar** — sair do leilão desta rodada. Quem abre é obrigado a apostar (sem
+  lance na mesa não há do que desistir), e quem está com o maior lance não
+  passa do próprio lance.
+
+Deixar o tempo acabar conta como passar. Quando sobra uma pessoa só, o leilão
+fecha nela: a rodada passa a pedir exatamente o que ela prometeu, e só ela
+escreve — o chat fica trancado para o resto da mesa, como no Presente Grego.
+
+**Pontuação.** Diferente do Presente Grego, aqui não é tudo ou nada:
+
+| O que aconteceu | Quem leva |
+| --- | --- |
+| Cada resposta entregue | **2 pontos** para quem levou o leilão |
+| Não chegou no que prometeu | **cada um dos outros** leva o tamanho da aposta |
+
+Apostar 5 e dizer 5 vale 10 pontos e deixa a mesa a zero; apostar 5 e dizer 2
+vale 4 pontos — e dá 5 para cada uma das outras pessoas. Entregar tudo é o
+único jeito de não pagar ninguém.
 
 ### Pular a rodada
 
@@ -488,7 +607,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**2626 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**2666 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -642,9 +761,10 @@ npm test
 Cobre a régua de acerto/quase/chat (36 casos), a pontuação por atraso numa
 rodada com relógio controlado, o Modo Escalada da rodada 1 à 6 — incluindo a
 checagem de que nenhum item correto vaza para o chat —, o Carrossel, o
-**Presente Grego** (formação das duplas, regras do lance, o segredo do
+**Presente Grego** (formação das equipes, regras do lance, o segredo do
 enunciado, as duas pontas do "duvido" e o que acontece quando alguém sai no
-meio), a **votação para pular** (o teto de metade mais um, o voto que
+meio), o **Leilão Geral** (a pergunta pública, passar o lance, o leilão que
+fecha em quem sobrou e as duas contas da pontuação), a **votação para pular** (o teto de metade mais um, o voto que
 alterna, as três fases em que vale e o que acontece quando quem votou sai)
 e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como

@@ -863,6 +863,97 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: rgba(168, 85, 247, 0.55);
 }
 
+/* Aba de novidades: uma entrada por atualizacao que foi para o ar. */
+.notas__intro { margin: 0 0 14px; font-size: 13px; color: var(--texto-fraco); }
+.notas {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.nota {
+  padding: 14px;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.nota__topo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nota__versao {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primaria);
+  background: rgba(124, 92, 255, 0.16);
+}
+.nota__data { font-size: 12px; color: var(--texto-fraco); }
+.nota__titulo { margin: 8px 0 6px; font-size: 15.5px; }
+.nota__itens {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  color: var(--texto-fraco);
+}
+.nota__itens li { margin: 4px 0; }
+
+/* A regra da rodada, quando o modo precisa explicar a pontuacao. */
+.regra-rodada {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--texto-fraco);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Veni, Vidi, Vici: as tres dicas, uma por terco da rodada. */
+.dicas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: dica;
+}
+.dica {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--borda);
+  border-left: 3px solid var(--primaria);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  counter-increment: dica;
+}
+.dica__texto::before {
+  content: counter(dica) '. ';
+  color: var(--texto-fraco);
+}
+.dica__vale {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--texto-fraco);
+  background: rgba(255, 255, 255, 0.06);
+}
+/* A dica que acabou de entrar chama atencao por um instante. */
+.dica--nova { animation: dica-entra 0.5s ease; }
+@keyframes dica-entra {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
 /* Tocador das perguntas de audio */
 
 .tocador {
@@ -1633,8 +1724,44 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: var(--texto-suave);
 }
 
-/* Cada dupla com os papéis da rodada: quem leiloa (🔨) e quem responde (🎁). */
-.presente__duplas {
+/* As duas equipes na sala de espera, antes de a partida comecar. */
+.equipes-sala {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 560px) {
+  .equipes-sala { grid-template-columns: 1fr; }
+}
+.equipe-sala {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.equipe-sala.minha { border-color: color-mix(in srgb, var(--cor-equipe) 55%, transparent); }
+.equipe-sala__cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.equipe-sala__nome {
+  font-weight: 700;
+  color: var(--cor-equipe, var(--texto));
+}
+.equipe-sala__contagem { font-size: 12px; color: var(--texto-fraco); }
+.equipe-sala .lista-jogadores { min-height: 40px; }
+.equipe-sala__entrar { margin-top: auto; padding: 8px; font-size: 13px; }
+/* Na coluna estreita da equipe, a coroa e o X do lider ficam menores. */
+.equipe-sala .coroa { padding: 2px 6px; font-size: 10.5px; white-space: nowrap; }
+.equipe-sala .jogador { padding-right: 26px; }
+
+/* Cada equipe com os papéis da rodada: quem leiloa (🔨) e quem responde (🎁). */
+.presente__equipes {
   display: grid;
   gap: 8px;
   margin: 0;
@@ -1642,7 +1769,7 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   list-style: none;
 }
 
-.presente__dupla {
+.presente__equipe {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1654,18 +1781,21 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   border: 1px solid transparent;
   transition: border-color .2s, background .2s;
 }
-.presente__dupla.minha { border-color: color-mix(in srgb, var(--cor-dupla) 55%, transparent); }
+.presente__equipe.minha { border-color: color-mix(in srgb, var(--cor-equipe) 55%, transparent); }
 /* De quem é a palavra agora. */
-.presente__dupla.agora {
+.presente__equipe.agora {
   background: rgba(245, 158, 11, 0.2);
   border-color: rgba(245, 158, 11, 0.7);
 }
-/* Quem está com o maior lance na mesa — é essa dupla que o "duvido" cobra. */
-.presente__dupla.topo { background: rgba(245, 158, 11, 0.12); }
+/* Quem está com o maior lance na mesa — é essa equipe que o "duvido" cobra. */
+.presente__equipe.topo { background: rgba(245, 158, 11, 0.12); }
 
-.presente__dupla-nome {
+/* Leilao Geral: quem passou sai do leilao e fica apagado. */
+.presente__equipe.fora { opacity: 0.45; }
+
+.presente__equipe-nome {
   font-weight: 800;
-  color: var(--cor-dupla, var(--texto));
+  color: var(--cor-equipe, var(--texto));
 }
 
 .presente__papel {
@@ -1782,13 +1912,13 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: var(--texto-suave);
 }
 
-/* A que dupla cada pessoa pertence, no placar lateral. */
-.placar__dupla {
+/* A que equipe cada pessoa pertence, no placar lateral. */
+.placar__equipe {
   font-size: 13px;
   opacity: .85;
 }
 
-.dica-duplas {
+.dica-equipes {
   margin: 0 0 14px;
   font-size: 13.5px;
   text-align: center;

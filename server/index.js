@@ -10,6 +10,7 @@ const {
   categoriasEmJogo, perguntasEscolhidas
 } = require('./sala');
 const dificuldade = require('./dificuldade');
+const { NOTAS, VERSAO } = require('./notas');
 
 const PORTA = process.env.PORT || 3000;
 const SEGUNDOS_PERMITIDOS = [15, 20, 30, 45];
@@ -31,7 +32,9 @@ app.get('/api/config', (_req, res) => {
     maxTexto: MAX_TEXTO,
     segundosPermitidos: SEGUNDOS_PERMITIDOS,
     meta: { min: META_MIN, max: META_MAX },
-    niveis: dificuldade.NIVEIS
+    niveis: dificuldade.NIVEIS,
+    versao: VERSAO,
+    notas: NOTAS
   });
 });
 
@@ -257,6 +260,15 @@ io.on('connection', (socket) => {
     responder(callback, sala.apostar(socket.id, valor));
   });
 
+  socket.on('sala:passar', (_dados, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Voce nao esta em uma sala.' });
+
+    const { erro } = sala.passar(socket.id);
+    if (erro) return responder(callback, { erro });
+    responder(callback, { ok: true });
+  });
+
   socket.on('sala:duvidar', (_dados, callback) => {
     const sala = salaDoSocket();
     if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
@@ -295,6 +307,17 @@ io.on('connection', (socket) => {
     responder(callback, { ok: true });
     removerSalaSeVazia(sala);
     if (salas.has(sala.codigo)) publicarEstado(sala);
+  });
+
+  socket.on('sala:equipe', ({ equipeId } = {}, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Voce nao esta em uma sala.' });
+
+    const { erro } = sala.trocarEquipe(socket.id, equipeId);
+    if (erro) return responder(callback, { erro });
+
+    responder(callback, { ok: true });
+    publicarEstado(sala);
   });
 
   socket.on('sala:trocarAvatar', ({ avatar } = {}, callback) => {

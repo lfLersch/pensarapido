@@ -26,7 +26,7 @@ const estado = {
   placar: [],       // ultimo placar recebido
   carrossel: null,  // Carrossel: { voltas, msPorVez, ordem } da rodada
   vivos: null,      // Carrossel: quem ainda nao saiu
-  presente: null,   // Presente Grego: { duplas, aposta, ... } da rodada
+  presente: null,   // Presente Grego: { equipes, aposta, ... } da rodada
   votei: false,     // votei para pular a rodada atual
   contagem: null,
   urgencia: null,
@@ -176,9 +176,39 @@ setInterval(carregarSalasAbertas, 4000);
 
 $('btn-voltar-lobby').addEventListener('click', () => mostrarTela('tela-lobby'));
 
+/* ---------------------------- Novidades ----------------------------- */
+
+$('btn-abrir-notas').addEventListener('click', () => {
+  montarNotas();
+  mostrarTela('tela-notas');
+});
+$('btn-voltar-notas').addEventListener('click', () => mostrarTela('tela-lobby'));
+
+/** Desenha as notas de versao que vieram com a configuracao. */
+function montarNotas() {
+  const lista = $('notas-lista');
+  lista.innerHTML = '';
+
+  for (const nota of estado.config.notas || []) {
+    const item = criar('li', 'nota');
+    const dia = nota.data.split('-').reverse().join('/');
+    item.innerHTML = `
+      <div class="nota__topo">
+        <span class="nota__versao">v${escapar(nota.versao)}</span>
+        <span class="nota__data">${dia}</span>
+      </div>
+      <h3 class="nota__titulo">${escapar(nota.titulo)}</h3>
+      <ul class="nota__itens">${
+        nota.itens.map((texto) => `<li>${escapar(texto)}</li>`).join('')}</ul>`;
+    lista.appendChild(item);
+  }
+}
+
 async function carregarConfig() {
   const resposta = await fetch('/api/config');
   estado.config = await resposta.json();
+  // A versao fica no rodape do saguao, ao lado do link das novidades.
+  $('versao-atual').textContent = estado.config.versao ? `v${estado.config.versao}` : '';
   montarCategorias();
   montarModos();
   montarMetas();
@@ -393,7 +423,7 @@ function atualizarResumo() {
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
-    ${modo && modo.duplas ? '<span>👥 <b>4, 6, 8…</b> jogadores</span>' : ''}`;
+    ${modo && modo.equipes ? '<span>👥 <b>4+</b> jogadores</span>' : ''}`;
 
   $('btn-criar').disabled = total === 0;
 }
@@ -456,38 +486,18 @@ function renderizarSala() {
     <span>${plural(emJogo.length, 'categoria', 'categorias')}</span>`;
   $('resumo-sala').title = emJogo.map(nomeCategoria).join(', ');
 
+  // No Presente Grego a sala mostra as duas equipes; nos outros modos, uma
+  // lista só.
+  const porEquipes = Boolean(modo && modo.equipes);
   const lista = $('lista-jogadores');
+  const caixaEquipes = $('equipes-sala');
   lista.innerHTML = '';
-  for (const jogador of sala.jogadores) {
-    const item = criar('li', 'jogador');
-    const souEu = jogador.id === estado.eu?.id;
-    const souLiderAgora = sala.jogadores.some((j) => j.id === estado.eu?.id && j.lider);
+  caixaEquipes.innerHTML = '';
+  lista.hidden = porEquipes;
+  caixaEquipes.hidden = !porEquipes;
 
-    item.innerHTML = `
-      <button class="jogador__avatar${souEu ? ' jogador__avatar--meu' : ''}"
-              type="button"${souEu ? ' title="Clique para trocar de icone"' : ' disabled'}>
-        ${jogador.avatar}
-      </button>
-      <span class="jogador__nome">${escapar(jogador.nickname)}${souEu ? '<span class="jogador__voce">(voce)</span>' : ''}</span>
-      ${jogador.lider ? '<span class="coroa">👑 Lider</span>' : ''}
-      ${souLiderAgora && !souEu ? '<button class="jogador__expulsar" type="button" title="Expulsar da sala">✕</button>' : ''}`;
-
-    if (souEu) {
-      item.querySelector('.jogador__avatar').addEventListener('click', abrirEscolhaAvatar);
-    }
-
-    const botaoExpulsar = item.querySelector('.jogador__expulsar');
-    if (botaoExpulsar) {
-      botaoExpulsar.addEventListener('click', () => {
-        if (!confirm(`Expulsar ${jogador.nickname} da sala?`)) return;
-        socket.emit('sala:expulsar', { jogadorId: jogador.id }, (r) => {
-          if (r?.erro) avisar('aviso-sala', r.erro);
-        });
-      });
-    }
-
-    lista.appendChild(item);
-  }
+  if (porEquipes) desenharEquipesDaSala(caixaEquipes);
+  else for (const jogador of sala.jogadores) lista.appendChild(crachaDeJogador(jogador));
 
   $('contador-jogadores').textContent = `${sala.jogadores.length}/${estado.config.maxJogadores}`;
 
@@ -498,13 +508,90 @@ function renderizarSala() {
   // Presente Grego: nao adianta apertar iniciar com a sala impar — o servidor
   // recusa. Melhor dizer isso antes.
   const quantos = sala.jogadores.length;
-  const faltaFechar = Boolean(modo && modo.duplas) && (quantos < 4 || quantos % 2 !== 0);
-  const dica = $('dica-duplas');
+  const minguada = (sala.equipes || []).some((e) => e.jogadores.length < 2);
+  const faltaFechar = porEquipes && (quantos < 4 || minguada);
+  const dica = $('dica-equipes');
   dica.hidden = !faltaFechar;
   dica.textContent = quantos < 4
-    ? `${modo ? modo.nome : 'Este modo'} e em duplas: faltam ${4 - quantos} para fechar duas duplas.`
-    : 'Falta uma pessoa para fechar a ultima dupla — o numero tem que ser par.';
+    ? `${modo ? modo.nome : 'Este modo'} e em equipes: faltam ${4 - quantos} para comecar.`
+    : 'Cada equipe precisa de pelo menos duas pessoas — uma leiloa e a outra responde.';
   $('btn-iniciar').disabled = faltaFechar;
+}
+
+/** Um jogador na lista da sala, com o botao de expulsar para o lider. */
+function crachaDeJogador(jogador) {
+  const sala = estado.sala;
+  const item = criar('li', 'jogador');
+  const souEu = jogador.id === estado.eu?.id;
+  const souLiderAgora = sala.jogadores.some((j) => j.id === estado.eu?.id && j.lider);
+
+  item.innerHTML = `
+    <button class="jogador__avatar${souEu ? ' jogador__avatar--meu' : ''}"
+            type="button"${souEu ? ' title="Clique para trocar de icone"' : ' disabled'}>
+      ${jogador.avatar}
+    </button>
+    <span class="jogador__nome">${escapar(jogador.nickname)}${souEu ? '<span class="jogador__voce">(voce)</span>' : ''}</span>
+    ${jogador.lider ? '<span class="coroa">👑 Lider</span>' : ''}
+    ${souLiderAgora && !souEu ? '<button class="jogador__expulsar" type="button" title="Expulsar da sala">✕</button>' : ''}`;
+
+  if (souEu) {
+    item.querySelector('.jogador__avatar').addEventListener('click', abrirEscolhaAvatar);
+  }
+
+  const botaoExpulsar = item.querySelector('.jogador__expulsar');
+  if (botaoExpulsar) {
+    botaoExpulsar.addEventListener('click', () => {
+      if (!confirm(`Expulsar ${jogador.nickname} da sala?`)) return;
+      socket.emit('sala:expulsar', { jogadorId: jogador.id }, (r) => {
+        if (r?.erro) avisar('aviso-sala', r.erro);
+      });
+    });
+  }
+
+  return item;
+}
+
+/**
+ * As duas equipes do Presente Grego, com o botao de entrar embaixo de cada
+ * uma. O teto vem do servidor: e metade da sala, mais um.
+ */
+function desenharEquipesDaSala(caixa) {
+  const sala = estado.sala;
+  const teto = sala.tetoEquipe || 1;
+  const porId = new Map(sala.jogadores.map((j) => [j.id, j]));
+
+  for (const equipe of sala.equipes || []) {
+    const bloco = criar('div', 'equipe-sala');
+    bloco.style.setProperty('--cor-equipe', equipe.cor);
+    const minha = equipe.jogadores.includes(estado.eu?.id);
+    const cheia = equipe.jogadores.length >= teto;
+    bloco.classList.toggle('minha', minha);
+
+    const cabecalho = criar('div', 'equipe-sala__cabecalho');
+    cabecalho.innerHTML = `<span class="equipe-sala__nome">${equipe.icone} ${escapar(equipe.nome)}</span>
+      <span class="equipe-sala__contagem">${equipe.jogadores.length}/${teto}</span>`;
+    bloco.appendChild(cabecalho);
+
+    const lista = criar('ul', 'lista-jogadores');
+    for (const id of equipe.jogadores) {
+      const jogador = porId.get(id);
+      if (jogador) lista.appendChild(crachaDeJogador(jogador));
+    }
+    bloco.appendChild(lista);
+
+    const botao = criar('button', 'btn btn--fantasma equipe-sala__entrar');
+    botao.type = 'button';
+    botao.disabled = minha || cheia;
+    botao.textContent = minha ? 'Voce joga aqui' : (cheia ? 'Equipe cheia' : 'Entrar nesta equipe');
+    botao.addEventListener('click', () => {
+      socket.emit('sala:equipe', { equipeId: equipe.id }, (r) => {
+        if (r?.erro) avisar('aviso-sala', r.erro);
+      });
+    });
+    bloco.appendChild(botao);
+
+    caixa.appendChild(bloco);
+  }
 }
 
 /**
@@ -750,6 +837,20 @@ socket.on('rodada:pergunta', (dados) => {
   }
   letra.hidden = linhas.length === 0;
 
+  // Veni, Vidi, Vici: a primeira dica entra com a pergunta; as outras duas
+  // chegam sozinhas no meio da rodada.
+  mostrarDicas(dados.veni);
+
+  // Mais ou Menos Pontos: a escala fica a vista, senao ninguem sabe se vale
+  // a pena arriscar o nome dificil.
+  const escala = $('ranking-aviso');
+  escala.hidden = !dados.ranking;
+  if (dados.ranking) {
+    escala.textContent = `Cada um responde uma vez. O 1o da lista vale 1 ponto e o ${
+      dados.ranking.total}o vale ${dados.ranking.total}. Fora da lista, zero.`;
+    escala.title = dados.ranking.fonte || '';
+  }
+
   // Modo Escalada: painel com quantas respostas faltam.
   estado.necessarias = dados.necessarias || 1;
   estado.meusItens = [];
@@ -946,11 +1047,45 @@ function limparTabuleiro() {
   $('escalada').hidden = true;
   $('carrossel').hidden = true;
   $('letra').hidden = true;
+  $('dicas').hidden = true;
+  $('dicas').innerHTML = '';
+  $('ranking-aviso').hidden = true;
   $('pergunta-figura').hidden = true;
   $('mascara').textContent = '';
   $('status-respostas').textContent = '';
   montarAudio(null);
 }
+
+/* ------------------------ Veni, Vidi, Vici -------------------------- */
+
+/** Comeca a lista de dicas da rodada (ou esconde, nos outros modos). */
+function mostrarDicas(veni) {
+  const lista = $('dicas');
+  lista.innerHTML = '';
+  lista.hidden = !veni;
+  if (!veni) return;
+  acrescentarDica(veni.dica, veni.indice, veni.vale);
+}
+
+/** Uma dica na tela, com quanto vale acertar a partir dela. */
+function acrescentarDica(texto, indice, vale) {
+  const lista = $('dicas');
+  lista.hidden = false;
+
+  const item = criar('li', 'dica');
+  if (indice > 0) item.classList.add('dica--nova');
+  item.innerHTML = `<span class="dica__texto">${escapar(texto)}</span>
+    <span class="dica__vale">vale ${vale}</span>`;
+  lista.appendChild(item);
+}
+
+socket.on('veni:dica', (dados) => {
+  acrescentarDica(dados.dica, dados.indice, dados.vale);
+  mensagemSistema(`Dica ${dados.indice + 1}: ${dados.dica} · agora vale ${dados.vale}`);
+});
+
+/** No Leilao Geral cada um leiloa por si: nao ha parceiro, nem duvido. */
+const leilaoGeral = () => estado.sala?.config.modo === 'leilao-geral';
 
 socket.on('leilao:comeco', (dados) => {
   revelacao.hidden = true;
@@ -959,21 +1094,21 @@ socket.on('leilao:comeco', (dados) => {
 
   estado.acertou = false;
   estado.carrossel = null;
-  estado.presente = { duplas: dados.duplas, aposta: 0, duplaAposta: null, maxAposta: dados.maxAposta };
+  estado.presente = { equipes: dados.equipes, aposta: 0, equipeAposta: null, maxAposta: dados.maxAposta, fora: [] };
 
   $('jogo-codigo').textContent = estado.sala?.codigo || '----';
   $('jogo-rodada').textContent = dados.rodada;
   $('jogo-meta').textContent = `${estado.sala?.config.metaPontos ?? '—'} pts`;
 
   $('pergunta-categoria').style.setProperty('--cor-categoria', '#f59e0b');
-  $('pergunta-categoria-icone').textContent = '🎁';
-  $('pergunta-categoria-nome').textContent = 'Leilao';
+  $('pergunta-categoria-icone').textContent = leilaoGeral() ? '🔨' : '🎁';
+  $('pergunta-categoria-nome').textContent = leilaoGeral() ? 'Leilao geral' : 'Leilao';
 
   limparTabuleiro();
 
   // Quem vai responder não pode ler o enunciado: para essa pessoa a pergunta
   // chega só no fim do leilão, pelo `rodada:pergunta`.
-  const souLeiloeiro = dados.duplas.some((d) => d.leiloeiro && d.leiloeiro.id === socket.id);
+  const souLeiloeiro = dados.equipes.some((d) => d.leiloeiro && d.leiloeiro.id === socket.id);
   $('pergunta-texto').textContent = souLeiloeiro
     ? 'Lendo a pergunta…'
     : 'Seu parceiro esta leiloando por voce. Voce so ve a pergunta quando o leilao acabar.';
@@ -985,10 +1120,10 @@ socket.on('leilao:comeco', (dados) => {
   $('presente-itens').innerHTML = '';
   $('presente-fase').textContent = 'Leilao';
   $('presente-lance').textContent = 'sem lance ainda';
-  desenharDuplas(null, null);
+  desenharEquipes(null, null);
 
   trancarChat('O leilao esta rolando…');
-  mensagemSistema(`Rodada ${dados.rodada} · leilao em duplas`);
+  mensagemSistema(`Rodada ${dados.rodada} · ${leilaoGeral() ? 'leilao geral' : 'leilao em equipes'}`);
   pararContagem();
 });
 
@@ -998,29 +1133,38 @@ socket.on('leilao:pergunta', (dados) => {
   $('pergunta-texto').classList.remove('pergunta__texto--segredo');
 });
 
-/** Desenha as duplas com os papéis da rodada e quem está com a palavra. */
-function desenharDuplas(duplaDaVez, duplaDoLance) {
-  const lista = $('presente-duplas');
+/** Desenha as equipes com os papéis da rodada e quem está com a palavra. */
+function desenharEquipes(equipeDaVez, equipeDoLance) {
+  const lista = $('presente-equipes');
   lista.innerHTML = '';
   if (!estado.presente) return;
 
-  for (const dupla of estado.presente.duplas) {
-    const item = criar('li', 'presente__dupla');
-    item.dataset.id = dupla.id;
-    item.style.setProperty('--cor-dupla', dupla.cor);
-    if (dupla.id === duplaDaVez) item.classList.add('agora');
-    if (dupla.id === duplaDoLance) item.classList.add('topo');
+  for (const equipe of estado.presente.equipes) {
+    const item = criar('li', 'presente__equipe');
+    item.dataset.id = equipe.id;
+    item.style.setProperty('--cor-equipe', equipe.cor);
+    if (equipe.id === equipeDaVez) item.classList.add('agora');
+    if (equipe.id === equipeDoLance) item.classList.add('topo');
 
-    const meu = [dupla.leiloeiro, dupla.respondedor].some((p) => p && p.id === estado.eu?.id);
+    const meu = [equipe.leiloeiro, equipe.respondedor].some((p) => p && p.id === estado.eu?.id);
     if (meu) item.classList.add('minha');
 
-    const lance = estado.presente.lances?.[dupla.id];
-    item.innerHTML = `
-      <span class="presente__dupla-nome">${dupla.icone} ${escapar(dupla.nome)}</span>
+    const fora = (estado.presente.fora || []).includes(equipe.id);
+    if (fora) item.classList.add('fora');
+
+    const lance = estado.presente.lances?.[equipe.id];
+    item.innerHTML = leilaoGeral()
+      ? `
+      <span class="presente__equipe-nome">${equipe.icone} ${
+        escapar(equipe.leiloeiro ? equipe.leiloeiro.nickname : equipe.nome)}</span>
+      <span class="presente__papel">${fora ? 'passou' : 'no leilao'}</span>
+      ${lance ? `<span class="presente__valor">${lance}</span>` : ''}`
+      : `
+      <span class="presente__equipe-nome">${equipe.icone} ${escapar(equipe.nome)}</span>
       <span class="presente__papel" title="leiloa esta rodada">🔨 ${
-        escapar(dupla.leiloeiro ? dupla.leiloeiro.nickname : '—')}</span>
+        escapar(equipe.leiloeiro ? equipe.leiloeiro.nickname : '—')}</span>
       <span class="presente__papel" title="responde esta rodada, sem ver a pergunta">🎁 ${
-        escapar(dupla.respondedor ? dupla.respondedor.nickname : '—')}</span>
+        escapar(equipe.respondedor ? equipe.respondedor.nickname : '—')}</span>
       ${lance ? `<span class="presente__valor">${lance}</span>` : ''}`;
     lista.appendChild(item);
   }
@@ -1031,10 +1175,10 @@ socket.on('leilao:vez', (dados) => {
   estado.presente.aposta = dados.aposta;
   estado.presente.vez = dados.jogadorId;
 
-  const dupla = estado.presente.duplas.find((d) => d.id === dados.duplaId);
+  const equipe = estado.presente.equipes.find((d) => d.id === dados.equipeId);
   const minha = dados.jogadorId === socket.id;
 
-  desenharDuplas(dados.duplaId, estado.presente.duplaAposta);
+  desenharEquipes(dados.equipeId, estado.presente.equipeAposta);
 
   $('presente-lance').textContent = dados.aposta > 0
     ? `lance na mesa: ${dados.aposta}`
@@ -1043,8 +1187,10 @@ socket.on('leilao:vez', (dados) => {
   const vez = $('presente-vez');
   vez.classList.toggle('minha', minha);
   vez.textContent = minha
-    ? 'Sua vez: quantas o seu parceiro consegue dizer?'
-    : `Vez de ${dupla && dupla.leiloeiro ? dupla.leiloeiro.nickname : '…'}`;
+    ? (leilaoGeral()
+      ? 'Sua vez: quantas voce consegue dizer sozinho?'
+      : 'Sua vez: quantas o seu parceiro consegue dizer?')
+    : `Vez de ${equipe && equipe.leiloeiro ? equipe.leiloeiro.nickname : '…'}`;
 
   const forma = $('presente-forma');
   forma.hidden = !minha;
@@ -1053,10 +1199,18 @@ socket.on('leilao:vez', (dados) => {
     campo.min = String(dados.minimo);
     campo.max = String(estado.presente.maxAposta || 60);
     campo.value = String(dados.minimo);
-    $('presente-duvidar').disabled = !dados.podeDuvidar;
-    $('presente-duvidar').title = dados.podeDuvidar
-      ? `Duvido que a outra dupla faca ${dados.aposta}`
+    const duvidar = $('presente-duvidar');
+    const passar = $('presente-passar');
+    duvidar.hidden = leilaoGeral();
+    passar.hidden = !leilaoGeral();
+    duvidar.disabled = !dados.podeDuvidar;
+    duvidar.title = dados.podeDuvidar
+      ? `Duvido que a outra equipe faca ${dados.aposta}`
       : 'So da para duvidar de um lance que ja esta na mesa';
+    passar.disabled = !dados.podePassar;
+    passar.title = dados.podePassar
+      ? 'Sai do leilao desta rodada'
+      : 'Quem abre o leilao tem que apostar';
     if (!('ontouchstart' in window)) campo.focus();
   }
 
@@ -1064,15 +1218,21 @@ socket.on('leilao:vez', (dados) => {
   contarTempo(barraTempo, dados.msPorLance, true);
 });
 
+socket.on('leilao:passou', (dados) => {
+  if (!estado.presente) return;
+  estado.presente.fora = dados.fora || [];
+  desenharEquipes(null, estado.presente.equipeAposta);
+});
+
 socket.on('leilao:lance', (dados) => {
   if (!estado.presente) return;
   estado.presente.aposta = dados.aposta;
-  estado.presente.duplaAposta = dados.duplaId;
-  estado.presente.lances = { [dados.duplaId]: dados.aposta };
+  estado.presente.equipeAposta = dados.equipeId;
+  estado.presente.lances = { [dados.equipeId]: dados.aposta };
 
   $('presente-lance').textContent = `lance na mesa: ${dados.aposta}`;
   $('presente-forma').hidden = true;
-  desenharDuplas(null, dados.duplaId);
+  desenharEquipes(null, dados.equipeId);
 });
 
 socket.on('leilao:fim', (dados) => {
@@ -1081,16 +1241,20 @@ socket.on('leilao:fim', (dados) => {
   estado.presente.respondedor = dados.respondedor;
 
   $('presente-forma').hidden = true;
-  $('presente-fase').textContent = 'Duvidaram!';
+  $('presente-fase').textContent = leilaoGeral() ? 'Ninguem cobriu!' : 'Duvidaram!';
   $('presente-lance').textContent = `aposta cobrada: ${dados.aposta}`;
-  desenharDuplas(dados.duplaDuvidou, dados.duplaAposta);
+  desenharEquipes(dados.equipeDuvidou, dados.equipeAposta);
 
   const vez = $('presente-vez');
   const souEu = dados.respondedor === socket.id;
   vez.classList.toggle('minha', souEu);
-  vez.textContent = souEu
-    ? `${dados.nicknameDuvidou} duvidou de voce! Prepare-se para dizer ${dados.aposta}.`
-    : `${dados.nicknameDuvidou} duvidou · ${dados.nicknameRespondedor} tem que dizer ${dados.aposta}`;
+  vez.textContent = leilaoGeral()
+    ? (souEu
+      ? `Voce levou o leilao! Prepare-se para dizer ${dados.aposta}.`
+      : `${dados.nicknameRespondedor} levou o leilao e tem que dizer ${dados.aposta}`)
+    : (souEu
+      ? `${dados.nicknameDuvidou} duvidou de voce! Prepare-se para dizer ${dados.aposta}.`
+      : `${dados.nicknameDuvidou} duvidou · ${dados.nicknameRespondedor} tem que dizer ${dados.aposta}`);
 
   pararContagem();
   contarTempo(barraTempo, dados.duracaoMs, true);
@@ -1098,7 +1262,7 @@ socket.on('leilao:fim', (dados) => {
 
 /** Depois do leilão a pergunta é pública e só o desafiado responde. */
 function abrirEntregaDoPresente(presente) {
-  if (!estado.presente) estado.presente = { duplas: [] };
+  if (!estado.presente) estado.presente = { equipes: [] };
   estado.presente.aposta = presente.aposta;
   estado.presente.respondedor = presente.respondedor;
   estado.presente.entregues = [];
@@ -1110,13 +1274,14 @@ function abrirEntregaDoPresente(presente) {
   $('presente-forma').hidden = true;
   $('presente-fase').textContent = 'Entrega';
   $('presente-lance').textContent = `aposta de ${presente.aposta}`;
-  desenharDuplas(presente.duplaAposta, presente.duplaAposta);
+  desenharEquipes(presente.equipeAposta, presente.equipeAposta);
 
   const vez = $('presente-vez');
   vez.classList.toggle('minha', souEu);
   vez.textContent = souEu
     ? `Voce prometeu ${presente.aposta}. Escreva no chat!`
-    : `${quem ? quem.nickname : 'A pessoa desafiada'} tem que dizer ${presente.aposta}`;
+    : `${quem ? quem.nickname : (leilaoGeral() ? 'Quem levou o leilao' : 'A pessoa desafiada')
+      } tem que dizer ${presente.aposta}`;
 
   $('presente-entrega').hidden = false;
   $('presente-itens').innerHTML = '';
@@ -1146,6 +1311,12 @@ $('presente-forma').addEventListener('submit', (evento) => {
   if (!Number.isInteger(aposta)) return avisoParticular('Escreva um numero inteiro.');
 
   socket.emit('sala:apostar', { aposta }, (resposta) => {
+    if (resposta?.erro) avisoParticular(resposta.erro);
+  });
+});
+
+$('presente-passar').addEventListener('click', () => {
+  socket.emit('sala:passar', {}, (resposta) => {
     if (resposta?.erro) avisoParticular(resposta.erro);
   });
 });
@@ -1439,7 +1610,7 @@ socket.on('rodada:resultado', (dados) => {
   const lista = $('resultado-lista');
   lista.innerHTML = '';
 
-  const PAPEIS = { apostou: '🔨 apostou', duvidou: '🤨 duvidou', respondeu: '🎁 respondeu' };
+  const PAPEIS = { apostou: '🔨 apostou', duvidou: '🤨 duvidou', respondeu: '🎁 respondeu', passou: '🚪 passou' };
 
   for (const detalhe of dados.detalhes) {
     const item = criar('li', 'resultado__item ' + (detalhe.acertou ? 'acertou' : 'errou'));
@@ -1497,8 +1668,8 @@ function renderizarPlacar(placar) {
       <span class="placar__pos">${posicao + 1}º</span>
       <span class="placar__avatar">${jogador.avatar}</span>
       <span class="placar__nome">${escapar(jogador.nickname)}</span>
-      ${jogador.duplaIcone
-        ? `<span class="placar__dupla" title="${escapar(jogador.duplaNome || '')}">${jogador.duplaIcone}</span>`
+      ${jogador.equipeIcone
+        ? `<span class="placar__equipe" title="${escapar(jogador.equipeNome || '')}">${jogador.equipeIcone}</span>`
         : ''}
       <span class="placar__pontos">${jogador.pontos}</span>`;
     lista.appendChild(item);

@@ -1,10 +1,10 @@
 'use strict';
 
 /*
- * Modo Presente Grego: joga-se em duplas. Um integrante ve a pergunta e leiloa
+ * Modo Presente Grego: joga-se em equipes. Um integrante ve a pergunta e leiloa
  * quantas respostas o PARCEIRO consegue dizer; o parceiro so descobre a
  * pergunta quando o leilao acaba. O lance sobe ate alguem duvidar, e ai a
- * dupla do ultimo lance tem que entregar o que prometeu.
+ * equipe do ultimo lance tem que entregar o que prometeu.
  */
 
 const { Sala } = require('../server/sala.js');
@@ -43,9 +43,9 @@ function novaSala(quantos = 4) {
 }
 
 /** Quem esta com a palavra no leilao. */
-const daVez = (sala) => sala.leiloeiroDe(sala.duplaPorId(sala.leilao.duplas[sala.leilao.vez]));
+const daVez = (sala) => sala.leiloeiroDe(sala.equipePorId(sala.leilao.equipes[sala.leilao.vez]));
 
-/** Faz um lance pela dupla da vez e para os temporizadores. */
+/** Faz um lance pela equipe da vez e para os temporizadores. */
 function apostar(sala, valor) {
   const quem = daVez(sala);
   const r = sala.apostar(quem, valor);
@@ -65,38 +65,47 @@ function responder(sala, socketId) {
 /* ---------------- Quem pode comecar a partida ---------------- */
 {
   const { sala } = montarSala(3);
-  conferir('3 jogadores nao formam duas duplas',
-    /duplas/.test(sala.iniciar().erro || ''), true);
+  conferir('3 jogadores nao formam duas equipes',
+    /equipes/.test(sala.iniciar().erro || ''), true);
   sala.destruir();
 
+  // Impar entra: 3 contra 2 vale. O que nao vale e equipe com menos de dois.
   const { sala: sala2 } = montarSala(5);
-  conferir('numero impar nao entra', /par/.test(sala2.iniciar().erro || ''), true);
+  conferir('impar entra: 3 contra 2', sala2.iniciar().ok, true);
+  sala2.limparTemporizador();
+  conferir('  e as equipes ficam 3 x 2', sala2.equipes.map((e) => e.jogadores.length), [3, 2]);
   sala2.destruir();
+
+  const { sala: sala5 } = montarSala(5);
+  sala5.equipes[0].jogadores.push(...sala5.equipes[1].jogadores.splice(0));
+  conferir('equipe com menos de dois nao entra',
+    /pelo menos dois/.test(sala5.iniciar().erro || ''), true);
+  sala5.destruir();
 
   const { sala: sala3 } = montarSala(4);
   conferir('4 jogadores entram', sala3.iniciar().ok, true);
   sala3.limparTemporizador();
-  conferir('  e viram 2 duplas de 2', sala3.duplas.map((d) => d.jogadores.length), [2, 2]);
-  conferir('  com todo mundo em alguma dupla',
-    new Set(sala3.duplas.flatMap((d) => d.jogadores)).size, 4);
+  conferir('  e viram 2 equipes de 2', sala3.equipes.map((d) => d.jogadores.length), [2, 2]);
+  conferir('  com todo mundo em alguma equipe',
+    new Set(sala3.equipes.flatMap((d) => d.jogadores)).size, 4);
   sala3.destruir();
 }
 
 /* ---------------- Os papeis alternam a cada rodada ---------------- */
 {
   const { sala } = novaSala(4);
-  const dupla = sala.duplas[0];
+  const equipe = sala.equipes[0];
 
-  const leiloeiroR1 = sala.leiloeiroDe(dupla);
-  const respondedorR1 = sala.respondedorDe(dupla);
+  const leiloeiroR1 = sala.leiloeiroDe(equipe);
+  const respondedorR1 = sala.respondedorDe(equipe);
   conferir('leiloeiro e respondedor sao pessoas diferentes',
     leiloeiroR1 !== respondedorR1, true);
 
   sala.rodada = 2;
   conferir('na rodada seguinte os papeis trocam',
-    sala.leiloeiroDe(dupla), respondedorR1);
+    sala.leiloeiroDe(equipe), respondedorR1);
   conferir('  e quem apostou passa a responder',
-    sala.respondedorDe(dupla), leiloeiroR1);
+    sala.respondedorDe(equipe), leiloeiroR1);
   sala.destruir();
 }
 
@@ -109,15 +118,15 @@ function responder(sala, socketId) {
     publicos.includes(sala.perguntaAtual.pergunta), false);
 
   const comAPergunta = privados.filter((p) => p.evento === 'leilao:pergunta');
-  conferir('cada dupla recebe a pergunta uma vez', comAPergunta.length, 2);
-  conferir('  e quem recebeu foi o leiloeiro de cada dupla',
+  conferir('cada equipe recebe a pergunta uma vez', comAPergunta.length, 2);
+  conferir('  e quem recebeu foi o leiloeiro de cada equipe',
     comAPergunta.map((p) => p.para).sort(),
-    sala.duplas.map((d) => sala.leiloeiroDe(d)).sort());
+    sala.equipes.map((d) => sala.leiloeiroDe(d)).sort());
   conferir('  com o enunciado inteiro',
     comAPergunta[0].dados.pergunta, sala.perguntaAtual.pergunta);
 
   // Quem vai responder nao pode ter recebido nada.
-  const respondedores = sala.duplas.map((d) => sala.respondedorDe(d));
+  const respondedores = sala.equipes.map((d) => sala.respondedorDe(d));
   conferir('  e quem vai responder nao recebeu nada',
     comAPergunta.some((p) => respondedores.includes(p.para)), false);
 
@@ -140,7 +149,7 @@ function responder(sala, socketId) {
 {
   const { sala } = novaSala(4);
   const quem = daVez(sala);
-  const outro = sala.leiloeiroDe(sala.duplaPorId(sala.leilao.duplas[1]));
+  const outro = sala.leiloeiroDe(sala.equipePorId(sala.leilao.equipes[1]));
 
   conferir('quem nao esta na vez nao aposta',
     sala.apostar(outro, 3).erro, 'Nao e a sua vez no leilao.');
@@ -149,7 +158,7 @@ function responder(sala, socketId) {
 
   const primeiro = apostar(sala, 4);
   conferir('o primeiro lance entra', primeiro.aposta, 4);
-  conferir('  e a palavra passa para a outra dupla', daVez(sala) !== quem, true);
+  conferir('  e a palavra passa para a outra equipe', daVez(sala) !== quem, true);
 
   const agora = daVez(sala);
   conferir('lance igual nao cobre', sala.apostar(agora, 4).erro, 'A aposta precisa ser maior que 4.');
@@ -168,12 +177,12 @@ function responder(sala, socketId) {
 {
   const { sala } = novaSala(4);
   apostar(sala, 3);
-  apostar(sala, 5);   // a outra dupla cobriu
-  // Agora a palavra voltou para quem abriu; o lance na mesa e da outra dupla.
+  apostar(sala, 5);   // a outra equipe cobriu
+  // Agora a palavra voltou para quem abriu; o lance na mesa e da outra equipe.
   const quem = daVez(sala);
-  const minhaDupla = sala.duplaPorId(sala.leilao.duplas[sala.leilao.vez]);
-  conferir('o lance na mesa e da outra dupla',
-    sala.leilao.duplaAposta !== minhaDupla.id, true);
+  const minhaEquipe = sala.equipePorId(sala.leilao.equipes[sala.leilao.vez]);
+  conferir('o lance na mesa e da outra equipe',
+    sala.leilao.equipeAposta !== minhaEquipe.id, true);
   conferir('e da para duvidar dele', sala.duvidar(quem).ok, true);
   sala.limparTemporizador();
   sala.destruir();
@@ -191,9 +200,9 @@ function responder(sala, socketId) {
 
   const fim = eventos.filter((e) => e.evento === 'leilao:fim').pop().dados;
   conferir('o duvido fecha o leilao no ultimo lance', fim.aposta, 6);
-  conferir('  desafiando a dupla que apostou', fim.duplaAposta, sala.duplaDe(cobriu.quem).id);
+  conferir('  desafiando a equipe que apostou', fim.equipeAposta, sala.equipeDe(cobriu.quem).id);
   conferir('  e quem responde e o PARCEIRO de quem apostou',
-    fim.respondedor, sala.respondedorDe(sala.duplaDe(cobriu.quem)));
+    fim.respondedor, sala.respondedorDe(sala.equipeDe(cobriu.quem)));
   conferir('  nunca quem fez o lance', fim.respondedor !== cobriu.quem, true);
   conferir('a rodada passa a pedir o tamanho da aposta',
     sala.perguntaAtual.necessarias, 6);
@@ -214,7 +223,7 @@ function responder(sala, socketId) {
   sala.limparTemporizador();
 
   const desafiado = sala.leilao.respondedor;
-  const atrasado = sala.leiloeiroDe(sala.duplaPorId(sala.leilao.duplas[sala.leilao.vez]));
+  const atrasado = sala.leiloeiroDe(sala.equipePorId(sala.leilao.equipes[sala.leilao.vez]));
 
   conferir('lance depois do duvido nao entra',
     sala.apostar(atrasado, 9).erro, 'O leilao nao esta aberto.');
@@ -223,7 +232,7 @@ function responder(sala, socketId) {
   conferir('  a aposta cobrada continua a mesma', sala.leilao.aposta, 4);
   conferir('  e quem foi desafiado nao muda', sala.leilao.respondedor, desafiado);
   conferir('  que e o parceiro de quem apostou',
-    desafiado, sala.respondedorDe(sala.duplaDe(cobriu.quem)));
+    desafiado, sala.respondedorDe(sala.equipeDe(cobriu.quem)));
   sala.destruir();
 }
 
@@ -251,7 +260,7 @@ function responder(sala, socketId) {
   sala.destruir();
 }
 
-/* ---------------- Entregou: a dupla que apostou leva ---------------- */
+/* ---------------- Entregou: a equipe que apostou leva ---------------- */
 {
   const { sala } = novaSala(4);
   apostar(sala, 2);
@@ -261,8 +270,8 @@ function responder(sala, socketId) {
   sala.mostrarPergunta();
   sala.limparTemporizador();
 
-  const duplaQueApostou = sala.duplaDe(cobriu.quem);
-  const duplaQueDuvidou = sala.duplaPorId(sala.leilao.duplaDuvidou);
+  const equipeQueApostou = sala.equipeDe(cobriu.quem);
+  const equipeQueDuvidou = sala.equipePorId(sala.leilao.equipeDuvidou);
   const desafiado = sala.leilao.respondedor;
 
   for (let i = 0; i < 3; i++) responder(sala, desafiado);
@@ -270,10 +279,10 @@ function responder(sala, socketId) {
   sala.limparTemporizador();
 
   conferir('entregou as 3 prometidas', sala.leilao.conseguiu, true);
-  conferir('a dupla que apostou leva 3x2',
-    duplaQueApostou.jogadores.map((id) => sala.jogadores.get(id).pontos), [6, 6]);
+  conferir('a equipe que apostou leva 3x2',
+    equipeQueApostou.jogadores.map((id) => sala.jogadores.get(id).pontos), [6, 6]);
   conferir('  e quem duvidou nao leva nada',
-    duplaQueDuvidou.jogadores.map((id) => sala.jogadores.get(id).pontos), [0, 0]);
+    equipeQueDuvidou.jogadores.map((id) => sala.jogadores.get(id).pontos), [0, 0]);
   sala.destruir();
 }
 
@@ -287,8 +296,8 @@ function responder(sala, socketId) {
   sala.mostrarPergunta();
   sala.limparTemporizador();
 
-  const duplaQueApostou = sala.duplaDe(cobriu.quem);
-  const duplaQueDuvidou = sala.duplaPorId(sala.leilao.duplaDuvidou);
+  const equipeQueApostou = sala.equipeDe(cobriu.quem);
+  const equipeQueDuvidou = sala.equipePorId(sala.leilao.equipeDuvidou);
   const desafiado = sala.leilao.respondedor;
 
   // Parou a um item do combinado: no Presente Grego isso e derrota inteira.
@@ -299,9 +308,9 @@ function responder(sala, socketId) {
   conferir('4 de 5 nao entrega o presente', sala.leilao.conseguiu, false);
   conferir('  e o placar registra o que saiu', sala.leilao.ditas, 4);
   conferir('quem duvidou leva 5x2',
-    duplaQueDuvidou.jogadores.map((id) => sala.jogadores.get(id).pontos), [10, 10]);
+    equipeQueDuvidou.jogadores.map((id) => sala.jogadores.get(id).pontos), [10, 10]);
   conferir('  e quem apostou fica a zero',
-    duplaQueApostou.jogadores.map((id) => sala.jogadores.get(id).pontos), [0, 0]);
+    equipeQueApostou.jogadores.map((id) => sala.jogadores.get(id).pontos), [0, 0]);
   sala.destruir();
 }
 
@@ -310,7 +319,7 @@ function responder(sala, socketId) {
   // Sem lance na mesa, o tempo abre no minimo: nao da para duvidar do nada.
   const { sala } = novaSala(4);
   const quem = daVez(sala);
-  sala.lanceNoTempo(sala.duplas.find((d) => d.jogadores.includes(quem)).id);
+  sala.lanceNoTempo(sala.equipes.find((d) => d.jogadores.includes(quem)).id);
   sala.limparTemporizador();
   conferir('tempo sem lance abre no minimo', sala.leilao.aposta, 1);
   conferir('  e o leilao continua aberto', sala.estado, 'leilao');
@@ -319,10 +328,10 @@ function responder(sala, socketId) {
   // Com lance na mesa, deixar o tempo passar e o mesmo que duvidar.
   const { sala: sala2 } = novaSala(4);
   apostar(sala2, 7);
-  const daVezAgora = sala2.duplaPorId(sala2.leilao.duplas[sala2.leilao.vez]);
+  const daVezAgora = sala2.equipePorId(sala2.leilao.equipes[sala2.leilao.vez]);
   sala2.lanceNoTempo(daVezAgora.id);
   sala2.limparTemporizador();
-  conferir('tempo com lance na mesa vale como duvido', sala2.leilao.duplaDuvidou, daVezAgora.id);
+  conferir('tempo com lance na mesa vale como duvido', sala2.leilao.equipeDuvidou, daVezAgora.id);
   conferir('  cobrando o lance de 7', sala2.perguntaAtual.necessarias, 7);
   sala2.destruir();
 }
@@ -335,11 +344,11 @@ function responder(sala, socketId) {
   sala.duvidar(daVez(sala));
   sala.limparTemporizador();
 
-  // 20s de base + 6s por resposta alem da primeira.
-  conferir('aposta de 2 da 26s', sala.duracaoDaRodada(), 26000);
+  // 2s de base + 4s por resposta prometida.
+  conferir('aposta de 2 da 10s', sala.duracaoDaRodada(), 10000);
   sala.leilao.aposta = 10;
   sala.perguntaAtual.necessarias = 10;
-  conferir('aposta de 10 da 74s', sala.duracaoDaRodada(), 74000);
+  conferir('aposta de 10 da 42s', sala.duracaoDaRodada(), 42000);
   sala.leilao.aposta = 40;
   sala.perguntaAtual.necessarias = 40;
   conferir('aposta enorme para no teto de 120s', sala.duracaoDaRodada(), 120000);
@@ -364,41 +373,43 @@ function responder(sala, socketId) {
     [...sala.jogadores.values()].map((j) => j.pontos), [0, 0, 0]);
   sala.destruir();
 
-  // A dupla do maior lance se desfaz no meio do leilao.
+  // A equipe do maior lance se desfaz no meio do leilao.
   const { sala: sala2 } = novaSala(4);
   const lance = apostar(sala2, 5);
   sala2.sair(lance.quem);
   sala2.limparTemporizador();
-  conferir('dupla do maior lance desfeita cancela a rodada', sala2.estado, 'resultado');
+  conferir('equipe do maior lance desfeita cancela a rodada', sala2.estado, 'resultado');
   sala2.destruir();
 
-  // Sem duas duplas inteiras, a partida acaba na virada da rodada.
+  // Sem duas equipes inteiras, a partida acaba na virada da rodada.
   const { sala: sala3 } = novaSala(4);
-  sala3.sair(sala3.duplas[0].jogadores[0]);
+  sala3.sair(sala3.equipes[0].jogadores[0]);
   sala3.limparTemporizador();
   sala3.estado = 'resultado';
   sala3.proximaRodada();
   sala3.limparTemporizador();
-  conferir('sem duas duplas inteiras o jogo acaba', sala3.estado, 'fim');
+  conferir('sem duas equipes inteiras o jogo acaba', sala3.estado, 'fim');
   sala3.destruir();
 }
 
-/* ---------------- Tres duplas giram entre si ---------------- */
+/* ---------------- Sao sempre duas equipes, de qualquer tamanho ---------------- */
 {
   const { sala } = novaSala(6);
-  conferir('6 jogadores dao 3 duplas', sala.duplas.length, 3);
-  conferir('  e as tres entram no leilao', sala.leilao.duplas.length, 3);
+  conferir('6 jogadores dao 2 equipes de 3', sala.equipes.map((e) => e.jogadores.length), [3, 3]);
+  conferir('  e as duas entram no leilao', sala.leilao.equipes.length, 2);
 
-  const primeira = sala.leilao.duplas[0];
+  const primeira = sala.leilao.equipes[0];
   apostar(sala, 2);
-  const segunda = sala.leilao.duplas[sala.leilao.vez];
-  apostar(sala, 3);
-  const terceira = sala.leilao.duplas[sala.leilao.vez];
-  conferir('a palavra passa por todas antes de voltar',
-    new Set([primeira, segunda, terceira]).size, 3);
+  conferir('a palavra passa para a outra equipe',
+    sala.leilao.equipes[sala.leilao.vez] !== primeira, true);
 
-  apostar(sala, 4);
-  conferir('  e volta para a primeira', sala.leilao.duplas[sala.leilao.vez], primeira);
+  apostar(sala, 3);
+  conferir('  e volta para a primeira', sala.leilao.equipes[sala.leilao.vez], primeira);
+
+  // Na equipe de tres, quem leiloa e quem responde sao pessoas diferentes.
+  const trio = sala.equipes[0];
+  conferir('  e quem leiloa nao e quem responde',
+    sala.leiloeiroDe(trio) === sala.respondedorDe(trio), false);
   sala.destruir();
 }
 

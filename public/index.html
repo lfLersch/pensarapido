@@ -58,9 +58,25 @@
       </section>
 
       <p class="rodape-creditos">
-        Fotos e mapas do <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a>
+        <button class="link" type="button" id="btn-abrir-notas">Novidades <span id="versao-atual"></span></button>
+        &middot; Fotos e mapas do <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a>
         &middot; <a href="/creditos.html">creditos e licencas</a>
       </p>
+    </div>
+  </section>
+
+  <!-- ======================= 1B. NOVIDADES ======================= -->
+  <section class="tela" id="tela-notas">
+    <div class="caixa caixa--media">
+      <div class="topo-tela">
+        <button class="btn btn--fantasma btn--icone" id="btn-voltar-notas" aria-label="Voltar">←</button>
+        <div>
+          <h2 class="titulo">Novidades</h2>
+          <p class="subtitulo">O que mudou no jogo em cada atualizacao.</p>
+        </div>
+      </div>
+
+      <ol class="notas" id="notas-lista"></ol>
     </div>
   </section>
 
@@ -141,10 +157,11 @@
           <span class="contador" id="contador-jogadores">0</span>
         </div>
         <ul class="lista-jogadores" id="lista-jogadores"></ul>
+        <div class="equipes-sala" id="equipes-sala" hidden></div>
       </div>
 
       <p class="aviso" id="aviso-sala" role="alert"></p>
-      <p class="dica-duplas" id="dica-duplas" hidden></p>
+      <p class="dica-equipes" id="dica-equipes" hidden></p>
 
       <div class="sala__acoes">
         <button class="btn btn--fantasma" id="btn-sair-sala">Sair</button>
@@ -202,6 +219,10 @@
 
           <blockquote class="letra" id="letra" hidden></blockquote>
 
+          <ol class="dicas" id="dicas" hidden></ol>
+
+          <p class="regra-rodada" id="ranking-aviso" hidden></p>
+
           <div class="tocador" id="tocador" hidden>
             <button class="tocador__botao" id="tocador-botao" type="button"
                     aria-label="Tocar o audio">&#9654;</button>
@@ -245,7 +266,7 @@
               <span class="presente__lance" id="presente-lance">sem lance ainda</span>
             </div>
 
-            <ul class="presente__duplas" id="presente-duplas"></ul>
+            <ul class="presente__equipes" id="presente-equipes"></ul>
 
             <p class="presente__vez" id="presente-vez"></p>
 
@@ -257,6 +278,7 @@
               </label>
               <button class="btn btn--primario" type="submit" id="presente-apostar">Apostar</button>
               <button class="btn btn--perigo" type="button" id="presente-duvidar">Duvido!</button>
+              <button class="btn btn--fantasma" type="button" id="presente-passar" hidden>Passo</button>
             </form>
 
             <div class="presente__entrega" id="presente-entrega" hidden>

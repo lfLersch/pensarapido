@@ -3,6 +3,33 @@
 /* Modo Escalada: a rodada N pede N respostas. */
 
 const { Sala } = require('../server/sala.js');
+const { avaliar } = require('../server/comparar.js');
+
+/**
+ * Indices de itens que o corretor nao confunde entre si.
+ *
+ * Listas com dois nomes parecidos ("Nintendo DS" e "Nintendo 3DS") faziam o
+ * segundo palpite virar "quase" ou "repetido" em vez de item novo, e o teste
+ * falhava conforme a lista sorteada.
+ */
+function distintos(pergunta, quantos) {
+  const escolhidos = [];
+  pergunta.itens.forEach((item, i) => {
+    if (escolhidos.length >= quantos) return;
+    const confunde = escolhidos.some((j) => {
+      const outro = pergunta.itens[j];
+      return avaliar(item.oficial, outro.oficial, outro.variantes).veredito !== 'chat'
+        || avaliar(outro.oficial, item.oficial, item.variantes).veredito !== 'chat';
+    });
+    if (!confunde) escolhidos.push(i);
+  });
+  // Lista curta e cheia de nomes parecidos pode nao ter tantos assim; o resto
+  // entra na ordem, para o teste nunca ficar sem item.
+  pergunta.itens.forEach((_, i) => {
+    if (escolhidos.length < quantos && !escolhidos.includes(i)) escolhidos.push(i);
+  });
+  return escolhidos;
+}
 
 const eventos = [];
 const sala = new Sala('ESC1', {
@@ -56,8 +83,9 @@ console.log('\nRodada 2:', pergunta.pergunta);
 conferir('rodada 2 pede 2 respostas', pergunta.necessarias, 2);
 conferir('rodada 2 tem itens suficientes', pergunta.itens.length >= 2, true);
 
-const primeiro = pergunta.itens[0].oficial;
-const segundo = pergunta.itens[1].oficial;
+const [i1, i2] = distintos(pergunta, 2);
+const primeiro = pergunta.itens[i1].oficial;
+const segundo = pergunta.itens[i2].oficial;
 
 const p1 = sala.palpitar('luiz', primeiro);
 conferir('1º item -> progresso parcial', [p1.veredito, p1.quantos, p1.necessarias], ['item', 1, 2]);
@@ -67,7 +95,7 @@ const p2 = sala.palpitar('luiz', primeiro);
 conferir('repetir o mesmo item -> repetido', p2.veredito, 'repetido');
 
 for (const j of sala.jogadores.values()) j.ultimaMensagem = 0;
-const p3 = sala.palpitar('luiz', 'batata frita com queijo');
+const p3 = sala.palpitar('luiz', 'xilofone quadrado de nuvem');
 conferir('palpite distante -> vai para o chat', p3.veredito, 'chat');
 
 for (const j of sala.jogadores.values()) j.ultimaMensagem = 0;
@@ -82,7 +110,7 @@ const textosDoChat = eventos
 const vazou = [primeiro, segundo].some((item) =>
   textosDoChat.some((t) => t.includes(item.toLowerCase())));
 conferir('nenhum item correto vazou no chat', vazou, false);
-conferir('a conversa distante apareceu no chat', textosDoChat.includes('batata frita com queijo'), true);
+conferir('a conversa distante apareceu no chat', textosDoChat.includes('xilofone quadrado de nuvem'), true);
 
 sala.encerrarRodada();
 sala.limparTemporizador();
@@ -100,14 +128,15 @@ for (let n = 3; n <= 6; n++) {
   conferir(`rodada ${n} pede ${n} respostas`, pergunta.necessarias, n);
 
   // Responder n-1 itens não pode completar a rodada.
+  const escolhidos = distintos(pergunta, n);
   for (let i = 0; i < n - 1; i++) {
     for (const j of sala.jogadores.values()) j.ultimaMensagem = 0;
-    const r = sala.palpitar('ana', pergunta.itens[i].oficial);
+    const r = sala.palpitar('ana', pergunta.itens[escolhidos[i]].oficial);
     if (r.veredito !== 'item') { falhas++; console.log('FALHA item parcial na rodada', n, r); }
   }
 
   for (const j of sala.jogadores.values()) j.ultimaMensagem = 0;
-  const ultimo = sala.palpitar('ana', pergunta.itens[n - 1].oficial);
+  const ultimo = sala.palpitar('ana', pergunta.itens[escolhidos[n - 1]].oficial);
   conferir(`  rodada ${n}: o ${n}º item completa`, ultimo.veredito, 'certo');
 
   console.log(`     "${pergunta.pergunta}" (${pergunta.itens.length} itens no repertório)`);
@@ -143,13 +172,20 @@ console.log('');
   sala.iniciar();
   sala.limparTemporizador();
 
-  sala.rodada = 2;            // a proxima sera a rodada 3, que pede 3 respostas
-  sala.proximaRodada();
-  sala.limparTemporizador();
-  sala.mostrarPergunta();
-  sala.limparTemporizador();
+  // A proxima sera a rodada 3, que pede 3 respostas. O bloco usa 4 itens (3 da
+  // Ana e 1 da Bia), entao sorteia ate cair uma lista com 4 que nao se confundem.
+  let tentativas = 0;
+  do {
+    sala.rodada = 2;
+    sala.proximaRodada();
+    sala.limparTemporizador();
+    sala.mostrarPergunta();
+    sala.limparTemporizador();
+    tentativas++;
+  } while (distintos(sala.perguntaAtual, 4).length < 4 && tentativas < 20);
 
   const pergunta = sala.perguntaAtual;
+  const quatro = distintos(pergunta, 4);
   const inicio = sala.inicioPergunta;
   const dateNowReal = Date.now;
 
@@ -160,10 +196,10 @@ console.log('');
     return sala.palpitar(quem, texto);
   };
 
-  const a1 = dizer(1000, 'a', pergunta.itens[0].oficial);
-  const a2 = dizer(3000, 'a', pergunta.itens[1].oficial);
-  const a3 = dizer(5000, 'a', pergunta.itens[2].oficial);
-  const b1 = dizer(7000, 'b', pergunta.itens[3].oficial);
+  const a1 = dizer(1000, 'a', pergunta.itens[quatro[0]].oficial);
+  const a2 = dizer(3000, 'a', pergunta.itens[quatro[1]].oficial);
+  const a3 = dizer(5000, 'a', pergunta.itens[quatro[2]].oficial);
+  const b1 = dizer(7000, 'b', pergunta.itens[quatro[3]].oficial);
   Date.now = dateNowReal;
 
   const pontosDe = (nome) => [...sala.jogadores.values()].find((j) => j.nickname === nome).pontos;
