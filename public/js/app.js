@@ -859,8 +859,11 @@ socket.on('rodada:pergunta', (dados) => {
   const escala = $('ranking-aviso');
   escala.hidden = !dados.ranking;
   if (dados.ranking) {
-    escala.textContent = `Cada um responde uma vez. O 1o da lista vale 1 ponto e o ${
-      dados.ranking.total}o vale ${dados.ranking.total}. Fora da lista, zero.`;
+    const ja = dados.ranking.jaDitos || [];
+    escala.textContent = `Volta ${dados.ranking.volta} de ${dados.ranking.voltas} nesta lista. `
+      + `Cada um responde uma vez: o 1o da lista vale 1 ponto e o ${dados.ranking.total}o vale ${
+        dados.ranking.total}. Fora da lista, zero.`
+      + (ja.length ? ` Ja sairam: ${ja.join(', ')}.` : '');
     escala.title = dados.ranking.fonte || '';
   }
 
@@ -916,6 +919,13 @@ socket.on('rodada:pergunta', (dados) => {
   else { $('presente').hidden = true; $('segredo').hidden = true; }
 
   if (!dados.presente) mensagemSistema(`Rodada ${dados.rodada} · ${dados.categoria.nome}`);
+
+  // Veni, Vidi, Vici: aqui o campo nao e chat, e um palpite fechado — ele so
+  // aparece para a mesa quando o tempo da dica acaba.
+  if (dados.veni) {
+    inputChat.placeholder = 'Seu palpite — ninguem ve ate o tempo fechar…';
+    $('status-respostas').textContent = 'Ninguem palpitou ainda.';
+  }
 
   pararContagem();
   // No carrossel o relógio é de cada vez, não da rodada: quem conta é
@@ -1062,6 +1072,7 @@ function limparTabuleiro() {
   $('letra').hidden = true;
   $('dicas').hidden = true;
   $('dicas').innerHTML = '';
+  esconderPalpites();
   $('ranking-aviso').hidden = true;
   $('pergunta-figura').hidden = true;
   $('segredo').hidden = true;
@@ -1077,8 +1088,43 @@ function mostrarDicas(veni) {
   const lista = $('dicas');
   lista.innerHTML = '';
   lista.hidden = !veni;
+  esconderPalpites();
   if (!veni) return;
   acrescentarDica(veni.dica, veni.indice, veni.vale);
+}
+
+function esconderPalpites() {
+  const lista = $('palpites');
+  if (!lista) return;
+  lista.hidden = true;
+  lista.innerHTML = '';
+}
+
+/**
+ * Os palpites de todo mundo, abertos de uma vez.
+ *
+ * Enquanto a dica esta no ar ninguem ve nada — e o que faz o palpite valer:
+ * se desse para ler o do vizinho, a primeira resposta certa valeria por todos.
+ */
+function mostrarPalpites(dados) {
+  const lista = $('palpites');
+  lista.innerHTML = '';
+  lista.hidden = false;
+
+  if (!dados.palpites.length) {
+    const vazio = criar('li', 'palpite palpite--vazio');
+    vazio.textContent = 'Ninguem arriscou nesta dica.';
+    lista.appendChild(vazio);
+    return;
+  }
+
+  for (const p of dados.palpites) {
+    const item = criar('li', p.certo ? 'palpite palpite--certo' : 'palpite palpite--errado');
+    item.innerHTML = `<span class="palpite__quem">${escapar(p.avatar)} ${escapar(p.nickname)}</span>
+      <span class="palpite__texto">${escapar(p.texto)}</span>
+      <span class="palpite__marca">${p.certo ? '+' + dados.vale : '✗'}</span>`;
+    lista.appendChild(item);
+  }
 }
 
 /** Uma dica na tela, com quanto vale acertar a partir dela. */
@@ -1096,6 +1142,38 @@ function acrescentarDica(texto, indice, vale) {
 socket.on('veni:dica', (dados) => {
   acrescentarDica(dados.dica, dados.indice, dados.vale);
   mensagemSistema(`Dica ${dados.indice + 1}: ${dados.dica} · agora vale ${dados.vale}`);
+
+  // Janela nova: os palpites da anterior saem da tela e o relogio recomeca.
+  esconderPalpites();
+  $('status-respostas').textContent = 'Ninguem palpitou ainda.';
+  destrancarChat('Seu palpite — ninguem ve ate o tempo fechar…');
+  pararContagem();
+  if (dados.duracaoMs) contarTempo(barraTempo, dados.duracaoMs, true);
+});
+
+/** Quantos ja escreveram alguma coisa — o que, so no fim. */
+socket.on('veni:palpitou', (dados) => {
+  $('status-respostas').textContent = dados.quantos >= dados.total
+    ? 'Todo mundo ja palpitou.'
+    : `${dados.quantos} de ${dados.total} ja palpitaram`;
+});
+
+socket.on('veni:revelacao', (dados) => {
+  mostrarPalpites(dados);
+  if (dados.placar) renderizarPlacar(dados.placar);
+
+  const certos = dados.palpites.filter((p) => p.certo);
+  mensagemSistema(certos.length
+    ? `${certos.map((p) => p.nickname).join(', ')} ${certos.length > 1 ? 'acertaram' : 'acertou'} — ${dados.vale} pts`
+    : 'Ninguem acertou nesta dica.');
+
+  $('status-respostas').textContent = certos.length
+    ? `${certos.length} de ${dados.palpites.length} acertaram`
+    : 'Nenhum acerto nesta dica.';
+
+  trancarChat(dados.fim ? 'Fim da rodada…' : 'Ja vem a proxima dica…');
+  pararContagem();
+  contarTempo(barraTempo, dados.duracaoMs, true);
 });
 
 /** No Leilao Geral cada um leiloa por si: nao ha parceiro, nem duvido. */
@@ -1668,8 +1746,11 @@ formChat.addEventListener('submit', (evento) => {
       avisoParticular(`Voce ja tinha dito "${resposta.item}". Tente outra.`);
 
     } else if (resposta.veredito === 'errado') {
+      // Mais ou Menos Pontos: e um palpite por rodada, e esse foi o dele.
       // Carrossel às cegas: errar não elimina, só gasta o relógio.
-      avisoParticular('Nao vale. Tente outra — voce ainda tem tempo.');
+      avisoParticular(resposta.gastou
+        ? 'Nao esta na lista — e era o seu palpite desta rodada.'
+        : 'Nao vale. Tente outra — voce ainda tem tempo.');
 
     } else if (resposta.veredito === 'eliminado') {
       // Carrossel: saiu da rodada — por errar (visível) ou repetir (às cegas).
@@ -1691,6 +1772,12 @@ formChat.addEventListener('submit', (evento) => {
       // — verde continua sendo "fechou a resposta inteira".
       if (!estado.carrossel) registrarItem(resposta.item);
       avisoDeItem(resposta);
+
+    } else if (resposta.veredito === 'palpite') {
+      // Veni, Vidi, Vici: guardado e mudo ate a revelacao.
+      avisoParticular(resposta.trocou
+        ? `Troquei seu palpite para "${resposta.texto}".`
+        : `Palpite guardado: "${resposta.texto}". Da para trocar ate o tempo acabar.`);
 
     } else if (resposta.veredito === 'certo') {
       estado.acertou = true;

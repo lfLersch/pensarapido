@@ -1127,6 +1127,8 @@ const QUESTOES = {
   ],
 
   musica: [
+    { pergunta: 'Que cantor cego da Motown gravou "Superstition" e tocava varios instrumentos ainda menino?', resposta: 'Stevie Wonder', aceita: ['Wonder'], dif: 30 },
+    { pergunta: 'Que sambista da Mangueira so gravou o primeiro disco proprio depois dos 60 anos?', resposta: 'Cartola', aceita: ['Angenor de Oliveira'], dif: 40 },
     { pergunta: 'Qual banda gravou "Bohemian Rhapsody"?', resposta: 'Queen', dif: 20 },
     { pergunta: 'Qual banda lancou a musica "Let It Be"?', resposta: 'The Beatles', aceita: ['Beatles'], dif: 15 },
     { pergunta: 'Quem e conhecido como "O Rei do Pop"?', resposta: 'Michael Jackson', aceita: ['MJ'], dif: 15 },
@@ -1484,6 +1486,25 @@ const QUESTOES = {
   ],
 
   cinema: [
+    { pergunta: 'Que filme de Kubrick tranca uma familia como zeladores de um hotel fechado pelo inverno, ate o pai perder a cabeca?', resposta: 'O Iluminado', aceita: ['The Shining', 'Iluminado'], dif: 30 },
+    { pergunta: 'Que comedia de 1990 deixa um menino de oito anos sozinho em casa no Natal, armando ciladas contra dois assaltantes?', resposta: 'Esqueceram de Mim', aceita: ['Home Alone'], dif: 25 },
+    { pergunta: 'Qual monstro verde, redondo e de um olho so trabalha como assistente de sustos ao lado de Sulley?', resposta: 'Mike Wazowski', aceita: ['Mike'], dif: 30 },
+    { pergunta: 'Quem perde a mao da espada em "Game of Thrones" e passa o resto da serie tentando virar outro homem?', resposta: 'Jaime Lannister', aceita: ['Jaime'], dif: 35 },
+    { pergunta: 'Que menino criado por lobos na selva indiana tem um urso e uma pantera negra como protetores?', resposta: 'Mogli', aceita: ['Mowgli'], dif: 25 },
+    { pergunta: 'Que peixe-palhaco some do recife e vai parar num aquario de dentista em Sydney?', resposta: 'Nemo', dif: 20 },
+    { pergunta: 'Que heroi da Marvel e um advogado cego que enxerga o quarteirao por um sentido parecido com radar?', resposta: 'Demolidor', aceita: ['Daredevil', 'Matt Murdock', 'Murdock'], dif: 30 },
+    { pergunta: 'Que agente da IMF desce por cabos ate um cofre da CIA sem encostar no chao?', resposta: 'Ethan Hunt', aceita: ['Hunt'], dif: 40 },
+    { pergunta: 'Em que filme Will Smith vive o ultimo homem de uma Nova York tomada por infectados, com um pastor-alemao de companhia?', resposta: 'Eu Sou a Lenda', aceita: ['I Am Legend'], dif: 30 },
+    { pergunta: 'Que serie da HBO acompanha um chefao de Nova Jersey que divide o crime organizado com sessoes de terapia?', resposta: 'Os Sopranos', aceita: ['The Sopranos', 'Familia Soprano', 'Sopranos'], dif: 40 },
+    { pergunta: 'Que assassino de chapeu e luva de laminas mata os adolescentes enquanto eles dormem?', resposta: 'Freddy Krueger', aceita: ['Freddy'], dif: 30 },
+    { pergunta: 'Que comedia de 1980 debocha dos filmes de catastrofe aerea, com um piloto bebado e um passageiro obrigado a pousar?', resposta: 'Apertem os Cintos... O Piloto Sumiu', aceita: ['Apertem os cintos', 'Airplane'], dif: 45 },
+    { pergunta: 'Que filme brasileiro tira da estacao de trem do Rio uma ex-professora que escreve cartas, e a poe na estrada com um menino atras do pai?', resposta: 'Central do Brasil', dif: 35 },
+    { pergunta: 'Que filme da Pixar comeca com um cowboy de pano morrendo de ciumes de um boneco espacial e termina com os dois inseparaveis?', resposta: 'Toy Story', dif: 20 },
+    { pergunta: 'Que filme de Polanski acompanha um musico judeu escondido nas ruinas de Varsovia?', resposta: 'O Pianista', aceita: ['The Pianist'], dif: 35 },
+    { pergunta: 'Que serie da Netflix conta a ascensao de Pablo Escobar e do cartel de Medellin?', resposta: 'Narcos', dif: 30 },
+    { pergunta: 'Que saga poe uma estudante apaixonada por um vampiro que brilha ao sol em vez de queimar?', resposta: 'Crepusculo', aceita: ['Twilight'], dif: 25 },
+    { pergunta: 'Que serie poe um golpista que nunca cursou direito trabalhando como advogado ao lado de Harvey Specter?', resposta: 'Suits', dif: 35 },
+    { pergunta: 'Que justiceiro de capa preta e espada marca os inimigos com um Z?', resposta: 'Zorro', dif: 25 },
     { pergunta: 'Quem interpreta Jack Sparrow em "Piratas do Caribe"?', resposta: 'Johnny Depp', aceita: ['Depp'], dif: 15 },
     { pergunta: 'Quem dirigiu o filme "Titanic"?', resposta: 'James Cameron', aceita: ['Cameron'], dif: 40 },
     { pergunta: 'Quem interpreta Tony Stark, o Homem de Ferro?', resposta: 'Robert Downey Jr.', aceita: ['Robert Downey Junior', 'RDJ'], dif: 40 },
@@ -2104,6 +2125,18 @@ const QUESTOES = {
   ],
 
   historia: [
+    { pergunta: 'Quem bancou a primeira ferrovia do Brasil, em 1854, virou barao e morreu falido?', resposta: 'Barao de Maua', aceita: ['Maua', 'Irineu Evangelista de Sousa'], dif: 45 },
+    { pergunta: 'Quem levantou voo em Paris com o 14-Bis diante de uma plateia, em 1906?', resposta: 'Santos Dumont', aceita: ['Alberto Santos Dumont'], dif: 25 },
+    { pergunta: 'Que chefao de Chicago mandou na Lei Seca e so foi preso por sonegar imposto?', resposta: 'Al Capone', aceita: ['Capone'], dif: 30 },
+    { pergunta: 'Quem discursou para a multidao em Washington, em 1963, repetindo que tinha um sonho?', resposta: 'Martin Luther King', aceita: ['Luther King'], dif: 25 },
+    { pergunta: 'Que heroi grego so podia ser ferido num ponto do calcanhar?', sub: 'mitologia', resposta: 'Aquiles', aceita: ['Achilles'], dif: 25 },
+    { pergunta: 'Que pintora mexicana transformou os proprios autorretratos e a dor na coluna em marca registrada?', resposta: 'Frida Kahlo', aceita: ['Frida'], dif: 30 },
+    { pergunta: 'Que anfiteatro de Roma juntava dezenas de milhares de pessoas para ver gladiadores?', resposta: 'Coliseu', aceita: ['Coliseu de Roma'], dif: 25 },
+    { pergunta: 'Que rei egipcio morreu adolescente e teve a tumba achada quase intacta por Howard Carter, em 1922?', resposta: 'Tutancamon', aceita: ['Tutankamon', 'Tutankhamun'], dif: 40 },
+    { pergunta: 'Quem projetou o labirinto de Creta e depois fugiu da ilha com asas de cera?', sub: 'mitologia', resposta: 'Dedalo', aceita: ['Daedalus'], dif: 40 },
+    { pergunta: 'Que santo aparece a cavalo, de lanca em punho, vencendo um dragao?', resposta: 'Sao Jorge', aceita: ['Jorge'], dif: 25 },
+    { pergunta: 'Que navio afundou na viagem de estreia, em 1912, depois de raspar num iceberg?', resposta: 'Titanic', dif: 15 },
+    { pergunta: 'Que detetive de Baker Street resolve casos pela deducao, ao lado de um medico do exercito?', resposta: 'Sherlock Holmes', aceita: ['Sherlock'], dif: 25 },
     { pergunta: 'Em que ano os portugueses chegaram ao Brasil?', resposta: '1500', dif: 15 },
     { pergunta: 'Quem foi o primeiro presidente dos Estados Unidos?', resposta: 'George Washington', aceita: ['Washington'], dif: 45 },
     { pergunta: 'Em que ano terminou a Segunda Guerra Mundial?', resposta: '1945', dif: 20 },
@@ -2869,6 +2902,7 @@ const QUESTOES = {
     { pergunta: 'De quem e este logo?', sub: 'comida', imagem: '/img/logo-danone.jpg', resposta: 'Danone', dif: 45 }
   ],
   animais: [
+    { pergunta: 'Que filme de 1993 soltou dinossauros clonados num parque da ilha Nublar?', resposta: 'Jurassic Park', aceita: ['O Parque dos Dinossauros'], dif: 20 },
     { pergunta: 'Qual e o maior animal terrestre?', resposta: 'Elefante', dif: 15 },
     { pergunta: 'Qual ave nao voa e vive no gelo da Antartida?', resposta: 'Pinguim', dif: 15 },
     { pergunta: 'Qual e o maior felino do mundo?', resposta: 'Tigre', dif: 35 },
@@ -3026,9 +3060,12 @@ const PAPEIS_DE_PESSOA = [
   'apresentador', 'apresentadora', 'humorista', 'filosofo', 'compositor', 'compositora',
   'artista', 'lutador', 'lutadora', 'tenista', 'nadador', 'nadadora', 'atleta', 'goleiro',
   'personagem', 'imperador', 'imperatriz', 'rei', 'rainha', 'papa', 'general', 'inventor',
-  'astronauta', 'musico', 'baterista', 'guitarrista', 'vocalista', 'heroi', 'vilao', 'ninja'
+  'astronauta', 'musico', 'baterista', 'guitarrista', 'vocalista', 'heroi', 'vilao', 'ninja',
+  'monstro', 'assassino', 'detetive', 'santo', 'santa', 'sambista', 'agente', 'navegador'
 ];
-const PERGUNTA_DE_PESSOA = new RegExp(`^(quem\\b|qual (${PAPEIS_DE_PESSOA.join('|')})\\b)`, 'i');
+// "Que detetive de Baker Street..." vale tanto quanto "Qual detetive...": o
+// jogo pergunta das duas formas, e nas duas a resposta e uma pessoa.
+const PERGUNTA_DE_PESSOA = new RegExp(`^(quem\\b|(qual|que) (${PAPEIS_DE_PESSOA.join('|')})\\b)`, 'i');
 
 /** O texto em palavras, para achar o atalho dentro do enunciado. */
 const palavrasDe = (texto) => ' ' + String(texto)

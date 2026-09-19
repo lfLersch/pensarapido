@@ -17,7 +17,7 @@
 
 const NOTAS = [
   {
-    versao: '1.9',
+    versao: '1.10',
     data: '2026-09-19',
     titulo: 'Dando dicas: o leilao ao contrario',
     itens: [
@@ -26,6 +26,26 @@ const NOTAS = [
       'Cada dica e uma palavra solta, e palavra que carrega a resposta nao vale — nem um pedaco dela. Quem adivinha chuta a vontade, e o chute errado vai para o chat para o parceiro saber por onde puxar.',
       'A pontuacao e por rodada, nao por dica: a rodada vale 10 pontos, custe uma dica ou dez. Se a palavra nao sair, os 10 vao para cada uma das outras duplas.',
       'As duplas aparecem na sala de espera uma de cada vez, e a partida so comeca com todas completas — sao de dois, e o lance de abertura tem teto de 10 dicas.'
+    ]
+  },
+  {
+    versao: '1.9',
+    data: '2026-09-19',
+    titulo: 'Palpite fechado no Veni e tres rodadas por lista',
+    itens: [
+      'Veni, Vidi, Vici: cada dica abre uma janela de 15 segundos. O que voce escrever fica guardado e ninguem ve — nem quem esta do seu lado.',
+      'Quando o tempo fecha, todos os palpites aparecem de uma vez. Quem acertou leva o que a dica valia (10, 6 ou 3), igual para todos.',
+      'Ninguem acertou? Entra a dica seguinte, valendo menos. Acertou alguem, a rodada acaba ali — a palavra ja esta na tela.',
+      'Da para trocar de ideia quantas vezes quiser ate o tempo acabar: vale o ultimo palpite escrito.',
+      'O banco de palavras passou de 107 para 283, com dicas do tipo "impressora, caneta, pintor" (tinta) e "aeroporto, boate, Formula 1" (pista).',
+      'Duas cartas nunca abrem com a mesma primeira dica: na janela de 15 segundos e so ela que esta na tela, e cada um tem um palpite.',
+      'Entraram as cartas de tres campos diferentes — um filme, um personagem historico, um livro: "Tio Patinhas, Aquiles e O Hobbit" levam a Pes; "O Iluminado, Paris Hilton e Psicose" levam a Hotel.',
+      'As mesmas referencias viraram 34 perguntas do jogo normal, na mao contraria: a carta pede a palavra, e a pergunta pede o nome — "quem perde a mao da espada em Game of Thrones?" ou "que heroi grego so podia ser ferido num ponto do calcanhar?".',
+      'Sobrenome continua bastando nessas: "Lannister", "Kahlo" e "Krueger" valem o nome inteiro, e agora isso tambem vale para pergunta que comeca com "Que detetive..." ou "Que pintora...".',
+      'Mais ou Menos Pontos: a mesma lista agora rende tres rodadas seguidas, e o que ja foi dito continua fora nas seguintes.',
+      'Nesse modo cada um responde uma vez por rodada: chutou fora da lista, gastou a vez. Repetir o que outro disse nao gasta.',
+      'O topo da lista so e revelado na terceira rodada — antes disso o resultado mostra apenas o que a mesa acertou.',
+      'As listas ficaram bem maiores: 15 listas, varias com 100 nomes — paises, cidades, rios, estadios, jogos, artistas do Spotify, canais do YouTube e mais.'
     ]
   },
   {

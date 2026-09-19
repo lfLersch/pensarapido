@@ -954,6 +954,53 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   to   { opacity: 1; transform: none; }
 }
 
+/* Os palpites da dica, abertos todos de uma vez quando o tempo fecha. */
+.palpites {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  animation: dica-entra 0.4s ease;
+}
+.palpite {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--borda);
+  border-left: 3px solid var(--borda);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 14px;
+}
+.palpite__quem {
+  flex: none;
+  color: var(--texto-fraco);
+}
+.palpite__texto {
+  flex: 1;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.palpite__marca {
+  flex: none;
+  font-weight: 800;
+}
+.palpite--certo {
+  border-left-color: var(--certo, #22c55e);
+  background: rgba(34, 197, 94, 0.12);
+}
+.palpite--certo .palpite__marca { color: var(--certo, #22c55e); }
+.palpite--errado .palpite__texto { text-decoration: line-through; opacity: 0.75; }
+.palpite--errado .palpite__marca { color: var(--texto-fraco); }
+.palpite--vazio {
+  justify-content: center;
+  color: var(--texto-fraco);
+  font-style: italic;
+}
+
 /* Tocador das perguntas de audio */
 
 .tocador {

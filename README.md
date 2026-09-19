@@ -212,7 +212,7 @@ nunca caem em rodadas seguidas.
 
 ### Mais ou Menos Pontos
 
-Uma **lista em ordem** — os 60 países mais populosos, as 50 maiores cidades do
+Uma **lista em ordem** — os 100 países mais populosos, as 100 maiores cidades do
 Brasil, os 30 filmes de maior bilheteria. **A posição é a pontuação**:
 
 | Resposta | Vale |
@@ -222,31 +222,43 @@ Brasil, os 30 filmes de maior bilheteria. **A posição é a pontuação**:
 | o último da lista | **o tamanho dela** |
 | qualquer coisa fora da lista | **0** |
 
-Dizer *Índia* nos países mais populosos rende 1 ponto; lembrar da *Romênia*, que
-fecha a lista, rende 60. O óbvio quase não pontua, e o nome que ninguém lembra
-vale uma rodada inteira — daí o nome do modo.
+Dizer *Índia* nos países mais populosos rende 1 ponto; lembrar da *Eslovênia*,
+lá no fim da lista, rende quase 100. O óbvio quase não pontua, e o nome que
+ninguém lembra vale uma rodada inteira — daí o nome do modo.
 
-Duas regras seguram a esperteza:
+**A mesma lista fica por três rodadas.** Uma lista de 100 nomes morreria com
+quatro respostas; em três voltas a mesa raspa o que sabe, e o que já saiu
+**continua fora** nas voltas seguintes — a tela mostra a lista do que já foi
+dito para ninguém tentar de novo.
+
+Três regras seguram a esperteza:
 
 - **Cada pessoa responde uma vez por rodada.** A primeira resposta que bate na
-  lista é a que conta; depois dela o chat fica só para conversa.
-- **Resposta que já saiu não conta de novo.** O acerto vai público no chat com
-  a posição ("Mogi das Cruzes — 50º da lista"), então copiar do vizinho devolve
-  *"já foi dito"*.
+  lista é a que conta.
+- **Chutou fora da lista, gastou a vez.** Errar não custa pontos, mas custa a
+  rodada: é um palpite por volta, e esse foi o dele.
+- **Resposta que já saiu não conta de novo** — nem da mesma volta, nem das
+  anteriores. O acerto vai público no chat com a posição ("Mogi das Cruzes —
+  50º da lista"), então copiar do vizinho devolve *"já foi dito"*. Repetir,
+  esse sim, **não gasta a vez**: duas pessoas podem digitar o mesmo nome no
+  mesmo segundo.
 
-No fim da rodada a mesa vê o **topo da lista** e até onde ia a pontuação. Como
-uma rodada dessas não tem "resposta certa" única, ela **não alimenta a
-dificuldade adaptativa**.
+O **topo da lista só abre na terceira volta** — antes disso o resultado mostra
+apenas o que a mesa acertou, senão as duas voltas seguintes seriam cópia da
+tela. Como uma rodada dessas não tem "resposta certa" única, ela **não alimenta
+a dificuldade adaptativa**.
 
-As listas ficam em [`server/rankings.js`](server/rankings.js), cada uma com a
-**fonte e o ano** anotados — a ordem é o que vale, então atualizar significa
-trocar a lista inteira, nunca um item no meio.
+São **15 listas** em [`server/rankings.js`](server/rankings.js) — países por
+população, área e PIB, cidades do Brasil e do mundo, rios, estádios, jogos mais
+vendidos, artistas do Spotify, canais do YouTube, línguas faladas, medalhas
+olímpicas —, cada uma com a **fonte e o ano** anotados. A ordem é o que vale,
+então atualizar significa trocar a lista inteira, nunca um item no meio.
 
 ### Veni, Vidi, Vici
 
-Uma palavra e **três dicas**, que entram uma por terço da rodada. A rodada dura
-**50% a mais** que a da sala (30s na configuração padrão), então cada dica fica
-uns 10 segundos sozinha na tela antes de a próxima aparecer.
+Uma palavra e **três dicas**. Cada dica abre uma **janela de 15 segundos**: o
+que você escreve fica **guardado no servidor e ninguém vê** — nem quem está do
+seu lado. Quando o tempo fecha, **todos os palpites aparecem de uma vez**.
 
 | Quando acertou | Vale |
 | --- | --- |
@@ -254,8 +266,15 @@ uns 10 segundos sozinha na tela antes de a próxima aparecer.
 | na 2ª dica | **6** |
 | na 3ª dica | **3** |
 
-Desconta **1 ponto para cada pessoa que acertou antes**, como no Modo Tempo, e
-o acerto nunca vale menos que 1. Quem erra continua tentando até o tempo acabar.
+Quem acertou leva o valor cheio da dica, **igual para todos** — ninguém viu o
+palpite do outro, então não há primeiro nem segundo. **Acertou alguém, a rodada
+acaba** ali (a palavra já está na tela); **não acertou ninguém, entra a dica
+seguinte**, valendo menos. Dá para **trocar de ideia** quantas vezes quiser até
+o tempo acabar: vale o último palpite escrito.
+
+O palpite não passa pelo chat enquanto a janela está aberta. Se passasse, o
+primeiro acerto entregaria a palavra para a mesa inteira e as duas dicas
+seguintes não valeriam nada.
 
 **A dica é solta, não é frase.** Cada uma é um nome ou um detalhe que só fecha
 junto com os outros dois: *Michael Jackson · Mike Tyson · Taffarel* levam a
@@ -263,7 +282,29 @@ junto com os outros dois: *Michael Jackson · Mike Tyson · Taffarel* levam a
 primeira é a mais enviesada e a terceira é a que chega mais perto — definição de
 dicionário estraga o jogo.
 
-O banco fica em [`server/dicas.js`](server/dicas.js), com **107 palavras**. As
+Outro tipo de trinca é a **palavra que cabe nos três**: *impressora · caneta ·
+pintor* levam a **Tinta**; *aeroporto · boate · Fórmula 1* levam a **Pista**;
+*cresce na cabeça · canta · Atlético Mineiro* levam a **Galo**.
+
+E tem a trinca de **três campos diferentes** — um filme, um personagem
+histórico, um livro —, no molde das cartas de jogo de palavra-chave: *Tio
+Patinhas · Aquiles · O Hobbit* levam a **Pés**; *O Iluminado · Paris Hilton ·
+Psicose* levam a **Hotel**; *Freddie Mercury · Bruno Mars · Viagem ao Centro da
+Terra* levam a **Planeta**.
+
+Duas cartas **nunca abrem com a mesma primeira dica**: na janela de 15 segundos
+da dica 1 é só ela que está na tela, e o palpite é um por pessoa. Repetir a
+referência mais adiante na carta continua valendo — *Ferrari* abre **Vermelho**
+e fecha **Cavalo**, e é disso que o modo vive.
+
+As mesmas referências viram **pergunta do modo normal na mão contrária**: a
+carta dá as pistas e pede a palavra; a pergunta descreve o detalhe e pede o
+nome. *"Quem perde a mão da espada em Game of Thrones e passa o resto da série
+tentando virar outro homem?"* → **Jaime Lannister**. *"Que herói grego só podia
+ser ferido num ponto do calcanhar?"* → **Aquiles**. São 34 perguntas assim,
+espalhadas por Cinema & TV, História, Música e Animais.
+
+O banco fica em [`server/dicas.js`](server/dicas.js), com **283 palavras**. As
 regras estão no topo do arquivo, e `testes/veni.test.js` cobra as duas
 principais: **a dica nunca pode conter a resposta**, nem em outra forma (foi
 assim que "formigueiro" saiu da dica de *Formiga*), e **nenhuma dica passa de
@@ -689,7 +730,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**2666 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**2700 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
