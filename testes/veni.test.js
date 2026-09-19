@@ -3,9 +3,11 @@
 /*
  * Modo Veni, Vidi, Vici: uma palavra e tres dicas.
  *
- * As dicas entram uma por terco da rodada e cada uma derruba o valor do
- * acerto: 10 na primeira, 6 na segunda, 3 na terceira, menos 1 para cada
- * pessoa que acertou antes.
+ * Cada dica abre uma janela de 15s. O palpite fica fechado no servidor e so
+ * aparece quando a janela acaba — todos de uma vez. Quem acertou leva o que a
+ * dica valia (10, 6 ou 3), igual para todos, porque ninguem viu o palpite do
+ * outro. Acertou alguem, a rodada acaba; nao acertou ninguem, entra a dica
+ * seguinte, valendo menos.
  */
 
 const { Sala } = require('../server/sala.js');
@@ -29,6 +31,21 @@ function novaSala(modo = 'veni') {
   sala.entrar('bia', 'Bia');
   return { sala, eventos };
 }
+
+/** Uma rodada de Veni parada no comeco da primeira janela. */
+function rodadaAberta() {
+  const { sala, eventos } = novaSala();
+  sala.iniciar();
+  sala.limparTemporizador();
+  sala.mostrarPergunta();
+  sala.limparTemporizador();          // a janela de 15s nao roda no teste
+  return { sala, eventos };
+}
+
+const solta = (sala, quem, texto) => {
+  sala.jogadores.get(quem).ultimaMensagem = 0;
+  return sala.palpitar(quem, texto);
+};
 
 /* ---------------- O banco ---------------- */
 {
@@ -65,11 +82,7 @@ function novaSala(modo = 'veni') {
 
 /* ---------------- A rodada ---------------- */
 {
-  const { sala, eventos } = novaSala();
-  sala.iniciar();
-  sala.limparTemporizador();
-  sala.mostrarPergunta();
-  sala.limparTemporizador();
+  const { sala, eventos } = rodadaAberta();
 
   const pergunta = eventos.find((e) => e.evento === 'rodada:pergunta').dados;
   conferir('a rodada manda so a primeira dica', pergunta.veni.indice, 0);
@@ -79,67 +92,116 @@ function novaSala(modo = 'veni') {
     pergunta.veni.dica, sala.perguntaAtual.dicas[0]);
   conferir('o enunciado nao entrega a palavra',
     normalizar(pergunta.pergunta).includes(normalizar(sala.perguntaAtual.resposta)), false);
-  conferir('a rodada dura 50% mais que a da sala', pergunta.duracaoMs, 30000);
+  conferir('o relogio da tela e a janela de 15s', pergunta.duracaoMs, 15000);
+  conferir('  e a dica diz o mesmo tempo', pergunta.veni.duracaoMs, 15000);
   sala.destruir();
 }
 
-/* ---------------- A pontuacao cai a cada dica ---------------- */
+/* ---------------- O palpite fica fechado ---------------- */
 {
-  for (const [dica, esperado] of [[0, 10], [1, 6], [2, 3]]) {
-    const { sala } = novaSala();
-    sala.iniciar();
-    sala.limparTemporizador();
-    sala.mostrarPergunta();
-    sala.limparTemporizador();
+  const { sala, eventos } = rodadaAberta();
+  const antes = eventos.length;
 
-    sala.dicaAtual = dica;
-    sala.jogadores.get('ana').ultimaMensagem = 0;
-    const r = sala.palpitar('ana', sala.perguntaAtual.resposta);
-    conferir(`acertar na dica ${dica + 1} vale ${esperado}`, r.pontos, esperado);
-    sala.destruir();
-  }
+  const r = solta(sala, 'ana', sala.perguntaAtual.resposta);
+  conferir('o palpite certo nao e julgado na hora', r.veredito, 'palpite');
+  conferir('  e volta so o que a pessoa escreveu', r.texto, sala.perguntaAtual.resposta);
+  conferir('  sem pontuar ninguem ainda', sala.jogadores.get('ana').pontos, 0);
 
-  const { sala } = novaSala();
-  sala.iniciar();
-  sala.limparTemporizador();
-  sala.mostrarPergunta();
-  sala.limparTemporizador();
+  const novos = eventos.slice(antes).map((e) => e.evento);
+  conferir('  e nada do palpite vai para o chat', novos.includes('chat:mensagem'), false);
+  conferir('  a mesa so fica sabendo que ele palpitou', novos, ['veni:palpitou']);
 
-  sala.jogadores.get('ana').ultimaMensagem = 0;
-  sala.palpitar('ana', sala.perguntaAtual.resposta);
-  sala.jogadores.get('bia').ultimaMensagem = 0;
-  const segunda = sala.palpitar('bia', sala.perguntaAtual.resposta);
-  conferir('o segundo a acertar leva 1 a menos', segunda.pontos, 9);
+  const aviso = eventos[eventos.length - 1].dados;
+  conferir('  o aviso conta quantos ja palpitaram', [aviso.quantos, aviso.total], [1, 2]);
 
-  sala.dicaAtual = 2;
-  conferir('  e na ultima dica o acerto nunca fica abaixo de 1',
-    Math.max(1, 3 - 5), 1);
+  const errado = solta(sala, 'bia', 'nao faco ideia');
+  conferir('o palpite errado tambem fica guardado', errado.veredito, 'palpite');
+
+  const trocado = solta(sala, 'bia', sala.perguntaAtual.resposta);
+  conferir('da para trocar de ideia ate o tempo fechar', trocado.trocou, true);
+  conferir('  e vale o ultimo que ficou escrito', sala.palpitesVeni.get('bia'),
+    sala.perguntaAtual.resposta);
   sala.destruir();
 }
 
-/* ---------------- As dicas entram sozinhas ---------------- */
-async function dicasNoTempo() {
-  const { sala, eventos } = novaSala();
-  sala.iniciar();
+/* ---------------- A revelacao paga todo mundo igual ---------------- */
+{
+  const { sala, eventos } = rodadaAberta();
+  solta(sala, 'ana', sala.perguntaAtual.resposta);
+  solta(sala, 'bia', sala.perguntaAtual.resposta);
+
+  sala.fecharFaseVeni();
   sala.limparTemporizador();
-  sala.mostrarPergunta();
-  sala.limparTemporizador();          // tira o relogio da rodada, nao as dicas
-  sala.agendarDicas(90);              // 30ms por dica, para o teste nao esperar
 
-  await new Promise((pronto) => setTimeout(pronto, 150));
-
-  const dicas = eventos.filter((e) => e.evento === 'veni:dica').map((e) => e.dados);
-  conferir('as outras duas dicas entram sozinhas', dicas.map((d) => d.indice), [1, 2]);
-  conferir('  e cada uma vale menos que a anterior', dicas.map((d) => d.vale), [6, 3]);
-  conferir('  a dica que chega e a do banco',
-    dicas.map((d) => d.dica), sala.perguntaAtual.dicas.slice(1));
-  conferir('a sala acompanha em qual dica esta', sala.dicaAtual, 2);
-
-  sala.limparTemporizador();
+  const revelacao = eventos.find((e) => e.evento === 'veni:revelacao').dados;
+  conferir('a revelacao abre os palpites de todos',
+    revelacao.palpites.map((p) => p.nickname), ['Ana', 'Bia']);
+  conferir('  e marca quem acertou', revelacao.palpites.map((p) => p.certo), [true, true]);
+  conferir('acertar na primeira dica vale 10', revelacao.vale, 10);
+  conferir('  e os dois levam o mesmo: ninguem viu o palpite do outro',
+    [sala.jogadores.get('ana').pontos, sala.jogadores.get('bia').pontos], [10, 10]);
+  conferir('acertou alguem, a rodada acaba', revelacao.fim, true);
   sala.destruir();
-
-  console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
-  process.exit(falhas ? 1 : 0);
 }
 
-dicasNoTempo();
+/* ---------------- Sem acerto, entra a dica seguinte ---------------- */
+{
+  const { sala, eventos } = rodadaAberta();
+  solta(sala, 'ana', 'chute qualquer');
+
+  sala.fecharFaseVeni();
+  sala.limparTemporizador();
+
+  const primeira = eventos.find((e) => e.evento === 'veni:revelacao').dados;
+  conferir('ninguem acertou: a rodada continua', primeira.fim, false);
+  conferir('  e o palpite errado aparece riscado', primeira.palpites[0].certo, false);
+  conferir('  sem pontuar ninguem', sala.jogadores.get('ana').pontos, 0);
+
+  sala.abrirFaseVeni(1);
+  sala.limparTemporizador();
+  const dica2 = eventos.filter((e) => e.evento === 'veni:dica').map((e) => e.dados);
+  conferir('a segunda dica entra sozinha', dica2.map((d) => d.indice), [1]);
+  conferir('  e vale menos que a primeira', dica2[0].vale, 6);
+  conferir('  a dica que chega e a do banco', dica2[0].dica, sala.perguntaAtual.dicas[1]);
+  conferir('  com janela propria de 15s', dica2[0].duracaoMs, 15000);
+  conferir('  e o palpite anterior nao conta mais', sala.palpitesVeni.size, 0);
+
+  solta(sala, 'bia', sala.perguntaAtual.resposta);
+  sala.fecharFaseVeni();
+  sala.limparTemporizador();
+  conferir('acertar na dica 2 vale 6', sala.jogadores.get('bia').pontos, 6);
+  sala.destruir();
+}
+
+/* ---------------- A terceira dica fecha a rodada de qualquer jeito ---------------- */
+{
+  const { sala, eventos } = rodadaAberta();
+
+  sala.abrirFaseVeni(2);
+  sala.limparTemporizador();
+  solta(sala, 'ana', sala.perguntaAtual.resposta);
+  sala.fecharFaseVeni();
+  sala.limparTemporizador();
+  conferir('acertar na dica 3 vale 3', sala.jogadores.get('ana').pontos, 3);
+
+  const revelacoes = eventos.filter((e) => e.evento === 'veni:revelacao').map((e) => e.dados);
+  conferir('  e a rodada acaba na ultima dica', revelacoes[0].fim, true);
+  sala.destruir();
+}
+
+{
+  const { sala, eventos } = rodadaAberta();
+  sala.abrirFaseVeni(2);
+  sala.limparTemporizador();
+  solta(sala, 'ana', 'nada a ver');
+  sala.fecharFaseVeni();
+  sala.limparTemporizador();
+
+  const ultima = eventos.filter((e) => e.evento === 'veni:revelacao').map((e) => e.dados)[0];
+  conferir('ninguem acertou na terceira: acabou assim mesmo', ultima.fim, true);
+  conferir('  e ninguem pontuou', [sala.jogadores.get('ana').pontos, sala.jogadores.get('bia').pontos], [0, 0]);
+  sala.destruir();
+}
+
+console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
+process.exit(falhas ? 1 : 0);

@@ -83,10 +83,15 @@ function criarEquipes() {
   }));
 }
 
+/* Mais ou Menos Pontos: a mesma lista rende tres rodadas, uma resposta por
+   pessoa em cada uma. O que ja foi dito continua fora nas rodadas seguintes. */
+const VOLTAS_RANKING = 3;
+
 /* Veni, Vidi, Vici: uma palavra e tres dicas, da mais vaga para a mais obvia. */
 const PONTOS_VENI = [10, 6, 3];  // quanto vale acertar em cada dica
 const DICAS_POR_RODADA = 3;
-const FOLGA_VENI = 1.5;          // a rodada dura 50% mais: sao tres dicas para ler
+const MS_FASE_VENI = 15000;      // cada dica abre uma janela de 15s para palpitar
+const MS_REVELA_VENI = 5000;     // quanto tempo os palpites ficam na tela
 
 const MAX_JOGADORES = 12;
 const MAX_TEXTO = 120;       // tamanho máximo de uma mensagem
@@ -142,14 +147,14 @@ const MODOS = [
     id: 'ranking',
     nome: 'Mais ou Menos Pontos',
     icone: '📈',
-    descricao: 'Uma lista em ordem — os 60 paises mais populosos, os 30 filmes de maior bilheteria. Cada um responde uma vez: a resposta vale a posicao dela na lista, entao o primeiro rende 1 ponto e o ultimo rende 60. Fora da lista, zero; e o que alguem ja disse nao conta de novo.',
+    descricao: 'Uma lista em ordem — os 100 paises mais populosos, as 100 maiores cidades do Brasil. A resposta vale a posicao dela na lista: o primeiro rende 1 ponto e o ultimo rende 100. Fora da lista, zero. Cada um responde uma vez por rodada, e a mesma lista rende tres rodadas — o que ja foi dito continua fora.',
     disponivel: true
   },
   {
     id: 'veni',
     nome: 'Veni, Vidi, Vici',
     icone: '🏛',
-    descricao: 'Uma palavra e tres dicas, que entram uma de cada vez. Acertar na primeira vale 10 pontos, na segunda 6 e na terceira 3 — menos 1 para cada pessoa que acertou antes de voce.',
+    descricao: 'Uma palavra e tres dicas. Cada dica da 15 segundos para escrever um palpite, que fica escondido ate o tempo fechar — ai todos aparecem juntos. Quem acertou leva 10 pontos na primeira dica, 6 na segunda e 3 na terceira, igual para todos.',
     disponivel: true
   },
   {
@@ -268,6 +273,7 @@ class Sala {
     this.itensUsados = new Set(); // Carrossel: itens ja ditos por QUALQUER um
     this.pontosRodada = new Map(); // socketId -> pontos feitos nesta rodada
     this.pulos = new Set();        // quem votou para pular a rodada atual
+    this.errouRanking = new Set(); // Mais ou Menos Pontos: quem ja gastou a vez errando
     this.ultimoTema = null;     // tema da rodada anterior, para não repetir
     this.jogadoresNaRodada = 0;
 
@@ -293,9 +299,15 @@ class Sala {
     this.equipes = criarEquipes();
     this.leilao = null;
 
-    // Veni, Vidi, Vici: qual das tres dicas está na tela agora.
+    // Mais ou Menos Pontos: em qual das tres voltas desta lista a sala está,
+    // e o que já foi dito nas voltas anteriores.
+    this.voltaRanking = 0;
+    this.itensJaDitos = new Set();
+
+    // Veni, Vidi, Vici: qual das tres dicas está na tela agora, e o palpite
+    // fechado de cada um nesta janela — ninguem ve ate o tempo acabar.
     this.dicaAtual = 0;
-    this.temporizadoresDica = [];
+    this.palpitesVeni = new Map();
 
     this.temporizador = null;
     this.temporizadorVez = null; // o relógio dos 7s corre à parte do da rodada
@@ -776,24 +788,88 @@ class Sala {
   }
 
   /**
-   * As dicas entram uma por terço da rodada, e cada uma derruba o valor do
-   * acerto. Quem sabe de cara leva 10; quem esperou a terceira leva 3.
+   * Abre a janela de uma dica: 15s para cada um escrever um palpite.
+   *
+   * O palpite fica guardado no servidor e ninguem ve — nem quem escreveu do
+   * lado. Se o chat julgasse na hora, o primeiro acerto entregaria a palavra
+   * para a mesa inteira, e as duas dicas seguintes nao valeriam nada.
    */
-  agendarDicas(duracaoMs) {
-    this.dicaAtual = 0;
-    const intervalo = Math.floor(duracaoMs / DICAS_POR_RODADA);
+  abrirFaseVeni(indice) {
+    if (this.estado !== 'pergunta' || !this.perguntaAtual) return;
 
-    for (let i = 1; i < DICAS_POR_RODADA; i++) {
-      this.temporizadoresDica.push(setTimeout(() => {
-        if (this.estado !== 'pergunta' || !this.perguntaAtual) return;
-        this.dicaAtual = i;
-        this.emitir('veni:dica', {
-          indice: i,
-          dica: this.perguntaAtual.dicas[i],
-          vale: PONTOS_VENI[i]
-        });
-      }, intervalo * i));
+    this.dicaAtual = indice;
+    this.palpitesVeni = new Map();
+    this.inicioPergunta = Date.now();
+
+    if (indice > 0) {
+      this.emitir('veni:dica', {
+        indice,
+        dica: this.perguntaAtual.dicas[indice],
+        vale: PONTOS_VENI[indice],
+        duracaoMs: MS_FASE_VENI
+      });
     }
+
+    this.agendar(() => this.fecharFaseVeni(), MS_FASE_VENI);
+  }
+
+  /**
+   * Fecha a janela: todos os palpites viram publicos de uma vez.
+   *
+   * Quem acertou leva o que a dica valia — igual para todos, porque ninguem
+   * viu o palpite do outro. Se alguem acertou, a rodada acaba (a palavra ja
+   * esta na tela); se ninguem acertou, entra a proxima dica, valendo menos.
+   */
+  fecharFaseVeni() {
+    if (this.estado !== 'pergunta' || !this.perguntaAtual) return;
+
+    const fase = this.dicaAtual;
+    const vale = PONTOS_VENI[fase];
+    const agora = Date.now();
+    const palpites = [];
+
+    for (const [id, texto] of this.palpitesVeni) {
+      const jogador = this.jogadores.get(id);
+      if (!jogador) continue;
+
+      const certo = this.perguntaAtual.itens.some(
+        (item) => avaliar(texto, item.oficial, item.variantes).veredito === 'certo'
+      );
+      palpites.push({
+        jogadorId: id,
+        nickname: jogador.nickname,
+        avatar: jogador.avatar,
+        texto,
+        certo
+      });
+
+      if (!certo || this.acertos.has(id)) continue;
+      jogador.pontos += vale;
+      jogador.acertos += 1;
+      this.pontosRodada.set(id, vale);
+      this.acertos.set(id, {
+        ms: agora - this.inicioPergunta, pontos: vale, posicao: this.acertos.size + 1, bonus: 0
+      });
+      if (this.primeiroAcertoEm === null) this.primeiroAcertoEm = agora;
+    }
+
+    this.palpitesVeni = new Map();
+
+    const acertou = palpites.some((p) => p.certo);
+    const fim = acertou || fase >= DICAS_POR_RODADA - 1;
+
+    this.emitir('veni:revelacao', {
+      indice: fase,
+      vale,
+      palpites,
+      acertou,
+      fim,
+      duracaoMs: MS_REVELA_VENI,
+      placar: this.placar()
+    });
+
+    if (fim) this.agendar(() => this.encerrarRodada(), MS_REVELA_VENI);
+    else this.agendar(() => this.abrirFaseVeni(fase + 1), MS_REVELA_VENI);
   }
 
   /** Uma pergunta comum: uma resposta só. */
@@ -957,7 +1033,17 @@ class Sala {
       this.perguntaAtual = this.perguntaPresente();
       this.prepararLeilao();
     } else if (this.ehRanking()) {
-      this.perguntaAtual = this.perguntaRanking();
+      // A mesma lista fica por tres rodadas: cada pessoa responde uma vez em
+      // cada uma, e o que já saiu continua fora.
+      const mesmaLista = this.perguntaAtual
+        && this.perguntaAtual.ranking
+        && this.voltaRanking < VOLTAS_RANKING;
+
+      this.voltaRanking = mesmaLista ? this.voltaRanking + 1 : 1;
+      this.itensJaDitos = mesmaLista ? new Set(this.itensUsados) : new Set();
+      this.perguntaAtual = mesmaLista
+        ? { ...this.perguntaAtual, volta: this.voltaRanking }
+        : this.perguntaRanking();
     } else if (this.ehVeni()) {
       this.perguntaAtual = this.perguntaVeni();
     } else if (this.ehCarrossel()) {
@@ -974,8 +1060,13 @@ class Sala {
     this.acertos = new Map();
     this.progresso = new Map();
     this.itensUsados = new Set();
+    // Mais ou Menos Pontos: a lista continua, e com ela o que já foi dito.
+    if (this.ehRanking()) this.itensUsados = new Set(this.itensJaDitos);
     this.pontosRodada = new Map();
     this.pulos = new Set();
+    this.errouRanking = new Set();
+    this.dicaAtual = 0;
+    this.palpitesVeni = new Map();
     this.primeiroAcertoEm = null;
     this.estado = 'categoria';
 
@@ -1000,9 +1091,9 @@ class Sala {
       const pedidas = this.perguntaAtual.necessarias || 1;
       return Math.min(MS_BASE_LEILAO + pedidas * MS_POR_ITEM_PRESENTE, MS_TETO_PRESENTE);
     }
-    // Veni, Vidi, Vici: metade a mais de tempo, porque sao tres dicas para ler
-    // antes de arriscar.
-    if (this.ehVeni()) return Math.round(base * FOLGA_VENI);
+    // Veni, Vidi, Vici: o relogio que aparece e o da janela de palpite, nao o
+    // da rodada inteira — sao tres janelas iguais, uma por dica.
+    if (this.ehVeni()) return MS_FASE_VENI;
 
     return Math.min(base + extras * MS_POR_RESPOSTA_EXTRA, MS_TETO_RODADA);
   }
@@ -1036,11 +1127,26 @@ class Sala {
       duracaoMs: this.ehCarrossel() ? null : duracaoMs,
       // Mais ou Menos Pontos: a mesa precisa saber ate onde vai a lista.
       ranking: this.ehRanking()
-        ? { total: this.perguntaAtual.itens.length, fonte: this.perguntaAtual.fonte }
+        ? {
+            total: this.perguntaAtual.itens.length,
+            fonte: this.perguntaAtual.fonte,
+            volta: this.voltaRanking,
+            voltas: VOLTAS_RANKING,
+            // O que ja saiu nas voltas anteriores: o chat rolou, e sem isso a
+            // mesa repetiria o que nao vale mais.
+            jaDitos: [...this.itensUsados].map((i) => this.perguntaAtual.itens[i].oficial)
+          }
         : null,
       // Veni, Vidi, Vici: so a primeira dica; as outras chegam no meio da rodada.
       veni: this.ehVeni()
-        ? { dica: this.perguntaAtual.dicas[0], indice: 0, total: DICAS_POR_RODADA, vale: PONTOS_VENI[0] }
+        ? {
+            dica: this.perguntaAtual.dicas[0],
+            indice: 0,
+            total: DICAS_POR_RODADA,
+            vale: PONTOS_VENI[0],
+            valores: PONTOS_VENI,
+            duracaoMs: MS_FASE_VENI
+          }
         : null,
       carrossel: this.ehCarrossel()
         ? { voltas: this.voltasAlvo, msPorVez: MS_POR_VEZ, ordem: this.ordem, visivel: this.mostraDitos() }
@@ -1058,11 +1164,11 @@ class Sala {
     });
 
     // No carrossel não há relógio único de rodada: o tempo é de cada vez.
+    // No Veni quem manda no relógio é a janela de palpite: ela é que decide
+    // se entra outra dica ou se a rodada acabou.
     if (this.ehCarrossel()) this.iniciarVez();
+    else if (this.ehVeni()) this.abrirFaseVeni(0);
     else this.agendar(() => this.encerrarRodada(), duracaoMs);
-
-    // As dicas entram sozinhas, uma por terço do relógio.
-    if (this.ehVeni()) this.agendarDicas(duracaoMs);
   }
 
   /* ---------------------- Leilão (Presente Grego) ---------------------- */
@@ -1504,6 +1610,19 @@ class Sala {
       }
     }
 
+    // Veni, Vidi, Vici: o palpite e secreto ate a janela fechar. Da para
+    // trocar de ideia quantas vezes quiser; vale o ultimo que ficou escrito.
+    if (this.ehVeni() && this.estado === 'pergunta') {
+      const trocou = this.palpitesVeni.has(socketId);
+      this.palpitesVeni.set(socketId, limpo);
+      this.emitir('veni:palpitou', {
+        jogadorId: socketId,
+        quantos: this.palpitesVeni.size,
+        total: this.jogadores.size
+      });
+      return { veredito: 'palpite', texto: limpo, trocou };
+    }
+
     // Mede o palpite contra cada item que a pergunta aceita. No Modo Tempo há
     // um item só; na Escalada há vários e cada um conta uma vez.
     // No Carrossel a lista do que já foi dito é de todos: o que um respondeu
@@ -1580,18 +1699,27 @@ class Sala {
     // Mais ou Menos Pontos: a resposta vale a posicao dela na lista, e cada
     // item conta uma vez so na mesa — copiar do chat nao rende nada.
     if (this.ehRanking() && this.estado === 'pergunta') {
-      if (this.acertos.has(socketId)) return { veredito: 'bloqueado' };
+      if (this.acertos.has(socketId) || this.errouRanking.has(socketId)) {
+        return { veredito: 'bloqueado' };
+      }
       if (novoItem >= 0 && this.itensUsados.has(novoItem)) {
         repetido = novoItem;
         novoItem = -1;
       }
       if (novoItem >= 0) return this.acertoNoRanking(socketId, jogador, novoItem, agora);
+
+      // Repetir nao gasta a vez: duas pessoas podem digitar o mesmo nome no
+      // mesmo segundo, e quem chegou depois nao tem culpa disso.
       if (repetido >= 0) {
         return { veredito: 'repetido', item: this.perguntaAtual.itens[repetido].oficial };
       }
       if (perto) return { veredito: 'quase', dica: mascaraDeAcerto(limpo, quaseAlvo) };
+
+      // Fora da lista: e uma vez so por rodada, entao a vez dele acabou aqui.
+      this.errouRanking.add(socketId);
       this.publicarChat(jogador, limpo);
-      return { veredito: 'chat' };
+      if (this.todosAcertaram()) this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
+      return { veredito: 'errado', gastou: true };
     }
 
     // Longe de tudo: é conversa, vai para todo mundo.
@@ -1652,12 +1780,6 @@ class Sala {
       jogador.pontos += bonus;
       this.pontosRodada.set(socketId, (this.pontosRodada.get(socketId) || 0) + bonus);
       pontos = this.pontosRodada.get(socketId);
-    } else if (this.ehVeni()) {
-      // Veni, Vidi, Vici: vale a dica que estava na tela, menos quem chegou
-      // na frente. Nunca menos de 1.
-      pontos = Math.max(PONTOS_MIN, PONTOS_VENI[this.dicaAtual] - (posicao - 1));
-      jogador.pontos += pontos;
-      this.pontosRodada.set(socketId, pontos);
     } else {
       // Modo Tempo: faixa de 5s menos quem acertou antes.
       pontos = calcularPontos(ms, posicao);
@@ -1785,7 +1907,13 @@ class Sala {
   }
 
   todosAcertaram() {
-    return this.jogadores.size > 0 && this.acertos.size >= this.jogadores.size;
+    if (this.jogadores.size === 0) return false;
+    // Mais ou Menos Pontos: quem chutou fora da lista tambem ja jogou a vez
+    // dele, entao nao ha mais o que esperar dele nesta rodada.
+    const gastaram = this.ehRanking()
+      ? this.acertos.size + this.errouRanking.size
+      : this.acertos.size;
+    return gastaram >= this.jogadores.size;
   }
 
   /**
@@ -2149,11 +2277,19 @@ class Sala {
         ? `${nome} entregou ${quantas} — a ${dono ? dono.nome : 'equipe'} leva ${l.premio} pts`
         : `${nome} disse ${l.ditas} de ${l.aposta} — a ${dono ? dono.nome : 'equipe'} leva ${l.premio} pts por ter duvidado`;
     } else if (this.ehRanking()) {
-      // A mesa ve o topo da lista e descobre o que valia pouco e o que valia muito.
-      listaCompleta = pergunta.itens.slice(0, 12).map((i, k) => `${k + 1}. ${i.oficial}`);
-      const ultimo = pergunta.itens[pergunta.itens.length - 1].oficial;
-      textoResposta = `a lista tinha ${pergunta.itens.length} nomes — do 1 ponto ate ${
-        pergunta.itens.length} (${ultimo})`;
+      // A lista ainda tem voltas pela frente: mostrar o topo agora entregaria
+      // as respostas das proximas. Entao so sai o que a mesa mesma ja disse,
+      // com a posicao de cada um, e o topo fica para a ultima volta.
+      const posicoes = [...this.itensUsados].sort((a, b) => a - b);
+      if (this.voltaRanking < VOLTAS_RANKING) {
+        listaCompleta = posicoes.slice(0, 12).map((i) => `${i + 1}. ${pergunta.itens[i].oficial}`);
+        textoResposta = `volta ${this.voltaRanking} de ${VOLTAS_RANKING} — a mesma lista volta na proxima, sem repetir o que ja saiu`;
+      } else {
+        listaCompleta = pergunta.itens.slice(0, 12).map((i, k) => `${k + 1}. ${i.oficial}`);
+        const ultimo = pergunta.itens[pergunta.itens.length - 1].oficial;
+        textoResposta = `a lista tinha ${pergunta.itens.length} nomes — do 1 ponto ate ${
+          pergunta.itens.length} (${ultimo})`;
+      }
     } else if (this.ehCarrossel()) {
       const sobraram = [...this.vivos].map((id) => this.jogadores.get(id)).filter(Boolean);
       listaCompleta = embaralhar(
@@ -2229,6 +2365,9 @@ class Sala {
     this.itensUsados = new Set();
     this.pontosRodada = new Map();
     this.pulos = new Set();
+    this.errouRanking = new Set();
+    this.voltaRanking = 0;
+    this.itensJaDitos = new Set();
     // As equipes continuam como estavam: quem já escolheu não escolhe de novo.
     this.leilao = null;
     for (const jogador of this.jogadores.values()) {
@@ -2289,8 +2428,6 @@ class Sala {
       clearTimeout(this.temporizadorVez);
       this.temporizadorVez = null;
     }
-    for (const t of this.temporizadoresDica) clearTimeout(t);
-    this.temporizadoresDica = [];
   }
 
   destruir() {

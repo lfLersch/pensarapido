@@ -3,9 +3,10 @@
 /*
  * Modo Mais ou Menos Pontos: listas em ordem, e a posicao e a pontuacao.
  *
- * O primeiro da lista vale 1 ponto e o ultimo vale o tamanho dela. Cada pessoa
- * responde uma vez por rodada, e o que ja foi dito nao conta de novo — senao
- * bastava copiar o chat.
+ * O primeiro da lista vale 1 ponto e o ultimo vale o tamanho dela. A mesma
+ * lista rende tres rodadas: em cada uma, cada pessoa responde uma vez so — e
+ * quem chuta fora da lista gastou a vez dele. O que ja foi dito nao conta de
+ * novo em nenhuma das tres, senao bastava copiar o chat.
  */
 
 const { Sala } = require('../server/sala.js');
@@ -35,12 +36,24 @@ function novaSala(quantos = 2) {
   return { sala, eventos };
 }
 
+/** Fecha a rodada e abre a seguinte, sem esperar os relogios. */
+function virarRodada(sala) {
+  sala.encerrarRodada();
+  sala.limparTemporizador();
+  sala.proximaRodada();
+  sala.limparTemporizador();
+  sala.mostrarPergunta();
+  sala.limparTemporizador();
+}
+
 const dizer = (sala, quem, texto) => {
   sala.jogadores.get(quem).ultimaMensagem = 0;
   const r = sala.palpitar(quem, texto);
   sala.limparTemporizador();
   return r;
 };
+
+const ultima = (eventos, nome) => eventos.filter((e) => e.evento === nome).pop().dados;
 
 /* ---------------- O banco ---------------- */
 {
@@ -88,6 +101,8 @@ const dizer = (sala, quem, texto) => {
 
   conferir('a rodada avisa o tamanho da lista', pergunta.ranking.total, itens.length);
   conferir('  e de onde a lista veio', typeof pergunta.ranking.fonte, 'string');
+  conferir('  e em qual das tres voltas a mesa esta',
+    [pergunta.ranking.volta, pergunta.ranking.voltas], [1, 3]);
   conferir('a rodada pede uma resposta so', pergunta.necessarias, 1);
 
   const topo = dizer(sala, 'ana', itens[0].oficial);
@@ -111,21 +126,57 @@ const dizer = (sala, quem, texto) => {
   conferir('copiar a resposta de outro nao conta',
     dizer(sala, 'bia', itens[2].oficial).veredito, 'repetido');
 
-  conferir('  mas outro item ainda vale',
+  conferir('  mas repetir nao gasta a vez',
     dizer(sala, 'bia', itens[4].oficial).pontos, 5);
 
   const fora = dizer(sala, 'caio', 'xilofone quadrado de nuvem');
-  conferir('fora da lista nao pontua e vira conversa', fora.veredito, 'chat');
-  conferir('  e quem ficou de fora segue com zero', sala.jogadores.get('caio').pontos, 0);
-
-  // A terceira pessoa ainda pode pontuar; quando todos responderem a rodada fecha.
-  dizer(sala, 'caio', itens[9].oficial);
-  conferir('com todo mundo respondido, a rodada fecha sozinha',
-    sala.acertos.size, sala.jogadores.size);
+  conferir('chutar fora da lista gasta a vez', [fora.veredito, fora.gastou], ['errado', true]);
+  conferir('  e depois disso nao da para tentar de novo',
+    dizer(sala, 'caio', itens[9].oficial).veredito, 'bloqueado');
+  conferir('  quem errou segue com zero', sala.jogadores.get('caio').pontos, 0);
+  conferir('com todo mundo servido, a rodada fecha sozinha', sala.todosAcertaram(), true);
   sala.destruir();
 }
 
-/* ---------------- O resultado mostra o topo da lista ---------------- */
+/* ---------------- A mesma lista rende tres voltas ---------------- */
+{
+  const { sala, eventos } = novaSala(2);
+  const lista = sala.perguntaAtual;
+  const itens = lista.itens;
+
+  dizer(sala, 'ana', itens[0].oficial);
+  dizer(sala, 'bia', itens[1].oficial);
+  virarRodada(sala);
+
+  conferir('a segunda rodada e a mesma lista', sala.perguntaAtual.id, lista.id);
+  let pergunta = ultima(eventos, 'rodada:pergunta');
+  conferir('  e a mesa sabe que e a volta 2', pergunta.ranking.volta, 2);
+  conferir('  com o que ja saiu na tela', pergunta.ranking.jaDitos,
+    [itens[0].oficial, itens[1].oficial]);
+
+  conferir('o que saiu na volta anterior nao conta de novo',
+    dizer(sala, 'ana', itens[0].oficial).veredito, 'repetido');
+  conferir('  mas item novo vale a posicao dele',
+    dizer(sala, 'ana', itens[5].oficial).pontos, 6);
+  dizer(sala, 'bia', itens[6].oficial);
+
+  virarRodada(sala);
+  pergunta = ultima(eventos, 'rodada:pergunta');
+  conferir('a terceira rodada ainda e a mesma lista', sala.perguntaAtual.id, lista.id);
+  conferir('  e ja sao quatro nomes fora', pergunta.ranking.jaDitos.length, 4);
+  dizer(sala, 'ana', itens[7].oficial);
+  dizer(sala, 'bia', itens[8].oficial);
+
+  virarRodada(sala);
+  conferir('depois de tres voltas entra outra lista',
+    sala.perguntaAtual.id === lista.id, false);
+  pergunta = ultima(eventos, 'rodada:pergunta');
+  conferir('  e a contagem recomeca do zero',
+    [pergunta.ranking.volta, pergunta.ranking.jaDitos.length], [1, 0]);
+  sala.destruir();
+}
+
+/* ---------------- O topo da lista so abre na ultima volta ---------------- */
 {
   const { sala, eventos } = novaSala();
   const itens = sala.perguntaAtual.itens;
@@ -133,12 +184,27 @@ const dizer = (sala, quem, texto) => {
   sala.encerrarRodada();
   sala.limparTemporizador();
 
-  const resultado = eventos.filter((e) => e.evento === 'rodada:resultado').pop().dados;
-  conferir('o resultado abre o topo da lista', resultado.listaCompleta.slice(0, 3),
-    itens.slice(0, 3).map((i, k) => `${k + 1}. ${i.oficial}`));
-  conferir('  e diz ate onde ia a pontuacao',
-    resultado.resposta.includes(String(itens.length)), true);
+  let resultado = ultima(eventos, 'rodada:resultado');
+  conferir('na volta 1 o resultado mostra so o que a mesa disse',
+    resultado.listaCompleta, [`2. ${itens[1].oficial}`]);
+  conferir('  e avisa que a lista continua',
+    resultado.resposta.includes('volta 1 de 3'), true);
+
   sala.destruir();
+
+  const fim = novaSala();
+  const finais = fim.sala.perguntaAtual.itens;
+  fim.sala.voltaRanking = 3;                 // a terceira volta desta lista
+  dizer(fim.sala, 'ana', finais[1].oficial);
+  fim.sala.encerrarRodada();
+  fim.sala.limparTemporizador();
+
+  resultado = ultima(fim.eventos, 'rodada:resultado');
+  conferir('na ultima volta o resultado abre o topo da lista',
+    resultado.listaCompleta.slice(0, 3), finais.slice(0, 3).map((i, k) => `${k + 1}. ${i.oficial}`));
+  conferir('  e diz ate onde ia a pontuacao',
+    resultado.resposta.includes(String(finais.length)), true);
+  fim.sala.destruir();
 }
 
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
