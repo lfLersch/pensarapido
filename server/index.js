@@ -320,6 +320,22 @@ io.on('connection', (socket) => {
     publicarEstado(sala);
   });
 
+  // O + e o − do saguao: quantas equipes e de que tamanho.
+  socket.on('sala:formato', ({ campo, delta } = {}, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Voce nao esta em uma sala.' });
+    if (campo !== 'equipes' && campo !== 'tamanho') {
+      return responder(callback, { erro: 'So da para mudar quantas equipes ou o tamanho delas.' });
+    }
+    if (delta !== 1 && delta !== -1) return responder(callback, { erro: 'Mude de um em um.' });
+
+    const r = sala.mudarFormato(socket.id, campo, delta);
+    if (r.erro) return responder(callback, { erro: r.erro });
+
+    responder(callback, r);
+    publicarEstado(sala);
+  });
+
   socket.on('sala:trocarAvatar', ({ avatar } = {}, callback) => {
     const sala = salaDoSocket();
     if (!sala) return responder(callback, { erro: 'Voce nao esta em uma sala.' });

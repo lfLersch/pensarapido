@@ -975,14 +975,22 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   background: rgba(255, 255, 255, 0.03);
   font-size: 14px;
 }
-.palpite__quem {
-  flex: none;
-  color: var(--texto-fraco);
+/* A resposta e a linha principal; quem escreveu vem de subtitulo embaixo. */
+.palpite__corpo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 .palpite__texto {
-  flex: 1;
-  font-weight: 600;
+  font-size: 15.5px;
+  font-weight: 700;
   overflow-wrap: anywhere;
+}
+.palpite__quem {
+  font-size: 12px;
+  color: var(--texto-fraco);
 }
 .palpite__marca {
   flex: none;
@@ -1771,14 +1779,94 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: var(--texto-suave);
 }
 
-/* As duas equipes na sala de espera, antes de a partida comecar. */
+/* As equipes na sala de espera, antes de a partida comecar. */
 .equipes-sala {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
+
+/* A fila das equipes e, colado nela, o + que abre mais uma. */
+.equipes-sala__linha {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.equipes-sala__grade {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+/* Os dois controles do formato: um a direita (quantas equipes) e um embaixo
+   (quantas pessoas em cada). Mesma cara, eixos diferentes. */
+.formato {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed var(--borda);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.formato--direita {
+  flex-direction: column;
+  padding: 10px 8px;
+  min-width: 62px;
+}
+
+.formato--baixo { padding: 8px 12px; }
+
+.formato__botao {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--texto-suave);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.formato__botao:hover:not(:disabled) {
+  color: var(--texto);
+  background: rgba(255, 255, 255, 0.13);
+  border-color: var(--destaque);
+}
+.formato__botao:disabled { opacity: .35; cursor: not-allowed; }
+
+.formato__conta {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--texto-fraco);
+}
+/* Na coluna estreita da direita a conta quebra em duas linhas sozinha. */
+.formato--direita .formato__conta { line-height: 1.25; }
+
+/* Quem nao coube em equipe nenhuma fica separado, em cima do aviso. */
+.sem-equipe {
+  padding: 8px 10px;
+  border: 1px dashed rgba(244, 63, 94, 0.5);
+  border-radius: 12px;
+  background: rgba(244, 63, 94, 0.07);
+}
+
 @media (max-width: 560px) {
-  .equipes-sala { grid-template-columns: 1fr; }
+  /* Tela estreita nao tem coluna sobrando: o + das equipes desce e vira
+     uma barra, igual ao do tamanho. */
+  .equipes-sala__linha { flex-direction: column; }
+  .formato--direita {
+    flex-direction: row;
+    padding: 8px 12px;
+    min-width: 0;
+  }
 }
 .equipe-sala {
   display: flex;

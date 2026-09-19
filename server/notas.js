@@ -17,6 +17,20 @@
 
 const NOTAS = [
   {
+    versao: '1.11',
+    data: '2026-09-19',
+    titulo: 'Equipes do tamanho que voce quiser',
+    itens: [
+      'Nos modos em equipe da para montar a sala como quiser: um + a direita abre outra equipe e um + embaixo faz caber mais gente em cada uma. Duas equipes de tres, tres de dois, tres de tres, quatro de tres.',
+      'Sao ate seis equipes e ate seis pessoas em cada. So o lider mexe nos botoes, e so antes de a partida comecar.',
+      'Enquanto ninguem mexe, a sala se arruma sozinha como sempre fez: o Presente Grego engorda as duas equipes e o Dando dicas abre duplas novas. O Dando dicas com sala impar agora tem saida — e so aumentar o tamanho e virar trio.',
+      'Quem chega e nao cabe em equipe nenhuma aparece separado, e o saguao diz o que falta para a partida poder comecar.',
+      'O modo Veni, Vidi, Vici agora se chama "1 eh bom 2 ok 3 eh demais", que e o que a pontuacao dele faz.',
+      'Nesse modo as respostas travadas aparecem logo abaixo das dicas, com o nome de quem escreveu embaixo de cada uma.',
+      'E elas abrem assim que a mesa inteira responde, sem esperar os 15 segundos acabarem. Em compensacao, so da para trocar de ideia enquanto alguem ainda nao respondeu.'
+    ]
+  },
+  {
     versao: '1.10',
     data: '2026-09-19',
     titulo: 'Dando dicas: o leilao ao contrario',

@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * Banco do modo Veni, Vidi, Vici: uma palavra e tres dicas.
+ * Banco do modo 1 eh bom 2 ok 3 eh demais: uma palavra e tres dicas.
  *
  * As dicas sao **soltas, nao frases**: cada uma e um nome, um lugar ou um
  * detalhe que so faz sentido junto com os outros dois. "Michael Jackson",

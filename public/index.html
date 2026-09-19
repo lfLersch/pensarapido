@@ -157,7 +157,29 @@
           <span class="contador" id="contador-jogadores">0</span>
         </div>
         <ul class="lista-jogadores" id="lista-jogadores"></ul>
-        <div class="equipes-sala" id="equipes-sala" hidden></div>
+
+        <!-- Modos em equipe: os times, com o + da direita para abrir outra
+             equipe e o + de baixo para caber mais gente em cada uma. -->
+        <div class="equipes-sala" id="equipes-sala" hidden>
+          <div class="equipes-sala__linha">
+            <div class="equipes-sala__grade" id="equipes-grade"></div>
+            <div class="formato formato--direita" id="formato-equipes">
+              <button class="formato__botao" type="button" id="btn-mais-equipe"
+                      title="Mais uma equipe">+</button>
+              <span class="formato__conta" id="conta-equipes">2</span>
+              <button class="formato__botao" type="button" id="btn-menos-equipe"
+                      title="Fechar a ultima equipe">&minus;</button>
+            </div>
+          </div>
+          <div class="formato formato--baixo" id="formato-tamanho">
+            <button class="formato__botao" type="button" id="btn-menos-tamanho"
+                    title="Equipes menores">&minus;</button>
+            <span class="formato__conta" id="conta-tamanho">2 por equipe</span>
+            <button class="formato__botao" type="button" id="btn-mais-tamanho"
+                    title="Equipes maiores">+</button>
+          </div>
+          <ul class="lista-jogadores sem-equipe" id="lista-sem-equipe" hidden></ul>
+        </div>
       </div>
 
       <p class="aviso" id="aviso-sala" role="alert"></p>
@@ -224,7 +246,7 @@
 
           <ol class="dicas" id="dicas" hidden></ol>
 
-          <!-- Veni, Vidi, Vici: os palpites de todos, abertos de uma vez. -->
+          <!-- 1 eh bom 2 ok 3 eh demais: os palpites de todos, abertos de uma vez. -->
           <ul class="palpites" id="palpites" hidden></ul>
 
           <p class="regra-rodada" id="ranking-aviso" hidden></p>

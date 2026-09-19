@@ -59,7 +59,6 @@ const PONTOS_POR_APOSTA = 2;     // cada item apostado vale isto para a equipe
 const MS_BASE_LEILAO = 2000;       // relogio da entrega: 2s
 const MS_POR_ITEM_PRESENTE = 4000; //  + 4s por resposta prometida
 const MS_TETO_PRESENTE = 120000;
-const MIN_JOGADORES_EQUIPE = 4;   // duas equipes
 
 // Uma cara para cada equipe: com o teto de 12 jogadores dao 6 equipes.
 const EQUIPES_VISUAL = [
@@ -72,19 +71,21 @@ const EQUIPES_VISUAL = [
 ];
 
 /**
- * As equipes da sala. Existem desde o comeco: quem entra ja cai numa.
+ * O formato dos times: QUANTAS equipes e de que TAMANHO.
  *
- * O Presente Grego joga com duas equipes que crescem ate metade da sala mais
- * uma. O Dando dicas joga com DUPLAS, entao sao seis times de dois — o teto
- * de jogadores da sala — e a sala de espera mostra so os que ja tem gente.
+ * A sala nasce no menor formato que da jogo — duas equipes de dois — e
+ * cresce dali, sozinha enquanto a galera chega e na mao quando o lider mexe
+ * nos botoes do saguao. Duas equipes de tres, tres de dois, tres de tres,
+ * quatro de tres: o que couber em MAX_EQUIPES por MAX_TAMANHO_EQUIPE.
+ *
+ * Os limites: seis cores, entao seis equipes; e como uma equipe sozinha nao
+ * disputa nada, o tamanho para onde duas equipes ja usam a sala inteira.
  */
-function criarEquipes(modo) {
-  const duplas = modo === 'dando-dicas';
-  const quantas = duplas ? EQUIPES_VISUAL.length : 2;
-
+/** As equipes da sala. Existem desde o comeco: quem entra ja cai numa. */
+function criarEquipes(quantas) {
   return Array.from({ length: quantas }, (_, i) => ({
-    id: duplas ? `d${i + 1}` : `e${i + 1}`,
-    nome: duplas ? `Dupla ${i + 1}` : `Equipe ${i + 1}`,
+    id: `e${i + 1}`,
+    nome: `Equipe ${i + 1}`,
     ...EQUIPES_VISUAL[i],
     // De quem comeca leiloando; dai em diante o papel gira a cada rodada.
     giro: 0,
@@ -102,8 +103,6 @@ const MS_BASE_DICAS = 15000;       // relogio da entrega: 15s
 const MS_POR_DICA = 9000;          //  + 9s por dica prometida
 const MS_TETO_DICAS = 105000;
 const PONTOS_POR_RODADA_DICAS = 10; // o que a rodada paga, valha 1 dica ou 10
-const MIN_JOGADORES_DUPLA = 4;      // duas duplas
-const TAMANHO_DA_DUPLA = 2;
 // Dica que carrega a resposta esta fora. Tres letras ja bastam para entregar
 // (`sol` dentro de `solar`), e recusar uma dica boa custa menos do que deixar
 // a palavra escapar.
@@ -113,13 +112,21 @@ const MIN_LETRAS_ENTREGA = 3;
    pessoa em cada uma. O que ja foi dito continua fora nas rodadas seguintes. */
 const VOLTAS_RANKING = 3;
 
-/* Veni, Vidi, Vici: uma palavra e tres dicas, da mais vaga para a mais obvia. */
+/* 1 eh bom 2 ok 3 eh demais: uma palavra e tres dicas, da mais vaga para a mais obvia. */
 const PONTOS_VENI = [10, 6, 3];  // quanto vale acertar em cada dica
 const DICAS_POR_RODADA = 3;
 const MS_FASE_VENI = 15000;      // cada dica abre uma janela de 15s para palpitar
 const MS_REVELA_VENI = 5000;     // quanto tempo os palpites ficam na tela
+// Todo mundo travou antes do tempo: um respiro curto para a mesa ler "todo
+// mundo ja palpitou" antes de as respostas abrirem de uma vez.
+const MS_TODOS_TRAVARAM = 700;
 
 const MAX_JOGADORES = 12;
+
+const MIN_EQUIPES = 2;
+const MAX_EQUIPES = EQUIPES_VISUAL.length;
+const MIN_TAMANHO_EQUIPE = 2;   // uma pessoa leiloa, a outra responde
+const MAX_TAMANHO_EQUIPE = Math.floor(MAX_JOGADORES / MIN_EQUIPES);
 const MAX_TEXTO = 120;       // tamanho máximo de uma mensagem
 const INTERVALO_MENSAGENS = 350; // anti-spam, em ms
 
@@ -178,8 +185,8 @@ const MODOS = [
   },
   {
     id: 'veni',
-    nome: 'Veni, Vidi, Vici',
-    icone: '🏛',
+    nome: '1 eh bom 2 ok 3 eh demais',
+    icone: '🥇',
     descricao: 'Uma palavra e tres dicas. Cada dica da 15 segundos para escrever um palpite, que fica escondido ate o tempo fechar — ai todos aparecem juntos. Quem acertou leva 10 pontos na primeira dica, 6 na segunda e 3 na terceira, igual para todos.',
     disponivel: true
   },
@@ -344,8 +351,15 @@ class Sala {
     this.inicioVez = 0;
 
     // Presente Grego e Dando dicas: as equipes são montadas na sala e duram a
-    // partida inteira; o leilão dura uma rodada.
-    this.equipes = criarEquipes(config.modo);
+    // partida inteira; o leilão dura uma rodada. O formato (quantas e de que
+    // tamanho) começa no mínimo e cresce com a sala.
+    this.equipes = criarEquipes(MIN_EQUIPES);
+    this.tamanhoEquipe = MIN_TAMANHO_EQUIPE;
+    // O líder mexeu nos botões: a sala para de se arrumar sozinha.
+    this.formatoAMao = false;
+    // "Dupla 1" ou "Equipe 1" depende do modo e do tamanho, então o nome sai
+    // daqui e não do `criarEquipes`.
+    this.renomearEquipes();
     this.leilao = null;
 
     // Mais ou Menos Pontos: em qual das tres voltas desta lista a sala está,
@@ -353,7 +367,7 @@ class Sala {
     this.voltaRanking = 0;
     this.itensJaDitos = new Set();
 
-    // Veni, Vidi, Vici: qual das tres dicas está na tela agora, e o palpite
+    // 1 eh bom 2 ok 3 eh demais: qual das tres dicas está na tela agora, e o palpite
     // fechado de cada um nesta janela — ninguem ve ate o tempo acabar.
     this.dicaAtual = 0;
     this.palpitesVeni = new Map();
@@ -440,6 +454,12 @@ class Sala {
       this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
     }
 
+    // Quem saiu levou junto o palpite dele; com uma pessoa a menos, os que
+    // ficaram podem ja ser a mesa inteira.
+    if (this.palpitesVeni.delete(socketId) || this.palpitesVeni.size > 0) {
+      this.travarSeTodosResponderam();
+    }
+
     return jogador;
   }
 
@@ -493,27 +513,12 @@ class Sala {
     if (this.jogadores.size < 1) {
       return { erro: 'E preciso pelo menos um jogador.' };
     }
-    if (this.ehPresenteGrego()) {
-      if (this.jogadores.size < MIN_JOGADORES_EQUIPE) {
-        return { erro: `O Presente Grego precisa de ${MIN_JOGADORES_EQUIPE} jogadores: sao duas equipes de dois.` };
-      }
-      if (this.equipes.some((e) => e.jogadores.length < 2)) {
-        return { erro: 'Cada equipe precisa de pelo menos dois jogadores.' };
-      }
+    if (this.temEquipes()) {
+      const falta = this.oQueFaltaNasEquipes();
+      if (falta) return { erro: falta };
     }
     if (this.ehLeilaoGeral() && this.jogadores.size < 2) {
       return { erro: 'O Leilao Geral precisa de pelo menos dois jogadores: alguem tem que cobrir o lance.' };
-    }
-    if (this.ehDandoDicas()) {
-      const cheias = this.equipes.filter((d) => d.jogadores.length === TAMANHO_DA_DUPLA);
-      const tortas = this.equipes.filter((d) => d.jogadores.length === 1);
-      if (cheias.length < 2) {
-        return { erro: `Dando dicas precisa de duas duplas completas: sao ${MIN_JOGADORES_DUPLA} jogadores.` };
-      }
-      // Sobrou gente sem par: a pessoa nao teria para quem dar dica nenhuma.
-      if (tortas.length > 0) {
-        return { erro: 'Toda dupla precisa de duas pessoas. Com a sala impar, alguem fica sem par.' };
-      }
     }
 
     for (const jogador of this.jogadores.values()) {
@@ -574,57 +579,166 @@ class Sala {
     return this.ehLeilaoGeral() ? 1 : 2;
   }
 
-  /**
-   * Quantas pessoas cabem numa equipe: metade da sala, mais uma.
-   *
-   * Com 4 ou 5 na sala cada equipe leva até 3; com 6 ou 7, até 4. A folga de
-   * um permite time desigual (3 contra 2), mas impede a sala inteira de um
-   * lado só — sem gente do outro lado não existe leilão.
-   */
+  /** Quantas pessoas cabem numa equipe. O saguao ajusta no + de baixo. */
   tetoEquipe() {
-    // Dupla e dupla: o terceiro nao teria papel na rodada.
-    if (this.ehDandoDicas()) return TAMANHO_DA_DUPLA;
-    return Math.max(1, Math.floor(this.jogadores.size / 2) + 1);
+    return this.tamanhoEquipe;
   }
 
   /**
-   * As equipes que a sala de espera mostra.
+   * "Dupla" so enquanto a equipe for de dois.
    *
-   * No Presente Grego sao sempre as duas. No Dando dicas existem seis duplas
-   * guardadas, mas so aparecem as que ja tem gente mais UMA vazia — a sala
-   * cresce junto com quem chega, em vez de nascer com quatro caixas vazias.
+   * O nome aparece no chat e na tela de resultado ("a Dupla 1 leva 10 pts"),
+   * entao ele acompanha o formato: aumentou o tamanho, viraram equipes.
    */
-  equipesVisiveis() {
-    if (!this.ehDandoDicas()) return this.equipes;
+  renomearEquipes() {
+    const dupla = this.ehDandoDicas() && this.tamanhoEquipe === 2;
+    this.equipes.forEach((equipe, i) => {
+      equipe.nome = `${dupla ? 'Dupla' : 'Equipe'} ${i + 1}`;
+    });
+  }
 
-    const mostrar = [];
-    let jaTemVaga = false;
-    for (const dupla of this.equipes) {
-      if (dupla.jogadores.length > 0) mostrar.push(dupla);
-      else if (!jaTemVaga) { mostrar.push(dupla); jaTemVaga = true; }
+  /** Como a sala chama um time agora, para a tela nao ter que adivinhar. */
+  rotuloEquipe() {
+    return this.ehDandoDicas() && this.tamanhoEquipe === 2 ? 'dupla' : 'equipe';
+  }
+
+  /** Abre mais uma equipe, se ainda houver cor para ela. */
+  acrescentarEquipe() {
+    if (this.equipes.length >= MAX_EQUIPES) return null;
+    const i = this.equipes.length;
+    const nova = { id: `e${i + 1}`, nome: '', ...EQUIPES_VISUAL[i], giro: 0, jogadores: [] };
+    this.equipes.push(nova);
+    this.renomearEquipes();
+    return nova;
+  }
+
+  /**
+   * Nao coube mais ninguem: a sala se arruma sozinha.
+   *
+   * Cada modo cresce por onde fica melhor. O Dando dicas abre uma equipe nova
+   * — mais gente no leilao e mais lance na mesa. O Presente Grego engorda as
+   * que ja existem, que e como ele sempre funcionou: duas equipes, metade da
+   * sala em cada. Depois que o lider mexe nos botoes, ninguem mexe mais.
+   */
+  crescerSozinha() {
+    const porEquipes = this.ehDandoDicas();
+    if (porEquipes && this.acrescentarEquipe()) return;
+    if (this.tamanhoEquipe < MAX_TAMANHO_EQUIPE) {
+      this.tamanhoEquipe += 1;
+      this.renomearEquipes();
+      return;
     }
-    return mostrar.length >= 2 ? mostrar : this.equipes.slice(0, 2);
+    this.acrescentarEquipe();
+  }
+
+  /**
+   * O + e o − do saguao: quantas equipes (a direita) e de que tamanho (embaixo).
+   *
+   * Devolve a frase do erro em vez de corrigir sozinho — fechar uma equipe com
+   * gente dentro ou encolher abaixo de quem ja esta la sao coisas que o lider
+   * precisa resolver antes, e nao o servidor por ele.
+   */
+  mudarFormato(socketId, campo, delta) {
+    if (!this.ehLider(socketId)) return { erro: 'So o lider muda o formato das equipes.' };
+    if (!this.temEquipes()) return { erro: 'Este modo nao joga em equipes.' };
+    if (this.estado !== 'lobby' && this.estado !== 'fim') {
+      return { erro: 'So da para mudar as equipes antes de a partida comecar.' };
+    }
+
+    const sobe = Number(delta) > 0;
+
+    if (campo === 'equipes') {
+      if (sobe) {
+        if (!this.acrescentarEquipe()) return { erro: `O maximo e ${MAX_EQUIPES} equipes.` };
+      } else {
+        if (this.equipes.length <= MIN_EQUIPES) {
+          return { erro: `Sao ${MIN_EQUIPES} equipes no minimo: sem duas nao ha disputa.` };
+        }
+        const ultima = this.equipes[this.equipes.length - 1];
+        if (ultima.jogadores.length) {
+          return { erro: `Tire a galera da ${ultima.nome} antes de fechar ela.` };
+        }
+        this.equipes.pop();
+        this.renomearEquipes();
+      }
+    } else if (campo === 'tamanho') {
+      if (sobe) {
+        if (this.tamanhoEquipe >= MAX_TAMANHO_EQUIPE) {
+          return { erro: `O maximo e ${MAX_TAMANHO_EQUIPE} por equipe.` };
+        }
+        this.tamanhoEquipe += 1;
+      } else {
+        if (this.tamanhoEquipe <= MIN_TAMANHO_EQUIPE) {
+          return { erro: 'Uma equipe precisa de dois: um leiloa e o outro responde.' };
+        }
+        const maior = Math.max(0, ...this.equipes.map((e) => e.jogadores.length));
+        if (maior >= this.tamanhoEquipe) {
+          return { erro: `Tem equipe com ${maior}: tire alguem antes de diminuir.` };
+        }
+        this.tamanhoEquipe -= 1;
+      }
+      this.renomearEquipes();
+    } else {
+      return { erro: 'So da para mudar quantas equipes ou o tamanho delas.' };
+    }
+
+    this.formatoAMao = true;
+    return { ok: true, equipes: this.equipes.length, tamanho: this.tamanhoEquipe };
+  }
+
+  /** Quem esta na sala mas nao coube em equipe nenhuma. */
+  semEquipe() {
+    return [...this.jogadores.keys()].filter((id) => !this.equipeDoJogador(id));
+  }
+
+  /**
+   * O que ainda falta para as equipes poderem jogar, em uma frase — ou null
+   * quando esta tudo certo. A mesma conta serve para travar o `iniciar` e para
+   * a dica embaixo da lista, entao a regra mora em um lugar so.
+   */
+  oQueFaltaNasEquipes() {
+    const sobrando = this.semEquipe().length;
+    if (sobrando) {
+      return `${sobrando === 1 ? 'Uma pessoa esta' : `${sobrando} pessoas estao`} sem equipe:`
+        + ' aumente o tamanho ou abra outra equipe.';
+    }
+
+    const comGente = this.equipes.filter((e) => e.jogadores.length > 0);
+    if (comGente.length < MIN_EQUIPES) {
+      return `Faltam equipes com gente: sao ${MIN_EQUIPES} no minimo, senao nao ha disputa.`;
+    }
+
+    const capenga = comGente.find((e) => e.jogadores.length < MIN_TAMANHO_EQUIPE);
+    if (capenga) {
+      return `A ${capenga.nome} esta sozinha: toda equipe precisa de ${MIN_TAMANHO_EQUIPE}`
+        + ' — uma pessoa leiloa e a outra responde.';
+    }
+    return null;
   }
 
   equipeDoJogador(socketId) {
     return this.equipes.find((e) => e.jogadores.includes(socketId)) || null;
   }
 
-  /** Quem chega cai na equipe menor, para a sala nascer equilibrada. */
+  /** Quem chega cai na equipe menor que ainda tenha vaga. */
   encaixarNaEquipe(socketId) {
     // Fora dos modos em equipe a sala nao tem times para escolher.
     if (!this.temEquipes()) return;
     if (this.equipeDoJogador(socketId)) return;
 
-    // Duplas se fecham uma de cada vez: espalhar um por dupla deixaria seis
-    // pessoas sozinhas e nenhuma rodada de pe.
-    if (this.ehDandoDicas()) {
-      const comVaga = this.equipes.find((d) => d.jogadores.length < TAMANHO_DA_DUPLA);
-      if (comVaga) comVaga.jogadores.push(socketId);
-      return;
-    }
+    const comVaga = () => this.equipes.filter((e) => e.jogadores.length < this.tamanhoEquipe);
 
-    const menor = this.equipes.reduce((a, b) => (b.jogadores.length < a.jogadores.length ? b : a));
+    let vagas = comVaga();
+    // Lotou: a sala cresce sozinha — a nao ser que o lider ja tenha arrumado
+    // o formato na mao, e ai a sala e dele.
+    if (!vagas.length && !this.formatoAMao) {
+      this.crescerSozinha();
+      vagas = comVaga();
+    }
+    // Ainda sem vaga: a pessoa entra sem equipe, e o saguao cobra o lider.
+    if (!vagas.length) return;
+
+    const menor = vagas.reduce((a, b) => (b.jogadores.length < a.jogadores.length ? b : a));
     menor.jogadores.push(socketId);
   }
 
@@ -643,8 +757,8 @@ class Sala {
     const destino = this.equipes.find((e) => e.id === idEquipe);
     if (!destino) return { erro: 'Essa equipe nao existe.' };
     if (destino.jogadores.includes(socketId)) return { ok: true, equipe: destino.id };
-    if (destino.jogadores.length >= this.tetoEquipe()) {
-      return { erro: `Com ${this.jogadores.size} na sala, cada equipe pode ter no maximo ${this.tetoEquipe()}.` };
+    if (destino.jogadores.length >= this.tamanhoEquipe) {
+      return { erro: `A ${destino.nome} esta cheia: cabem ${this.tamanhoEquipe} por equipe.` };
     }
 
     this.tirarDasEquipes(socketId);
@@ -864,7 +978,7 @@ class Sala {
   }
 
   /**
-   * Veni, Vidi, Vici: uma palavra do banco de dicas.
+   * 1 eh bom 2 ok 3 eh demais: uma palavra do banco de dicas.
    *
    * A pergunta é sempre a mesma ("que palavra e esta?"); quem muda são as três
    * dicas, que entram uma por terço da rodada.
@@ -890,7 +1004,7 @@ class Sala {
       necessarias: 1,
       fixo: true,
       dicas: palavra.dicas,
-      categoria: { id: 'veni', nome: 'Veni, Vidi, Vici', icone: '🏛', cor: '#f59e0b' },
+      categoria: { id: 'veni', nome: '1 eh bom 2 ok 3 eh demais', icone: '🥇', cor: '#f59e0b' },
       difBase,
       dificuldade: dificuldade.dificuldadeDe(id, difBase)
     };
@@ -920,6 +1034,21 @@ class Sala {
     }
 
     this.agendar(() => this.fecharFaseVeni(), MS_FASE_VENI);
+  }
+
+  /**
+   * A mesa inteira ja travou a resposta? Entao a janela fecha sem esperar.
+   *
+   * Quem quisesse trocar de ideia perde a chance — mas a alternativa era a
+   * sala inteira olhando um relogio que nao muda mais nada.
+   */
+  travarSeTodosResponderam() {
+    if (!this.ehVeni() || this.estado !== 'pergunta') return false;
+    if (this.jogadores.size === 0) return false;
+    if (this.palpitesVeni.size < this.jogadores.size) return false;
+
+    this.agendar(() => this.fecharFaseVeni(), MS_TODOS_TRAVARAM);
+    return true;
   }
 
   /**
@@ -1242,7 +1371,7 @@ class Sala {
       const pedidas = this.perguntaAtual.necessarias || 1;
       return Math.min(MS_BASE_LEILAO + pedidas * MS_POR_ITEM_PRESENTE, MS_TETO_PRESENTE);
     }
-    // Veni, Vidi, Vici: o relogio que aparece e o da janela de palpite, nao o
+    // 1 eh bom 2 ok 3 eh demais: o relogio que aparece e o da janela de palpite, nao o
     // da rodada inteira — sao tres janelas iguais, uma por dica.
     if (this.ehVeni()) return MS_FASE_VENI;
 
@@ -1270,7 +1399,7 @@ class Sala {
       // A resposta NUNCA vai junto — o servidor é quem confere.
       // Vai só o formato dela: "Johnny Depp" vira "•••••• ••••".
       // Em lista com várias respostas não há máscara: entregaria demais.
-      // No Veni, Vidi, Vici a máscara entregaria o tamanho da palavra, e o
+      // No 1 eh bom 2 ok 3 eh demais a máscara entregaria o tamanho da palavra, e o
       // jogo ali é adivinhar pelas dicas.
       // No Dando dicas a mascara entregaria o tamanho da palavra que o
       // parceiro esta tentando arrancar a duras penas.
@@ -1291,7 +1420,7 @@ class Sala {
             jaDitos: [...this.itensUsados].map((i) => this.perguntaAtual.itens[i].oficial)
           }
         : null,
-      // Veni, Vidi, Vici: so a primeira dica; as outras chegam no meio da rodada.
+      // 1 eh bom 2 ok 3 eh demais: so a primeira dica; as outras chegam no meio da rodada.
       veni: this.ehVeni()
         ? {
             dica: this.perguntaAtual.dicas[0],
@@ -1829,7 +1958,7 @@ class Sala {
       }
     }
 
-    // Veni, Vidi, Vici: o palpite e secreto ate a janela fechar. Da para
+    // 1 eh bom 2 ok 3 eh demais: o palpite e secreto ate a janela fechar. Da para
     // trocar de ideia quantas vezes quiser; vale o ultimo que ficou escrito.
     if (this.ehVeni() && this.estado === 'pergunta') {
       const trocou = this.palpitesVeni.has(socketId);
@@ -1839,6 +1968,9 @@ class Sala {
         quantos: this.palpitesVeni.size,
         total: this.jogadores.size
       });
+      // Travar a resposta e simplesmente responder. Com a mesa inteira
+      // travada nao ha o que esperar do relogio: as respostas abrem na hora.
+      this.travarSeTodosResponderam();
       return { veredito: 'palpite', texto: limpo, trocou };
     }
 
@@ -2433,7 +2565,7 @@ class Sala {
       // Dando dicas: as palavras que foram gastas e em qual delas a ficha caiu.
       dicasUsadas: l.dicasUsadas,
       acertouEm: l.acertouEm,
-      equipes: this.equipesVisiveis().map((d) => ({ id: d.id, nome: d.nome, icone: d.icone, cor: d.cor }))
+      equipes: this.equipes.map((d) => ({ id: d.id, nome: d.nome, icone: d.icone, cor: d.cor }))
     };
   }
 
@@ -2712,7 +2844,7 @@ class Sala {
       titulo: this.ehLeilao() ? 'Fim do leilao' : 'Resposta certa',
       resposta: textoResposta,
       presente: this.ehLeilao() ? this.resumoDoPresente() : null,
-      // Veni, Vidi, Vici: no fim aparecem as tres, ate as que nao deu tempo de ler.
+      // 1 eh bom 2 ok 3 eh demais: no fim aparecem as tres, ate as que nao deu tempo de ler.
       dicas: this.ehVeni() ? pergunta.dicas : null,
       // Dando dicas: as palavras que a dupla gastou, na ordem em que sairam.
       dicasDadas: this.ehDandoDicas() && this.leilao ? this.leilao.dicasUsadas : null,
@@ -2800,10 +2932,25 @@ class Sala {
       config: this.config,
       rodada: this.rodada,
       jogadores: this.placar(),
-      equipes: this.equipesVisiveis().map((e) => ({
+      equipes: this.equipes.map((e) => ({
         id: e.id, nome: e.nome, icone: e.icone, cor: e.cor, jogadores: e.jogadores
       })),
-      tetoEquipe: this.tetoEquipe(),
+      tetoEquipe: this.tamanhoEquipe,
+      // O saguao desenha os + e − a partir daqui, e a dica embaixo da lista
+      // vem pronta do servidor: a regra de quem pode comecar mora em um lugar so.
+      formato: this.temEquipes()
+        ? {
+            equipes: this.equipes.length,
+            tamanho: this.tamanhoEquipe,
+            minEquipes: MIN_EQUIPES,
+            maxEquipes: MAX_EQUIPES,
+            minTamanho: MIN_TAMANHO_EQUIPE,
+            maxTamanho: MAX_TAMANHO_EQUIPE,
+            rotulo: this.rotuloEquipe(),
+            semEquipe: this.semEquipe(),
+            falta: this.oQueFaltaNasEquipes()
+          }
+        : null,
       avataresLivres: this.avataresLivres()
     };
   }

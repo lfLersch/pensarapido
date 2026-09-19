@@ -112,21 +112,30 @@ function falar(sala, socketId, texto) {
 /* ---------------- Quem pode comecar a partida ---------------- */
 {
   const { sala } = montarSala(2);
-  conferir('duas pessoas nao fazem duas duplas',
-    /duas duplas completas/.test(sala.iniciar().erro || ''), true);
+  conferir('duas pessoas deixam uma dupla sozinha',
+    /sozinha/.test(sala.iniciar().erro || ''), true);
   sala.destruir();
 
-  // Impar nao entra: as duplas sao de dois, e o quinto ficaria sem par.
+  // Impar sobra: a sala abre uma dupla nova e a quinta pessoa fica sem par.
   const { sala: impar } = montarSala(5);
   conferir('sala impar deixa alguem sem par',
-    /sem par/.test(impar.iniciar().erro || ''), true);
+    /sozinha/.test(impar.iniciar().erro || ''), true);
+  conferir('  porque a sala abriu uma terceira dupla',
+    impar.equipes.map((d) => d.jogadores.length), [2, 2, 1]);
+  // O jeito de destravar e o + de baixo: duplas viram trios.
+  conferir('  o lider aumenta o tamanho', Boolean(impar.mudarFormato('ana', 'tamanho', 1).ok), true);
+  impar.trocarEquipe(impar.equipes[2].jogadores[0], 'e1');
+  conferir('  e o que sobrava entra num trio',
+    impar.equipes.map((d) => d.jogadores.length), [3, 2, 0]);
+  conferir('  ai a partida comeca', impar.iniciar().ok, true);
+  impar.limparTemporizador();
   impar.destruir();
 
   const { sala: par } = montarSala(4);
   conferir('quatro jogadores comecam', par.iniciar().ok, true);
   par.limparTemporizador();
   conferir('  e caem de dois em dois',
-    par.equipes.map((d) => d.jogadores.length), [2, 2, 0, 0, 0, 0]);
+    par.equipes.map((d) => d.jogadores.length), [2, 2]);
   par.destruir();
 }
 
@@ -134,20 +143,22 @@ function falar(sala, socketId, texto) {
 {
   const { sala } = montarSala(4);
   conferir('a dupla tem teto de dois', sala.tetoEquipe(), 2);
-  // As cheias mais UMA vazia: a sala cresce junto com quem chega.
-  conferir('a sala mostra as duplas cheias e uma vaga',
-    sala.equipesVisiveis().map((d) => d.id), ['d1', 'd2', 'd3']);
-  conferir('  e o estado publico manda so essas',
-    sala.estadoPublico().equipes.length, 3);
+  conferir('a sala fica com as duas duplas cheias', sala.estadoPublico().equipes.length, 2);
+  conferir('  e elas se chamam Dupla enquanto forem de dois',
+    sala.equipes.map((d) => d.nome), ['Dupla 1', 'Dupla 2']);
 
-  const terceiro = [...sala.jogadores.keys()][2];
-  conferir('dupla cheia recusa o terceiro',
-    /no maximo 2/.test(sala.trocarEquipe(terceiro, 'd1').erro || ''), true);
+  // Quem entra cai na dupla menor, entao as duas ja estao cheias: ninguem da
+  // segunda consegue se mudar para a primeira.
+  const daOutraDupla = sala.equipes[1].jogadores[0];
+  conferir('dupla cheia recusa quem vem da outra',
+    /cheia/.test(sala.trocarEquipe(daOutraDupla, 'e1').erro || ''), true);
   sala.destruir();
 
+  // O Dando dicas cresce abrindo duplas, nao engordando as que ja existem:
+  // mais gente no leilao e mais lance na mesa.
   const { sala: cheia } = montarSala(6);
   conferir('seis jogadores formam tres duplas',
-    cheia.equipes.map((d) => d.jogadores.length), [2, 2, 2, 0, 0, 0]);
+    cheia.equipes.map((d) => d.jogadores.length), [2, 2, 2]);
   cheia.destruir();
 }
 

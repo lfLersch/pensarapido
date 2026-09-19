@@ -118,9 +118,47 @@ const solta = (sala, quem, texto) => {
   conferir('o palpite errado tambem fica guardado', errado.veredito, 'palpite');
 
   const trocado = solta(sala, 'bia', sala.perguntaAtual.resposta);
-  conferir('da para trocar de ideia ate o tempo fechar', trocado.trocou, true);
+  conferir('da para trocar de ideia enquanto a janela esta aberta', trocado.trocou, true);
   conferir('  e vale o ultimo que ficou escrito', sala.palpitesVeni.get('bia'),
     sala.perguntaAtual.resposta);
+  sala.destruir();
+}
+
+/* ---------------- Travou a mesa inteira, a janela fecha ---------------- */
+{
+  // Travar a resposta e simplesmente responder: com todo mundo respondido nao
+  // ha o que esperar do relogio.
+  const { sala, eventos } = rodadaAberta();
+
+  solta(sala, 'ana', 'chute solto');
+  conferir('com um so respondido a janela segue aberta',
+    eventos.some((e) => e.evento === 'veni:revelacao'), false);
+  conferir('  e nada foi agendado por conta disso', sala.temporizador, null);
+
+  solta(sala, 'bia', sala.perguntaAtual.resposta);
+  conferir('respondeu o ultimo: a revelacao ja esta agendada',
+    sala.temporizador !== null, true);
+
+  sala.fecharFaseVeni();
+  sala.limparTemporizador();
+
+  const revelacao = eventos.filter((e) => e.evento === 'veni:revelacao').map((e) => e.dados)[0];
+  conferir('  e ela abre os dois palpites',
+    revelacao.palpites.map((x) => [x.nickname, x.certo]), [['Ana', false], ['Bia', true]]);
+  sala.destruir();
+}
+
+/* ---------------- Quem sai pode fechar a conta ---------------- */
+{
+  const { sala, eventos } = rodadaAberta();
+  solta(sala, 'ana', 'so eu respondi');
+  conferir('faltava a bia', sala.temporizador, null);
+
+  sala.sair('bia');
+  sala.limparTemporizador();
+  conferir('bia saiu: quem ficou ja era a mesa inteira',
+    eventos.some((e) => e.evento === 'veni:revelacao')
+      || sala.palpitesVeni.size >= sala.jogadores.size, true);
   sala.destruir();
 }
 
@@ -200,6 +238,20 @@ const solta = (sala, quem, texto) => {
   const ultima = eventos.filter((e) => e.evento === 'veni:revelacao').map((e) => e.dados)[0];
   conferir('ninguem acertou na terceira: acabou assim mesmo', ultima.fim, true);
   conferir('  e ninguem pontuou', [sala.jogadores.get('ana').pontos, sala.jogadores.get('bia').pontos], [0, 0]);
+  sala.destruir();
+}
+
+/* ---------------- O nome do modo ---------------- */
+{
+  const { MODOS } = require('../server/sala.js');
+  const modo = MODOS.find((m) => m.id === 'veni');
+  conferir('o modo se chama pelo que a pontuacao faz',
+    modo.nome, '1 eh bom 2 ok 3 eh demais');
+
+  const { sala } = rodadaAberta();
+  conferir('  e a rodada mostra o mesmo nome',
+    sala.perguntaAtual.categoria.nome, modo.nome);
+  conferir('  com o mesmo icone', sala.perguntaAtual.categoria.icone, modo.icone);
   sala.destruir();
 }
 

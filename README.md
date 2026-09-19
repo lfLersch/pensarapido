@@ -44,7 +44,7 @@ e que a versão do topo seja a do jogo.
 | Ajuste | Opções |
 | --- | --- |
 | Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História, Ciência, Games, **Mainstream**, **Marcas** |
-| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **Veni, Vidi, Vici**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral** ou **Dando dicas** (Equipes aparece como *em breve*) |
+| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral** ou **Dando dicas** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
 
@@ -55,11 +55,8 @@ Enquanto ninguém aperta *Iniciar*, a sala mostra quem já chegou. O **líder**
 cada pessoa** para tirá-la da sala — vale em todos os modos, e quem é tirado
 volta para o saguão com um aviso.
 
-No **Presente Grego** a lista vira duas, uma por equipe, com o botão de trocar
-de lado embaixo de cada uma (ver [Presente Grego](#presente-grego)). No
-**Dando dicas** ela vira uma caixa por dupla, e as duplas aparecem uma de cada
-vez: sempre as que já têm gente mais uma vazia, para a sala crescer junto com
-quem chega (ver [Dando dicas](#dando-dicas)).
+Nos **modos em equipe** a lista vira uma caixa por time, com o botão de trocar
+de lado embaixo de cada uma — ver [O formato das equipes](#o-formato-das-equipes).
 
 ### O chat é a resposta
 
@@ -254,11 +251,17 @@ vendidos, artistas do Spotify, canais do YouTube, línguas faladas, medalhas
 olímpicas —, cada uma com a **fonte e o ano** anotados. A ordem é o que vale,
 então atualizar significa trocar a lista inteira, nunca um item no meio.
 
-### Veni, Vidi, Vici
+### 1 é bom 2 ok 3 é demais
 
-Uma palavra e **três dicas**. Cada dica abre uma **janela de 15 segundos**: o
+O nome é a pontuação: uma palavra e **três dicas**, e acertar na primeira vale
+mais do que acertar na terceira. Cada dica abre uma **janela de 15 segundos**: o
 que você escreve fica **guardado no servidor e ninguém vê** — nem quem está do
-seu lado. Quando o tempo fecha, **todos os palpites aparecem de uma vez**.
+seu lado. **Travar a resposta é simplesmente responder.**
+
+A janela fecha de dois jeitos: **o tempo acaba** ou **a mesa inteira responde**
+— com todo mundo travado não há o que esperar do relógio. Nos dois casos as
+respostas abrem **todas de uma vez, logo abaixo das dicas**, cada uma com o
+nome de quem escreveu embaixo dela.
 
 | Quando acertou | Vale |
 | --- | --- |
@@ -269,8 +272,10 @@ seu lado. Quando o tempo fecha, **todos os palpites aparecem de uma vez**.
 Quem acertou leva o valor cheio da dica, **igual para todos** — ninguém viu o
 palpite do outro, então não há primeiro nem segundo. **Acertou alguém, a rodada
 acaba** ali (a palavra já está na tela); **não acertou ninguém, entra a dica
-seguinte**, valendo menos. Dá para **trocar de ideia** quantas vezes quiser até
-o tempo acabar: vale o último palpite escrito.
+seguinte**, valendo menos. Dá para **trocar de ideia** quantas vezes quiser
+**enquanto a janela estiver aberta**: vale o último palpite escrito. Como
+responder é travar, quem responde por último fecha a janela — então só dá para
+repensar enquanto ainda falta alguém.
 
 O palpite não passa pelo chat enquanto a janela está aberta. Se passasse, o
 primeiro acerto entregaria a palavra para a mesa inteira e as duas dicas
@@ -310,16 +315,66 @@ principais: **a dica nunca pode conter a resposta**, nem em outra forma (foi
 assim que "formigueiro" saiu da dica de *Formiga*), e **nenhuma dica passa de
 cinco palavras**.
 
+### O formato das equipes
+
+O **Presente Grego** e o **Dando dicas** dividem a sala em times, e o formato
+é do líder: **quantas equipes** e **de que tamanho**. Na sala de espera há dois
+controles — um **+ à direita** das caixas, que abre outra equipe, e um **+
+embaixo**, que faz caber mais gente em cada uma. Dois times de três, três de
+dois, três de três, quatro de três: o que couber em **até 6 equipes de até 6**
+(seis porque são seis cores, e seis por equipe porque com 12 na sala duas
+equipes já usam todo mundo).
+
+Os dois **−** desfazem, com duas travas para o servidor não decidir por
+ninguém: **equipe com gente dentro não fecha** e **o tamanho não encolhe abaixo
+da maior equipe**. Tire as pessoas antes. Só o líder mexe, e só enquanto a
+partida não começou.
+
+**Enquanto ninguém mexe, a sala se arruma sozinha.** Ela nasce no menor formato
+que dá jogo — duas equipes de dois — e cresce quando não cabe mais ninguém,
+cada modo pelo seu eixo:
+
+| Na sala | Presente Grego | Dando dicas |
+| --- | --- | --- |
+| 4 | 2 de 2 | 2 de 2 |
+| 6 | 2 de 3 | 3 de 2 |
+| 8 | 2 de 4 | 4 de 2 |
+| 12 | 2 de 6 | 6 de 2 |
+
+O Presente Grego **engorda as duas equipes**, que é como ele sempre funcionou;
+o Dando dicas **abre duplas novas**, porque mais equipe é mais gente no leilão
+e mais lance na mesa. **No instante em que o líder toca num dos botões a sala
+para de crescer sozinha** — o formato passa a ser o que ele pediu.
+
+Quem chega e **não cabe em equipe nenhuma** entra na sala assim mesmo, aparece
+numa lista à parte e o saguão diz o que falta. Para começar:
+
+- ninguém pode estar **sem equipe**;
+- pelo menos **duas equipes com gente**;
+- e **nenhuma equipe sozinha** — toda equipe que tem alguém precisa de dois, uma
+  pessoa leiloa e a outra responde.
+
+Sala **ímpar** no Dando dicas cai nesse último caso: com 5 pessoas a sala abre
+uma terceira dupla e sobra alguém sem par. A saída é o **+ de baixo** — as
+duplas viram trios e a quinta pessoa entra num deles. Numa equipe de três os
+papéis giram a cada rodada, então o terceiro só fica de fora de uma rodada por
+vez.
+
+Enquanto a equipe for de dois, o **Dando dicas chama ela de "Dupla"**; do
+terceiro integrante em diante ela vira "Equipe", no chat e na tela de resultado.
+
 ### Presente Grego
 
-Joga-se em **duas equipes**, a partir de 4 pessoas na sala. As equipes aparecem
-na sala de espera, uma ao lado da outra: quem entra cai na menor e pode mudar de
-lado no botão embaixo da lista, enquanto a partida não começou.
+Joga-se **em equipes**, a partir de 4 pessoas na sala. Elas aparecem na sala de
+espera, uma caixa ao lado da outra: quem entra cai na menor com vaga e pode
+mudar de lado no botão embaixo da lista, enquanto a partida não começou.
 
-**Cada equipe leva metade da sala, mais uma pessoa** — com 4 ou 5 na sala, até
-3; com 6 ou 7, até 4. A folga de um permite time desigual (3 contra 2), e o teto
-impede a sala inteira de ficar do mesmo lado, o que deixaria o leilão sem
-adversário. Para começar, **cada equipe precisa de pelo menos duas pessoas**.
+Quantas equipes e de que tamanho é o líder quem diz, nos dois **+** do saguão
+— ver [O formato das equipes](#o-formato-das-equipes). Sem ninguém mexer, o
+Presente Grego fica com **duas equipes que engordam junto com a sala**: 2 de 2
+com quatro pessoas, 3 contra 2 com cinco, 2 de 4 com oito. Para começar,
+**cada equipe com gente precisa de pelo menos duas pessoas** — sem isso o
+leilão fica sem adversário.
 
 Cada rodada tem dois papéis dentro da equipe, e eles **giram a cada rodada** —
 numa equipe de três, em três rodadas cada um leiloa uma vez:

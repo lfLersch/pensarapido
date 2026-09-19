@@ -1,12 +1,12 @@
 'use strict';
 
 /*
- * As duas equipes do Presente Grego.
+ * As equipes do Presente Grego.
  *
- * Elas existem desde a sala: quem entra cai na menor e pode trocar de lado
- * enquanto a partida nao comecou. O teto de cada uma e metade da sala mais
- * uma pessoa (4 ou 5 na sala -> ate 3; 6 ou 7 -> ate 4), o que permite time
- * desigual mas impede a sala inteira de um lado so.
+ * Elas existem desde a sala: quem entra cai na menor com vaga e pode trocar
+ * de lado enquanto a partida nao comecou. A sala nasce com duas equipes de
+ * dois e vai engordando sozinha conforme a galera chega, ate o lider mexer
+ * nos botoes do saguao (ver formato.test.js).
  */
 
 const { Sala } = require('../server/sala.js');
@@ -44,11 +44,16 @@ const tamanhos = (sala) => sala.equipes.map((e) => e.jogadores.length);
   impar.destruir();
 }
 
-/* ---------------- o teto: metade da sala, mais uma ---------------- */
+/* ---------------- o teto cresce junto com a sala ---------------- */
 {
-  for (const [quantos, teto] of [[4, 3], [5, 3], [6, 4], [7, 4], [8, 5]]) {
+  // Duas equipes, e o tamanho sobe so quando nao cabe mais ninguem: com 5 na
+  // sala sao duas de tres (3 x 2), com 7 sao duas de quatro (4 x 3).
+  for (const [quantos, teto] of [[4, 2], [5, 3], [6, 3], [7, 4], [8, 4]]) {
     const sala = salaCom(quantos);
     conferir(`com ${quantos} na sala, cada equipe leva ate ${teto}`, sala.tetoEquipe(), teto);
+    conferir('  e continuam sendo duas equipes', sala.equipes.length, 2);
+    conferir('  com todo mundo em alguma',
+      sala.equipes.flatMap((e) => e.jogadores).length, quantos);
     sala.destruir();
   }
 }
@@ -88,7 +93,7 @@ const tamanhos = (sala) => sala.equipes.map((e) => e.jogadores.length);
   sala.trocarEquipe('bia', 'e2');   // ja estava la; so para garantir
   sala.equipes[0].jogadores.push(...sala.equipes[1].jogadores.splice(0));
   conferir('com todo mundo de um lado so, a partida nao comeca',
-    Boolean(sala.iniciar().erro), true);
+    /Faltam equipes/.test(sala.iniciar().erro || ''), true);
   sala.destruir();
 
   const ok = salaCom(5);

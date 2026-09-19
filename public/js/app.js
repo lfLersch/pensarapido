@@ -423,9 +423,7 @@ function atualizarResumo() {
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
-    ${modo && modo.equipes
-      ? `<span>👥 <b>4+</b> jogadores${modo.duplas ? ' (par)' : ''}</span>`
-      : ''}`;
+    ${modo && modo.equipes ? '<span>👥 <b>4+</b> jogadores, em equipes</span>' : ''}`;
 
   $('btn-criar').disabled = total === 0;
 }
@@ -488,17 +486,14 @@ function renderizarSala() {
     <span>${plural(emJogo.length, 'categoria', 'categorias')}</span>`;
   $('resumo-sala').title = emJogo.map(nomeCategoria).join(', ');
 
-  // No Presente Grego a sala mostra as duas equipes; nos outros modos, uma
-  // lista só.
+  // Nos modos em equipe a sala vira um time por caixa; nos outros, uma lista só.
   const porEquipes = Boolean(modo && modo.equipes);
   const lista = $('lista-jogadores');
-  const caixaEquipes = $('equipes-sala');
   lista.innerHTML = '';
-  caixaEquipes.innerHTML = '';
   lista.hidden = porEquipes;
-  caixaEquipes.hidden = !porEquipes;
+  $('equipes-sala').hidden = !porEquipes;
 
-  if (porEquipes) desenharEquipesDaSala(caixaEquipes);
+  if (porEquipes) desenharEquipesDaSala();
   else for (const jogador of sala.jogadores) lista.appendChild(crachaDeJogador(jogador));
 
   $('contador-jogadores').textContent = `${sala.jogadores.length}/${estado.config.maxJogadores}`;
@@ -507,23 +502,13 @@ function renderizarSala() {
   $('btn-iniciar').hidden = !souLider;
   $('texto-espera').hidden = souLider;
 
-  // Nao adianta apertar iniciar com a sala torta — o servidor recusa. Melhor
-  // dizer isso antes. Nas duplas a caixa vazia do fim e so o convite para a
-  // proxima dupla: o que trava e alguem sozinho num time.
-  const quantos = sala.jogadores.length;
-  const emDuplas = Boolean(modo && modo.duplas);
-  const minguada = (sala.equipes || [])
-    .some((e) => (emDuplas ? e.jogadores.length === 1 : e.jogadores.length < 2));
-  const faltaFechar = porEquipes && (quantos < 4 || minguada);
+  // Nao adianta apertar iniciar com a sala torta — o servidor recusa. A frase
+  // do que falta vem pronta de la, para a regra morar em um lugar so.
+  const falta = porEquipes ? (sala.formato && sala.formato.falta) : null;
   const dica = $('dica-equipes');
-  dica.hidden = !faltaFechar;
-  dica.textContent = quantos < 4
-    ? `${modo ? modo.nome : 'Este modo'} e em ${emDuplas ? 'duplas' : 'equipes'}: faltam ${
-      4 - quantos} para comecar.`
-    : emDuplas
-      ? 'Toda dupla precisa de duas pessoas: com a sala impar, alguem fica sem par.'
-      : 'Cada equipe precisa de pelo menos duas pessoas — uma leiloa e a outra responde.';
-  $('btn-iniciar').disabled = faltaFechar;
+  dica.hidden = !falta;
+  dica.textContent = falta || '';
+  $('btn-iniciar').disabled = Boolean(falta);
 }
 
 /** Um jogador na lista da sala, com o botao de expulsar para o lider. */
@@ -560,16 +545,23 @@ function crachaDeJogador(jogador) {
 }
 
 /**
- * Os times da sala, com o botao de entrar embaixo de cada um. O teto vem do
- * servidor: metade da sala mais um no Presente Grego, dois no Dando dicas —
- * onde a lista cresce junto com quem chega, uma dupla de cada vez.
+ * Os times da sala, com o botao de entrar embaixo de cada um.
+ *
+ * O formato — quantas equipes e de que tamanho — vem do servidor e e o lider
+ * quem mexe nele, pelo + da direita e pelo + de baixo.
  */
-function desenharEquipesDaSala(caixa) {
+function desenharEquipesDaSala() {
   const sala = estado.sala;
-  const teto = sala.tetoEquipe || 1;
+  const caixa = $('equipes-grade');
+  caixa.innerHTML = '';
+
+  const formato = sala.formato || {};
+  const teto = formato.tamanho || sala.tetoEquipe || 1;
   const porId = new Map(sala.jogadores.map((j) => [j.id, j]));
-  const modo = estado.config.modos.find((m) => m.id === sala.config.modo);
-  const time = modo && modo.duplas ? 'dupla' : 'equipe';
+  const time = formato.rotulo || 'equipe';
+
+  desenharBotoesDeFormato(formato);
+  desenharSemEquipe(formato, porId);
 
   for (const equipe of sala.equipes || []) {
     const bloco = criar('div', 'equipe-sala');
@@ -606,6 +598,62 @@ function desenharEquipesDaSala(caixa) {
     caixa.appendChild(bloco);
   }
 }
+
+/**
+ * Liga os + e − ao que a sala aceita agora.
+ *
+ * So o lider mexe, entao para os outros os botoes somem — fica so a conta,
+ * que todo mundo precisa ler para saber quantos cabem.
+ */
+function desenharBotoesDeFormato(formato) {
+  const souLider = estado.sala.jogadores.some((j) => j.id === estado.eu?.id && j.lider);
+  const equipes = formato.equipes || 0;
+  const tamanho = formato.tamanho || 0;
+
+  $('conta-equipes').textContent = plural(equipes, 'equipe', 'equipes');
+  $('conta-tamanho').textContent = `${tamanho} por ${formato.rotulo || 'equipe'}`;
+
+  const ligar = (id, mostrar, travado, dica) => {
+    const botao = $(id);
+    botao.hidden = !mostrar;
+    botao.disabled = travado;
+    botao.title = dica;
+  };
+
+  ligar('btn-mais-equipe', souLider, equipes >= formato.maxEquipes,
+    equipes >= formato.maxEquipes ? `O maximo e ${formato.maxEquipes} equipes` : 'Mais uma equipe');
+  ligar('btn-menos-equipe', souLider, equipes <= formato.minEquipes,
+    equipes <= formato.minEquipes ? 'Sem duas equipes nao ha disputa' : 'Fechar a ultima equipe');
+  ligar('btn-mais-tamanho', souLider, tamanho >= formato.maxTamanho,
+    tamanho >= formato.maxTamanho ? `O maximo e ${formato.maxTamanho} por equipe` : 'Cabe mais um em cada equipe');
+  ligar('btn-menos-tamanho', souLider, tamanho <= formato.minTamanho,
+    tamanho <= formato.minTamanho ? 'Uma equipe precisa de dois' : 'Um a menos em cada equipe');
+}
+
+/** Quem ficou de fora porque nao havia vaga: o lider resolve no +. */
+function desenharSemEquipe(formato, porId) {
+  const lista = $('lista-sem-equipe');
+  const sobrando = formato.semEquipe || [];
+  lista.innerHTML = '';
+  lista.hidden = sobrando.length === 0;
+
+  for (const id of sobrando) {
+    const jogador = porId.get(id);
+    if (jogador) lista.appendChild(crachaDeJogador(jogador));
+  }
+}
+
+function mudarFormato(campo, delta) {
+  socket.emit('sala:formato', { campo, delta }, (r) => {
+    if (r?.erro) avisar('aviso-sala', r.erro);
+    else avisar('aviso-sala', '');
+  });
+}
+
+$('btn-mais-equipe').addEventListener('click', () => mudarFormato('equipes', 1));
+$('btn-menos-equipe').addEventListener('click', () => mudarFormato('equipes', -1));
+$('btn-mais-tamanho').addEventListener('click', () => mudarFormato('tamanho', 1));
+$('btn-menos-tamanho').addEventListener('click', () => mudarFormato('tamanho', -1));
 
 /**
  * Balao para trocar o proprio icone.
@@ -850,7 +898,7 @@ socket.on('rodada:pergunta', (dados) => {
   }
   letra.hidden = linhas.length === 0;
 
-  // Veni, Vidi, Vici: a primeira dica entra com a pergunta; as outras duas
+  // 1 eh bom 2 ok 3 eh demais: a primeira dica entra com a pergunta; as outras duas
   // chegam sozinhas no meio da rodada.
   mostrarDicas(dados.veni);
 
@@ -920,10 +968,10 @@ socket.on('rodada:pergunta', (dados) => {
 
   if (!dados.presente) mensagemSistema(`Rodada ${dados.rodada} · ${dados.categoria.nome}`);
 
-  // Veni, Vidi, Vici: aqui o campo nao e chat, e um palpite fechado — ele so
+  // 1 eh bom 2 ok 3 eh demais: aqui o campo nao e chat, e um palpite fechado — ele so
   // aparece para a mesa quando o tempo da dica acaba.
   if (dados.veni) {
-    inputChat.placeholder = 'Seu palpite — ninguem ve ate o tempo fechar…';
+    inputChat.placeholder = 'Trave sua resposta — ninguem ve ate a janela fechar…';
     $('status-respostas').textContent = 'Ninguem palpitou ainda.';
   }
 
@@ -1081,7 +1129,7 @@ function limparTabuleiro() {
   montarAudio(null);
 }
 
-/* ------------------------ Veni, Vidi, Vici -------------------------- */
+/* ------------------------ 1 eh bom 2 ok 3 eh demais -------------------------- */
 
 /** Comeca a lista de dicas da rodada (ou esconde, nos outros modos). */
 function mostrarDicas(veni) {
@@ -1120,8 +1168,12 @@ function mostrarPalpites(dados) {
 
   for (const p of dados.palpites) {
     const item = criar('li', p.certo ? 'palpite palpite--certo' : 'palpite palpite--errado');
-    item.innerHTML = `<span class="palpite__quem">${escapar(p.avatar)} ${escapar(p.nickname)}</span>
-      <span class="palpite__texto">${escapar(p.texto)}</span>
+    // A resposta em cima e quem escreveu de subtitulo embaixo: o que a mesa
+    // quer ler primeiro e o palpite, nao de quem ele e.
+    item.innerHTML = `<span class="palpite__corpo">
+        <span class="palpite__texto">${escapar(p.texto)}</span>
+        <span class="palpite__quem">${escapar(p.avatar)} ${escapar(p.nickname)}</span>
+      </span>
       <span class="palpite__marca">${p.certo ? '+' + dados.vale : '✗'}</span>`;
     lista.appendChild(item);
   }
@@ -1146,7 +1198,7 @@ socket.on('veni:dica', (dados) => {
   // Janela nova: os palpites da anterior saem da tela e o relogio recomeca.
   esconderPalpites();
   $('status-respostas').textContent = 'Ninguem palpitou ainda.';
-  destrancarChat('Seu palpite — ninguem ve ate o tempo fechar…');
+  destrancarChat('Trave sua resposta — ninguem ve ate a janela fechar…');
   pararContagem();
   if (dados.duracaoMs) contarTempo(barraTempo, dados.duracaoMs, true);
 });
@@ -1774,10 +1826,12 @@ formChat.addEventListener('submit', (evento) => {
       avisoDeItem(resposta);
 
     } else if (resposta.veredito === 'palpite') {
-      // Veni, Vidi, Vici: guardado e mudo ate a revelacao.
+      // 1 eh bom 2 ok 3 eh demais: guardado e mudo ate a revelacao. Responder
+      // e travar, entao quem responde por ultimo fecha a janela para a mesa:
+      // so da para repensar enquanto ainda falta alguem.
       avisoParticular(resposta.trocou
         ? `Troquei seu palpite para "${resposta.texto}".`
-        : `Palpite guardado: "${resposta.texto}". Da para trocar ate o tempo acabar.`);
+        : `Palpite travado: "${resposta.texto}". Da para trocar enquanto a janela estiver aberta.`);
 
     } else if (resposta.veredito === 'certo') {
       estado.acertou = true;

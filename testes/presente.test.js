@@ -65,8 +65,8 @@ function responder(sala, socketId) {
 /* ---------------- Quem pode comecar a partida ---------------- */
 {
   const { sala } = montarSala(3);
-  conferir('3 jogadores nao formam duas equipes',
-    /equipes/.test(sala.iniciar().erro || ''), true);
+  conferir('3 jogadores deixam uma equipe sozinha',
+    /sozinha/.test(sala.iniciar().erro || ''), true);
   sala.destruir();
 
   // Impar entra: 3 contra 2 vale. O que nao vale e equipe com menos de dois.
@@ -78,8 +78,8 @@ function responder(sala, socketId) {
 
   const { sala: sala5 } = montarSala(5);
   sala5.equipes[0].jogadores.push(...sala5.equipes[1].jogadores.splice(0));
-  conferir('equipe com menos de dois nao entra',
-    /pelo menos dois/.test(sala5.iniciar().erro || ''), true);
+  conferir('com todo mundo de um lado so, falta adversario',
+    /Faltam equipes/.test(sala5.iniciar().erro || ''), true);
   sala5.destruir();
 
   const { sala: sala3 } = montarSala(4);
