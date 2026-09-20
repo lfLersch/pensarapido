@@ -89,6 +89,24 @@ const salaLembrada = {
   esquecer: () => localStorage.removeItem('pensarapido:sala')
 };
 
+/**
+ * A carteirinha desta aba — um numero qualquer, guardado no navegador.
+ *
+ * Serve para o servidor reconhecer a MESMA aba voltando. So o nickname nao
+ * basta: logo depois de uma queda o socket velho ainda parece vivo (atras de
+ * proxy a conexao vira long-polling, e a morte so e notada no ping timeout),
+ * e sem a carteirinha a pessoa voltava como "Ana (2)", do zero.
+ */
+function carteirinha() {
+  let id = localStorage.getItem('pensarapido:cliente');
+  if (!id) {
+    id = (crypto.randomUUID && crypto.randomUUID())
+      || `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem('pensarapido:cliente', id);
+  }
+  return id;
+}
+
 function nicknameValido() {
   const nome = inputNickname.value.trim();
   if (nome.length < 2) {
@@ -125,7 +143,7 @@ function entrarNaSala() {
   const codigo = inputCodigo.value.trim();
   if (codigo.length !== 4) return avisar('aviso-lobby', 'O codigo da sala tem 4 caracteres.');
 
-  socket.emit('sala:entrar', { nickname, codigo }, (resposta) => {
+  socket.emit('sala:entrar', { nickname, codigo, cliente: carteirinha() }, (resposta) => {
     if (resposta.erro) return avisar('aviso-lobby', resposta.erro);
     avisar('aviso-lobby', '');
     estado.eu = resposta.eu;
@@ -471,7 +489,7 @@ $('btn-criar').addEventListener('click', () => {
     segundosPorPergunta: estado.escolhas.segundosPorPergunta
   };
 
-  socket.emit('sala:criar', { nickname, config }, (resposta) => {
+  socket.emit('sala:criar', { nickname, config, cliente: carteirinha() }, (resposta) => {
     if (resposta.erro) return avisar('aviso-config', resposta.erro);
     avisar('aviso-config', '');
     estado.eu = resposta.eu;
@@ -2145,7 +2163,7 @@ socket.on('connect', () => {
   if (!codigo || nickname.length < 2) return caiuFora('A conexao caiu. Entre de novo.');
 
   brindar('Reconectando…');
-  socket.emit('sala:entrar', { nickname, codigo }, (resposta) => {
+  socket.emit('sala:entrar', { nickname, codigo, cliente: carteirinha() }, (resposta) => {
     if (resposta?.erro) return caiuFora(`A conexao caiu e nao deu para voltar: ${resposta.erro}`);
 
     estado.eu = resposta.eu;

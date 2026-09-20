@@ -45,9 +45,21 @@ nome de quem caiu, porque ele é a chave de volta.
 
 **A aba volta sozinha.** Ela guarda o código da sala no navegador, e quando a
 conexão cai e volta ela entra de novo com o mesmo nickname, sem ninguém digitar
-nada. Uma reconexão cria um socket novo — para o servidor seria outra pessoa —,
-e é o nickname que costura as duas pontas. Sair pelo botão *Sair* é de propósito:
-aí a aba esquece a sala e não tenta voltar.
+nada. Sair pelo botão *Sair* é de propósito: aí a aba esquece a sala e não tenta
+voltar.
+
+**A carteirinha.** Junto com o nickname, a aba manda um número guardado no
+navegador — só serve para dizer *"sou a mesma aba"*. Sem ela a volta rápida
+quebrava: reconectar leva menos de um segundo, e o `disconnect` da conexão
+velha chega bem depois. Atrás de um proxy a conexão cai para long-polling e o
+servidor só nota a morte no *ping timeout*, uns 20 segundos — nessa janela a
+cadeira ainda parece ocupada pela própria pessoa, e ela voltava como *Ana (2)*,
+do zero, olhando para os próprios pontos no lugar de outra pessoa.
+
+Com a carteirinha batendo, a cadeira é retomada na hora. Sem ela (aba nova,
+outro aparelho), vale o nickname — e aí só quando o socket antigo já morreu de
+fato. **Quem tem o mesmo nome, outra carteirinha e está online não é tocado:**
+esse é outra pessoa e continua virando *Ana (2)*.
 
 **Quem chega no meio de uma rodada começa a valer na seguinte.** A tela do jogo
 abre com *"Você entra na próxima rodada"* e o chat trancado até lá. Nos modos em

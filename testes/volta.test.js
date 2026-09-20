@@ -111,14 +111,50 @@ function salaCom(quantos, modo = 'tempo') {
   sala.destruir();
 }
 
-/* ---------------- Xara ONLINE nao perde a cadeira ---------------- */
+/* ---------------- A carteirinha vale mesmo com o socket velho "vivo" ---------------- */
+{
+  // Este e o caso do Render: atras de proxy a conexao vira long-polling, e o
+  // servidor so nota a queda no ping timeout — ate la o socket velho parece
+  // de pe. Quem resolve e a carteirinha do navegador.
+  const { sala } = salaCom(2);
+  sala.iniciar();
+  sala.limparTemporizador();
+  sala.jogadores.get('ana').pontos = 30;
+  sala.jogadores.get('ana').cliente = 'aba-da-ana-0001';
+
+  // De proposito: para o servidor, TODO MUNDO ainda esta online.
+  const volta = sala.entrar('ana-reconectada', 'Ana', 'aba-da-ana-0001');
+  conferir('a mesma aba retoma a cadeira mesmo assim', volta.jogador.nickname, 'Ana');
+  conferir('  com os pontos', volta.jogador.pontos, 30);
+  conferir('  e sem duplicar no placar', sala.placar().length, 2);
+  sala.destruir();
+}
+
+/* ---------------- A carteirinha acha os pontos ate se o nick mudar ---------------- */
+{
+  const { sala } = salaCom(2);
+  sala.iniciar();
+  sala.limparTemporizador();
+  sala.jogadores.get('ana').pontos = 15;
+  sala.jogadores.get('ana').cliente = 'aba-da-ana-0001';
+  sala.sair('ana');
+
+  const volta = sala.entrar('ana3', 'Aninha', 'aba-da-ana-0001');
+  conferir('voltou com outro nick, mas e a mesma aba', volta.jogador.pontos, 15);
+  conferir('  e usa a grafia guardada', volta.jogador.nickname, 'Ana');
+  sala.destruir();
+}
+
+/* ---------------- Xara ONLINE, de outra aba, nao toma a cadeira ---------------- */
 {
   const { sala } = salaCom(2);
   sala.jogadores.get('ana').pontos = 25;
+  sala.jogadores.get('ana').cliente = 'aba-da-ana-0001';
 
-  // Todo mundo online: quem chega com o mesmo nome e outra pessoa mesmo.
-  const xara = sala.entrar('outra-ana', 'Ana');
+  // Outra pessoa, outra carteirinha, e a Ana de verdade online.
+  const xara = sala.entrar('outra-ana', 'Ana', 'aba-de-outra-9999');
   conferir('com a Ana online, a xara vira (2)', xara.jogador.nickname, 'Ana (2)');
+  conferir('  e comeca do zero', xara.jogador.pontos, 0);
   conferir('  e a Ana de verdade continua na sala com os pontos',
     [sala.jogadores.has('ana'), sala.jogadores.get('ana').pontos], [true, 25]);
   sala.destruir();

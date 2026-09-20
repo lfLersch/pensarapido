@@ -195,7 +195,14 @@ io.on('connection', (socket) => {
     if (typeof callback === 'function') callback(payload);
   }
 
-  socket.on('sala:criar', ({ nickname, config } = {}, callback) => {
+  /** A carteirinha que a aba manda: so serve para reconhecer a mesma aba. */
+  function limparCliente(valor) {
+    if (typeof valor !== 'string') return null;
+    const limpo = valor.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
+    return limpo.length >= 8 ? limpo : null;
+  }
+
+  socket.on('sala:criar', ({ nickname, config, cliente } = {}, callback) => {
     const nome = limparNickname(nickname);
     if (!nome) return responder(callback, { erro: 'Escolha um nickname de 2 a 16 caracteres.' });
     if (salaDoSocket()) return responder(callback, { erro: 'Você já está em uma sala.' });
@@ -204,7 +211,9 @@ io.on('connection', (socket) => {
     if (validacao.erro) return responder(callback, { erro: validacao.erro });
 
     const sala = criarSala(validacao.config);
-    const { jogador, erro } = sala.entrar(socket.id, nome);
+    // A carteirinha vai desde a criacao: quem abre a sala tambem cai da
+    // internet, e sem ela o dono voltaria como "Ana (2)".
+    const { jogador, erro } = sala.entrar(socket.id, nome, limparCliente(cliente));
     if (erro) {
       removerSalaSeVazia(sala);
       return responder(callback, { erro });
@@ -217,7 +226,7 @@ io.on('connection', (socket) => {
     publicarEstado(sala);
   });
 
-  socket.on('sala:entrar', ({ nickname, codigo } = {}, callback) => {
+  socket.on('sala:entrar', ({ nickname, codigo, cliente } = {}, callback) => {
     const nome = limparNickname(nickname);
     if (!nome) return responder(callback, { erro: 'Escolha um nickname de 2 a 16 caracteres.' });
 
@@ -228,7 +237,7 @@ io.on('connection', (socket) => {
     const sala = salas.get(cod);
     if (!sala) return responder(callback, { erro: 'Não encontramos nenhuma sala com esse código.' });
 
-    const { jogador, erro, voltou } = sala.entrar(socket.id, nome);
+    const { jogador, erro, voltou } = sala.entrar(socket.id, nome, limparCliente(cliente));
     if (erro) return responder(callback, { erro });
 
     socket.join(sala.codigo);

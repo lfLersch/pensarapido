@@ -324,6 +324,11 @@ class Sala {
     this.desligados = new Map(); // nickname normalizado -> { pontos, acertos, ... }
     // Se um socket ainda esta de pe. Quem sabe disso e o `index.js`, que tem o
     // io; aqui vale tudo online, que e o que os testes querem.
+    //
+    // Cuidado: isto NAO e confiavel logo apos uma queda. Em long-polling (que
+    // e o que sobra atras de proxy) o servidor so percebe a conexao morta
+    // depois do ping timeout, e ate la o socket velho parece vivo. Por isso a
+    // carteirinha do navegador existe.
     this.estaOnline = () => true;
     // Sala sem ninguem no meio da partida: os relogios param e ela espera.
     this.congelada = false;
@@ -398,7 +403,7 @@ class Sala {
    * pontos, os acertos, o icone e a equipe que eram dele. Internet caindo no
    * meio de uma partida e coisa demais para custar o jogo inteiro.
    */
-  entrar(socketId, nickname) {
+  entrar(socketId, nickname, cliente) {
     if (this.jogadores.size >= MAX_JOGADORES) {
       return { erro: 'Esta sala ja esta cheia.' };
     }
@@ -407,10 +412,13 @@ class Sala {
     // isto, a cadeira de quem caiu ainda estava ocupada por ele mesmo, e a
     // pessoa voltava como "Ana (2)", do zero, olhando para os proprios pontos
     // no lugar de outra pessoa.
-    this.liberarCadeiraFantasma(nickname);
+    this.liberarCadeiraFantasma(nickname, cliente);
 
     const chave = normalizar(nickname);
-    const guardado = this.desligados.get(chave);
+    // Pelo nickname, ou pela carteirinha se a pessoa voltou digitando outro
+    // nome: a aba e a mesma, e os pontos sao dela.
+    const guardado = this.desligados.get(chave)
+      || (cliente && [...this.desligados.values()].find((d) => d.cliente === cliente));
     // Nome ja em uso por quem esta na sala AGORA vira "Ana (2)"; nome de quem
     // caiu nao, porque e justamente a chave de volta.
     const emUso = new Set([...this.jogadores.values()].map((j) => normalizar(j.nickname)));
@@ -430,6 +438,9 @@ class Sala {
       id: socketId,
       nickname: nomeFinal,
       avatar,
+      // A carteirinha do navegador: e ela que reconhece a MESMA aba voltando,
+      // mesmo quando o socket velho ainda parece vivo.
+      cliente: cliente || (guardado && guardado.cliente) || null,
       pontos: guardado ? guardado.pontos : 0,
       acertos: guardado ? guardado.acertos : 0,
       lider: this.jogadores.size === 0,
@@ -455,18 +466,27 @@ class Sala {
   }
 
   /**
-   * Tira da sala o jogador com esse nickname cujo socket ja morreu.
+   * Libera a cadeira de quem esta voltando, antes de sentar de novo.
    *
    * E a mesma saida que o `disconnect` faria, so que na hora: o que sobra
    * daquela pessoa vai para `desligados`, e a entrada logo abaixo devolve tudo
-   * a ela. Quem tem o mesmo nome e esta ONLINE nao e tocado — esse continua
-   * virando "Ana (2)", que e o certo.
+   * a ela.
+   *
+   * Duas coisas justificam tomar a cadeira. A carteirinha batendo e prova de
+   * que e a MESMA aba — vale mesmo que o socket velho ainda pareca vivo, que e
+   * o normal logo depois de uma queda em long-polling. Sem carteirinha, resta
+   * o nickname, e ai so quando o socket velho ja morreu de fato.
+   *
+   * Quem tem o mesmo nome, outra carteirinha e esta online nao e tocado: esse
+   * e outra pessoa, e continua virando "Ana (2)".
    */
-  liberarCadeiraFantasma(nickname) {
+  liberarCadeiraFantasma(nickname, cliente) {
     const alvo = normalizar(nickname);
     for (const jogador of this.jogadores.values()) {
-      if (normalizar(jogador.nickname) !== alvo) continue;
-      if (this.estaOnline(jogador.id)) continue;
+      const mesmaAba = Boolean(cliente) && jogador.cliente === cliente;
+      const mesmoNomeEMorto = normalizar(jogador.nickname) === alvo
+        && !this.estaOnline(jogador.id);
+      if (!mesmaAba && !mesmoNomeEMorto) continue;
       this.sair(jogador.id);
       return true;
     }
@@ -504,6 +524,7 @@ class Sala {
     this.desligados.set(normalizar(jogador.nickname), {
       nickname: jogador.nickname,
       avatar: jogador.avatar,
+      cliente: jogador.cliente || null,
       pontos: jogador.pontos,
       acertos: jogador.acertos,
       equipe: (this.equipeDoJogador(socketId) || {}).id || null
