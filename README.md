@@ -24,10 +24,46 @@ Todo jogador começa digitando um **nickname** e escolhendo entre:
 - **Entrar na sala** — abre um campo para o código de 4 caracteres.
 
 Embaixo, o saguão lista as **salas abertas** — quem criou, o modo, a lotação e
-o código —, e dá para entrar com um clique, sem ninguém ditar o código. Só
-aparecem salas esperando gente ou entre uma partida e outra: partida rolando
-não aceita ninguém. A lista vem de `GET /api/salas` e se atualiza sozinha a
-cada 4 segundos enquanto o saguão está na tela.
+o código —, e dá para entrar com um clique, sem ninguém ditar o código. Entra
+também a sala com **partida rolando**, marcada como tal: dá para entrar a
+qualquer momento (ver [Cair e voltar](#cair-e-voltar)). A lista vem de
+`GET /api/salas` e se atualiza sozinha a cada 4 segundos enquanto o saguão
+está na tela.
+
+### Cair e voltar
+
+Wi-fi que pisca, aba que fecha sem querer, celular que dorme. Nada disso custa
+a partida: **dá para entrar a qualquer momento**, inclusive no meio de uma
+rodada, e **quem volta com o mesmo nickname volta com o que era dele** — os
+pontos, os acertos, o ícone e a equipe.
+
+O nickname é a identidade, comparado sem olhar maiúscula nem acento: *ANA* volta
+como *Ana*. Quando alguém sai, a sala guarda a ficha dele; quando o mesmo nome
+entra de novo, ela devolve tudo e apaga a ficha. Xará de quem está na sala
+**agora** continua virando *Ana (2)* — o que não ganha sufixo é justamente o
+nome de quem caiu, porque ele é a chave de volta.
+
+**A aba volta sozinha.** Ela guarda o código da sala no navegador, e quando a
+conexão cai e volta ela entra de novo com o mesmo nickname, sem ninguém digitar
+nada. Uma reconexão cria um socket novo — para o servidor seria outra pessoa —,
+e é o nickname que costura as duas pontas. Sair pelo botão *Sair* é de propósito:
+aí a aba esquece a sala e não tenta voltar.
+
+**Quem chega no meio de uma rodada começa a valer na seguinte.** A tela do jogo
+abre com *"Você entra na próxima rodada"* e o chat trancado até lá. Nos modos em
+equipe isso é obrigatório: mexer em quem está numa equipe com o leilão no ar
+trocaria os papéis dela na metade, então o encaixe acontece entre uma rodada e
+outra.
+
+**Saiu todo mundo? A sala espera.** Em vez de seguir jogando para uma plateia
+vazia, os relógios param e ela congela — em qualquer fase, inclusive na tela de
+resultado. Quem voltar reacende a sala a partir da próxima rodada, com o placar
+intacto. Passados **10 minutos** sem ninguém, a varredura recolhe a sala; a que
+nunca chegou a jogar morre na hora, porque não tem placar para guardar.
+
+Duas coisas **não** voltam. Quem foi **expulso** pelo líder não volta com os
+pontos de antes (senão o botão do líder não serviria para nada), e a **coroa**
+não é devolvida: se o líder cai, o posto passa para quem ficou e fica com ele.
 
 No rodapé fica o link **Novidades**, com a versão que está no ar ao lado. Ele
 abre a lista de notas de versão, da mais nova para a mais antiga — o que mudou

@@ -16,6 +16,9 @@ const PORTA = process.env.PORT || 3000;
 const SEGUNDOS_PERMITIDOS = [15, 20, 30, 45];
 const META_MIN = 20;
 const META_MAX = 500;
+// Sala que esvaziou no meio da partida nao morre na hora: quem caiu tem esse
+// tempo para voltar e reencontrar o proprio placar.
+const MS_ESPERANDO_VOLTA = 10 * 60 * 1000;
 
 const app = express();
 const servidor = http.createServer(app);
@@ -49,8 +52,9 @@ app.get('/api/salas', (_req, res) => {
   const abertas = [];
   for (const sala of salas.values()) {
     if (sala.vazia) continue;
-    // Partida rolando nao aceita ninguem; entre uma partida e outra, aceita.
-    if (sala.estado !== 'lobby' && sala.estado !== 'fim') continue;
+    // Partida rolando tambem entra na lista: da para cair e voltar, e quem
+    // chega no meio comeca a valer na proxima rodada. O `estado` vai junto
+    // para o saguao dizer o que e o que.
     if (sala.jogadores.size >= MAX_JOGADORES) continue;
 
     const lider = [...sala.jogadores.values()].find((j) => j.lider);
@@ -93,11 +97,25 @@ function criarSala(config) {
   return sala;
 }
 
+/**
+ * Fecha a sala que ficou vazia — menos a que tem partida para voltar.
+ *
+ * Sala que nunca jogou nao guarda nada, entao morre na hora. A que estava no
+ * meio de uma partida fica de molho: o placar e os pontos de quem caiu moram
+ * nela, e sem isso "voltar com os pontos" nao existiria para o ultimo que sai.
+ * Quem recolhe essas e a varredura, passado `MS_ESPERANDO_VOLTA`.
+ */
 function removerSalaSeVazia(sala) {
-  if (sala.vazia) {
+  if (!sala.vazia) {
+    sala.vaziaDesde = null;
+    return;
+  }
+  if (sala.rodada === 0 && sala.estado === 'lobby') {
     sala.destruir();
     salas.delete(sala.codigo);
+    return;
   }
+  if (!sala.vaziaDesde) sala.vaziaDesde = Date.now();
 }
 
 function publicarEstado(sala) {
@@ -206,14 +224,18 @@ io.on('connection', (socket) => {
     const sala = salas.get(cod);
     if (!sala) return responder(callback, { erro: 'Não encontramos nenhuma sala com esse código.' });
 
-    const { jogador, erro } = sala.entrar(socket.id, nome);
+    const { jogador, erro, voltou } = sala.entrar(socket.id, nome);
     if (erro) return responder(callback, { erro });
 
     socket.join(sala.codigo);
     socket.data.codigo = sala.codigo;
 
-    responder(callback, { ok: true, codigo: sala.codigo, eu: jogador, sala: sala.estadoPublico() });
-    io.to(sala.codigo).emit('sala:entrou', { nickname: jogador.nickname, avatar: jogador.avatar });
+    responder(callback, {
+      ok: true, codigo: sala.codigo, eu: jogador, sala: sala.estadoPublico(), voltou
+    });
+    io.to(sala.codigo).emit('sala:entrou', {
+      nickname: jogador.nickname, avatar: jogador.avatar, voltou
+    });
     publicarEstado(sala);
   });
 
@@ -376,16 +398,19 @@ io.on('connection', (socket) => {
   });
 });
 
-// Varredura de salas abandonadas (sem jogadores há mais de uma hora).
+// Varredura das salas abandonadas: as que esvaziaram e ninguem voltou.
 setInterval(() => {
-  const limite = Date.now() - 60 * 60 * 1000;
+  const limite = Date.now() - MS_ESPERANDO_VOLTA;
   for (const [codigo, sala] of salas) {
-    if (sala.vazia && sala.criadaEm < limite) {
+    if (!sala.vazia) continue;
+    // `vaziaDesde` e a hora em que a ultima pessoa saiu; a sala que nunca teve
+    // ninguem cai pela hora em que foi criada.
+    if ((sala.vaziaDesde || sala.criadaEm) < limite) {
       sala.destruir();
       salas.delete(codigo);
     }
   }
-}, 10 * 60 * 1000).unref();
+}, 60 * 1000).unref();
 
 servidor.listen(PORTA, () => {
   console.log(`\n  🧠 PensaRápido rodando em http://localhost:${PORTA}\n`);

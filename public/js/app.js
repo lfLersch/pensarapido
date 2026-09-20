@@ -76,6 +76,19 @@ const inputCodigo = $('input-codigo');
 
 inputNickname.value = localStorage.getItem('pensarapido:nickname') || '';
 
+/**
+ * A sala em que eu estava, guardada no navegador.
+ *
+ * E o que permite voltar sozinho quando a conexao cai: a aba reabre, acha o
+ * codigo aqui e entra de novo com o mesmo nickname — que e o que o servidor
+ * usa para devolver os pontos.
+ */
+const salaLembrada = {
+  guardar: (codigo) => localStorage.setItem('pensarapido:sala', codigo),
+  ler: () => localStorage.getItem('pensarapido:sala') || '',
+  esquecer: () => localStorage.removeItem('pensarapido:sala')
+};
+
 function nicknameValido() {
   const nome = inputNickname.value.trim();
   if (nome.length < 2) {
@@ -117,9 +130,12 @@ function entrarNaSala() {
     avisar('aviso-lobby', '');
     estado.eu = resposta.eu;
     estado.sala = resposta.sala;
+    salaLembrada.guardar(resposta.codigo);
     inputCodigo.value = '';
-    renderizarSala();
-    mostrarTela('tela-sala');
+    if (resposta.voltou) brindar('Voce voltou, com os pontos de antes');
+    // Pode ser uma sala com a partida ja rolando: a tela certa depende do
+    // estado dela, nao e sempre o saguao.
+    abrirTelaDaSala(resposta.sala);
   });
 }
 
@@ -150,7 +166,11 @@ async function carregarSalasAbertas() {
   lista.innerHTML = '';
   for (const sala of salas) {
     const item = criar('li', 'sala-aberta');
-    const quando = sala.estado === 'fim' ? ' · entre partidas' : '';
+    // Sala com partida no ar tambem aparece: da para cair e voltar, e quem
+    // chega no meio comeca a valer na proxima rodada.
+    const quando = sala.estado === 'fim'
+      ? ' · entre partidas'
+      : sala.estado === 'lobby' ? '' : ' · partida rolando';
     item.innerHTML = `
       <span class="sala-aberta__lider">${sala.avatar} ${escapar(sala.lider)}</span>
       <span class="sala-aberta__modo">${sala.icone} ${escapar(sala.modo)} · ${sala.codigo}${quando}</span>
@@ -456,6 +476,7 @@ $('btn-criar').addEventListener('click', () => {
     avisar('aviso-config', '');
     estado.eu = resposta.eu;
     estado.sala = resposta.sala;
+    salaLembrada.guardar(resposta.codigo);
     renderizarSala();
     mostrarTela('tela-sala');
   });
@@ -702,6 +723,7 @@ function abrirEscolhaAvatar() {
 }
 
 socket.on('sala:expulso', () => {
+  salaLembrada.esquecer();
   estado.sala = null;
   estado.eu = null;
   pararAnimacao();
@@ -730,6 +752,8 @@ $('btn-iniciar').addEventListener('click', () => {
 });
 
 function sairDaSala() {
+  // Sair no botao e de proposito: a aba esquece a sala e nao tenta voltar.
+  salaLembrada.esquecer();
   socket.emit('sala:sair', {}, () => {
     estado.eu = null;
     estado.sala = null;
@@ -2040,6 +2064,39 @@ $('btn-novo-jogo').addEventListener('click', () => {
    Eventos gerais da sala
    ===================================================================== */
 
+/**
+ * Poe a pessoa na tela do momento da sala.
+ *
+ * Entrando no saguao da sala e simples; entrando com a partida no ar, a tela
+ * do jogo abre com um aviso no lugar da pergunta — o proximo
+ * `rodada:categoria` preenche o resto sozinho.
+ */
+function abrirTelaDaSala(sala) {
+  if (sala.estado === 'lobby') {
+    renderizarSala();
+    return mostrarTela('tela-sala');
+  }
+  if (sala.estado === 'fim') {
+    renderizarFim(sala.jogadores, sala.config.metaPontos, sala.rodada);
+    return mostrarTela('tela-fim');
+  }
+
+  revelacao.hidden = true;
+  jogo.hidden = false;
+  limparTabuleiro();
+  $('jogo-codigo').textContent = sala.codigo;
+  $('jogo-rodada').textContent = sala.rodada;
+  $('jogo-meta').textContent = `${sala.config.metaPontos} pts`;
+  $('pergunta-categoria-icone').textContent = '⏳';
+  $('pergunta-categoria-nome').textContent = 'Entrando';
+  $('pergunta-texto').textContent = 'Voce entra na proxima rodada.';
+  $('pergunta-texto').classList.add('pergunta__texto--segredo');
+  $('presente').hidden = true;
+  renderizarPlacar(sala.jogadores);
+  trancarChat('Esperando a proxima rodada…');
+  mostrarTela('tela-jogo');
+}
+
 socket.on('sala:estado', (sala) => {
   const anterior = estado.sala?.estado;
   estado.sala = sala;
@@ -2062,7 +2119,8 @@ socket.on('sala:estado', (sala) => {
   }
 });
 
-socket.on('sala:entrou', ({ nickname, avatar }) => brindar(`${avatar} ${nickname} entrou`));
+socket.on('sala:entrou', ({ nickname, avatar, voltou }) =>
+  brindar(`${avatar} ${nickname} ${voltou ? 'voltou' : 'entrou'}`));
 socket.on('sala:saiu', ({ nickname, expulso }) =>
   brindar(expulso ? `${nickname} foi expulso da sala` : `${nickname} saiu da sala`));
 
@@ -2072,14 +2130,39 @@ socket.on('disconnect', () => {
 });
 
 socket.on('connect', () => {
-  // Uma reconexão cria um socket novo: a sala anterior já não existe para nós.
-  if (estado.sala && !$('tela-lobby').classList.contains('ativa')) {
-    estado.sala = null;
-    estado.eu = null;
-    mostrarTela('tela-lobby');
-    avisar('aviso-lobby', 'A conexao caiu e voce saiu da sala. Entre de novo.');
-  }
+  // Uma reconexao cria um socket NOVO, entao para o servidor somos outra
+  // pessoa. O caminho de volta e entrar de novo com o mesmo nickname: e por
+  // ele que o servidor devolve os pontos, o icone e a equipe.
+  const estavaJogando = estado.sala && !$('tela-lobby').classList.contains('ativa');
+  if (!estavaJogando) return;
+
+  const codigo = salaLembrada.ler() || estado.sala.codigo;
+  const nickname = estado.eu?.nickname || localStorage.getItem('pensarapido:nickname') || '';
+
+  estado.sala = null;
+  estado.eu = null;
+
+  if (!codigo || nickname.length < 2) return caiuFora('A conexao caiu. Entre de novo.');
+
+  brindar('Reconectando…');
+  socket.emit('sala:entrar', { nickname, codigo }, (resposta) => {
+    if (resposta?.erro) return caiuFora(`A conexao caiu e nao deu para voltar: ${resposta.erro}`);
+
+    estado.eu = resposta.eu;
+    estado.sala = resposta.sala;
+    salaLembrada.guardar(resposta.codigo);
+    abrirTelaDaSala(resposta.sala);
+    brindar(resposta.voltou ? 'Voce voltou, com os pontos de antes' : 'Voce voltou para a sala');
+  });
 });
+
+/** Nao deu para voltar: a aba esquece a sala e volta ao saguao. */
+function caiuFora(aviso) {
+  salaLembrada.esquecer();
+  pararAnimacao();
+  mostrarTela('tela-lobby');
+  avisar('aviso-lobby', aviso);
+}
 
 /* --------------------------------- Início --------------------------------- */
 

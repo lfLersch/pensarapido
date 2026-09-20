@@ -17,6 +17,19 @@
 
 const NOTAS = [
   {
+    versao: '1.13',
+    data: '2026-09-19',
+    titulo: 'Caiu? Volta com os pontos',
+    itens: [
+      'Da para entrar na sala a qualquer momento, inclusive no meio de uma rodada — partida rolando tambem aparece na lista do saguao.',
+      'Quem cai e volta com o MESMO nickname volta com tudo que era dele: os pontos, os acertos, o icone e a equipe. Maiuscula e acento nao atrapalham.',
+      'E a aba volta sozinha: se a conexao cair, ela entra de novo no lugar em que voce estava, sem ninguem digitar nada.',
+      'Quem chega no meio de uma rodada comeca a valer na seguinte, com a tela avisando disso.',
+      'Se todo mundo sair, a sala congela em vez de seguir jogando sozinha, e espera 10 minutos por alguem — o placar fica intacto.',
+      'Sair pelo botao continua sendo de proposito, e quem o lider expulsa nao volta com os pontos de antes.'
+    ]
+  },
+  {
     versao: '1.12',
     data: '2026-09-19',
     titulo: 'Equipes do tamanho que voce quiser',

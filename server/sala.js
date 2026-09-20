@@ -117,6 +117,8 @@ const PONTOS_VENI = [10, 6, 3];  // quanto vale acertar em cada dica
 const DICAS_POR_RODADA = 3;
 const MS_FASE_VENI = 15000;      // cada dica abre uma janela de 15s para palpitar
 const MS_REVELA_VENI = 5000;     // quanto tempo os palpites ficam na tela
+// Sala congelada que volta a ter gente: um respiro antes da proxima rodada.
+const MS_VOLTA_DA_SALA = 2500;
 // Todo mundo travou antes do tempo: um respiro curto para a mesa ler "todo
 // mundo ja palpitou" antes de as respostas abrirem de uma vez.
 const MS_TODOS_TRAVARAM = 700;
@@ -317,8 +319,16 @@ class Sala {
     this.emitirPara = emitirPara || (() => {});
 
     this.jogadores = new Map(); // socketId -> jogador
+    // Quem caiu, guardado pelo nickname: quem volta com o mesmo nome volta com
+    // o que era dele. Uma queda de conexao nao devia custar a partida.
+    this.desligados = new Map(); // nickname normalizado -> { pontos, acertos, ... }
+    // Sala sem ninguem no meio da partida: os relogios param e ela espera.
+    this.congelada = false;
     this.estado = 'lobby';      // lobby | categoria | leilao | pergunta | resultado | fim
     this.criadaEm = Date.now();
+    // Desde quando a sala esta sem ninguem. Quem recolhe as abandonadas e a
+    // varredura do `index.js`; ate la, ela espera quem caiu voltar.
+    this.vaziaDesde = null;
 
     this.rodada = 0;
     this.perguntaAtual = null;
@@ -378,42 +388,98 @@ class Sala {
 
   /* --------------------------- Jogadores ---------------------------- */
 
+  /**
+   * Entrar na sala — a qualquer momento, inclusive no meio da partida.
+   *
+   * O nickname e a identidade: quem cai e volta com o mesmo nome recupera os
+   * pontos, os acertos, o icone e a equipe que eram dele. Internet caindo no
+   * meio de uma partida e coisa demais para custar o jogo inteiro.
+   */
   entrar(socketId, nickname) {
     if (this.jogadores.size >= MAX_JOGADORES) {
       return { erro: 'Esta sala ja esta cheia.' };
     }
-    if (this.estado !== 'lobby' && this.estado !== 'fim') {
-      return { erro: 'A partida ja comecou. Espere ela terminar.' };
-    }
 
-    const nomesUsados = new Set([...this.jogadores.values()].map((j) => j.nickname.toLowerCase()));
-    let nomeFinal = nickname;
+    const chave = normalizar(nickname);
+    const guardado = this.desligados.get(chave);
+    // Nome ja em uso por quem esta na sala AGORA vira "Ana (2)"; nome de quem
+    // caiu nao, porque e justamente a chave de volta.
+    const emUso = new Set([...this.jogadores.values()].map((j) => normalizar(j.nickname)));
+
+    let nomeFinal = guardado ? guardado.nickname : nickname;
     let sufixo = 2;
-    while (nomesUsados.has(nomeFinal.toLowerCase())) {
+    while (emUso.has(normalizar(nomeFinal))) {
       nomeFinal = `${nickname} (${sufixo++})`;
     }
 
     const avataresUsados = new Set([...this.jogadores.values()].map((j) => j.avatar));
-    const avatar = AVATARES.find((a) => !avataresUsados.has(a)) || AVATARES[0];
+    const avatar = (guardado && !avataresUsados.has(guardado.avatar))
+      ? guardado.avatar
+      : (AVATARES.find((a) => !avataresUsados.has(a)) || AVATARES[0]);
 
     const jogador = {
       id: socketId,
       nickname: nomeFinal,
       avatar,
-      pontos: 0,
-      acertos: 0,
+      pontos: guardado ? guardado.pontos : 0,
+      acertos: guardado ? guardado.acertos : 0,
       lider: this.jogadores.size === 0,
       ultimaMensagem: 0
     };
 
     this.jogadores.set(socketId, jogador);
-    this.encaixarNaEquipe(socketId);
-    return { jogador };
+    this.desligados.delete(chave);
+
+    // Fora de partida da para arrumar as equipes na hora. Com a rodada no ar
+    // nao: mexer em quem esta numa equipe troca os papeis dela no meio do
+    // leilao. Entao quem chega agora entra na proxima rodada.
+    if (!this.rodadaNoAr()) {
+      const antiga = guardado && this.equipePorId(guardado.equipe);
+      if (antiga && antiga.jogadores.length < this.tamanhoEquipe) antiga.jogadores.push(socketId);
+      else this.encaixarNaEquipe(socketId);
+    }
+
+    // A sala estava parada esperando alguem voltar.
+    if (this.congelada) this.descongelar();
+
+    return { jogador, voltou: Boolean(guardado) };
+  }
+
+  /**
+   * A sala ficou sem ninguem no meio da partida.
+   *
+   * Em vez de deixar as rodadas correndo para uma plateia vazia, os relogios
+   * param e a sala espera. Quem voltar reacende dela a partir da proxima
+   * rodada, com o placar intacto.
+   */
+  congelar() {
+    // Vale em qualquer fase da partida, nao so com a rodada no ar: sair
+    // durante a tela de resultado deixava o temporizador da proxima rodada
+    // correndo, e a sala seguia jogando para uma plateia vazia.
+    if (this.congelada || !this.emPartida()) return;
+    this.limparTemporizador();
+    this.congelada = true;
+  }
+
+  descongelar() {
+    if (!this.congelada) return;
+    this.congelada = false;
+    this.avisar('A sala voltou. Proxima rodada ja vem.', true);
+    this.agendar(() => this.proximaRodada(), MS_VOLTA_DA_SALA);
   }
 
   sair(socketId) {
     const jogador = this.jogadores.get(socketId);
     if (!jogador) return null;
+
+    // Guarda o que era dele antes de apagar: o nickname e a chave de volta.
+    this.desligados.set(normalizar(jogador.nickname), {
+      nickname: jogador.nickname,
+      avatar: jogador.avatar,
+      pontos: jogador.pontos,
+      acertos: jogador.acertos,
+      equipe: (this.equipeDoJogador(socketId) || {}).id || null
+    });
 
     this.jogadores.delete(socketId);
     this.acertos.delete(socketId);
@@ -460,6 +526,9 @@ class Sala {
       this.travarSeTodosResponderam();
     }
 
+    // Saiu o ultimo: a sala para de rodar e fica esperando alguem voltar.
+    if (this.vazia) this.congelar();
+
     return jogador;
   }
 
@@ -472,6 +541,9 @@ class Sala {
     if (!alvo) return { erro: 'Esse jogador nao esta na sala.' };
 
     const removido = this.sair(socketIdAlvo);
+    // Expulsar e de proposito: nao da para voltar pelo mesmo nome com os
+    // pontos de antes, senao o botao do lider nao serviria para nada.
+    this.desligados.delete(normalizar(alvo.nickname));
     return { ok: true, jogador: removido };
   }
 
@@ -1299,6 +1371,10 @@ class Sala {
         : 'Nao sobraram duas equipes completas. Fim de jogo.', true);
       return this.terminar();
     }
+
+    // Quem chegou com a rodada no ar ficou de fora dela; entre uma rodada e
+    // outra da para encaixar sem trocar papel de ninguem no meio do caminho.
+    for (const id of this.semEquipe()) this.encaixarNaEquipe(id);
 
     this.rodada += 1;
 
@@ -2574,6 +2650,11 @@ class Sala {
   /** Metade mais um: 2 votos numa sala de 3, 3 numa de 4, 4 numa de 6. */
   votosParaPular() {
     return Math.floor(this.jogadores.size / 2) + 1;
+  }
+
+  /** A partida esta rolando, em qualquer fase dela. */
+  emPartida() {
+    return this.estado !== 'lobby' && this.estado !== 'fim';
   }
 
   /** A rodada está no ar, em qualquer uma das fases em que dá para pular. */
