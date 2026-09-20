@@ -17,6 +17,19 @@
 
 const NOTAS = [
   {
+    versao: '1.15',
+    data: '2026-09-20',
+    titulo: 'Mais 198 perguntas e leilao com mais tempo',
+    itens: [
+      'O banco foi de 2877 para 3075 perguntas: Historia e Cultura (192 para 252), Cinema & TV (635 para 688), Geografia (215 para 260) e Mainstream (123 para 163).',
+      'Historia e Cultura ganhou muita cultura mesmo: compositores, pintores, escritores, o Louvre, o Teatro Amazonas, tango, forro, capoeira e o Quebra-Nozes.',
+      'Geografia ganhou capitais de estado brasileiras, capitais do mundo, moedas, rios, vulcoes e biomas.',
+      'Cinema ganhou classicos, diretores, atores e animacoes que faltavam — de Casablanca e Cidadao Kane a Barbie e Oppenheimer.',
+      'O leilao ficou menos apertado: 9 segundos por lance, no lugar de 6. E quem ABRE o leilao tem 12, porque decide sem lance na mesa e ainda esta lendo a pergunta.',
+      'O cartao do jogador na sala de espera parou de vazar por cima da equipe do lado quando o nome era comprido.'
+    ]
+  },
+  {
     versao: '1.14',
     data: '2026-09-20',
     titulo: 'Menos pergunta repetida, e 177 perguntas novas',

@@ -447,7 +447,9 @@ esconde: a mensagem nem chega a quem vai responder, então não adianta abrir o
 inspetor. Durante o leilão o chat fica trancado para todo mundo — quem leiloa
 já leu a pergunta, e uma frase solta entregaria o assunto.
 
-**O leilão.** A palavra passa de uma equipe para a outra, **6s para cada**:
+**O leilão.** A palavra passa de uma equipe para a outra, **9s para cada** —
+**12s para quem abre**, que decide sem lance na mesa e ainda está lendo a
+pergunta:
 
 - **cobrir** — apostar qualquer número **maior** que o lance na mesa (de 4 pode
   ir para 5 ou direto para 11);
@@ -494,7 +496,8 @@ pública desde o começo e cada pessoa aposta **quantas respostas ela mesma
 consegue dizer**. A sala precisa de duas pessoas, porque alguém tem que ter a
 chance de cobrir o lance.
 
-**O leilão.** A palavra passa de pessoa em pessoa, 6s para cada, e na sua vez
+**O leilão.** A palavra passa de pessoa em pessoa, 9s para cada (12s para quem
+abre), e na sua vez
 há duas saídas:
 
 - **cobrir** — apostar um número maior que o lance na mesa;
@@ -548,7 +551,8 @@ esconde: a mensagem nem chega a quem vai adivinhar. Durante o leilão o chat
 fica trancado para todo mundo, e a rodada abre **sem máscara** — o formato da
 palavra entregaria o que se está tentando arrancar a duras penas.
 
-**O leilão ao contrário.** A palavra passa de dupla em dupla, **6s para cada**:
+**O leilão ao contrário.** A palavra passa de dupla em dupla, **9s para cada** —
+**12s para quem abre**:
 
 - **cobrir** — prometer um número **menor** que o lance na mesa. O teto de
   abertura é **10 dicas** e o chão é **1**;
@@ -886,7 +890,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**2877 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3075 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato

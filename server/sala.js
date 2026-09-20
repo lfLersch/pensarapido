@@ -47,7 +47,10 @@ const MS_ENTRE_VEZES = 900;  // respiro para a tela mostrar quem saiu
 // quantas respostas o PARCEIRO consegue dizer — e o parceiro so descobre a
 // pergunta quando o leilao acaba. Dai o nome: o lance e um presente
 // embrulhado que a outra metade da equipe tem que desembrulhar.
-const MS_POR_LANCE = 6000;       // tempo de cada equipe para cobrir, duvidar ou passar
+const MS_POR_LANCE = 9000;       // tempo de cada equipe para cobrir, duvidar ou passar
+// Quem abre o leilao decide no vazio: nao ha lance na mesa para se apoiar, e
+// e ele que ainda esta lendo a pergunta. Ganha um respiro a mais.
+const MS_EXTRA_PRIMEIRO_LANCE = 3000;
 const MS_ENTRE_LANCES = 700;     // respiro entre um lance e o proximo
 const MS_APOS_LEILAO = 3200;     // tela do "duvido" antes da pergunta aparecer
 // A lista precisa de repertorio: com lista curta o lance esbarra no tamanho
@@ -1644,7 +1647,7 @@ class Sala {
 
     this.emitir('leilao:comeco', {
       rodada: this.rodada,
-      msPorLance: MS_POR_LANCE,
+      msPorLance: this.tempoDoLance(),
       maxAposta: this.ehDandoDicas() ? MAX_DICAS : MAX_APOSTA,
       pontosPorAposta: this.ehDandoDicas() ? PONTOS_POR_RODADA_DICAS : PONTOS_POR_APOSTA,
       // Leilao ao contrario: a tela precisa saber que o lance desce.
@@ -1701,6 +1704,17 @@ class Sala {
     return this.estado === 'leilao' && Boolean(this.leilao) && !this.leilao.fechado;
   }
 
+  /**
+   * Quanto tempo a vez de agora tem para decidir.
+   *
+   * Com a mesa vazia e a primeira vez da rodada: alem de nao haver lance para
+   * se apoiar, essa pessoa acabou de receber a pergunta e ainda esta lendo.
+   */
+  tempoDoLance() {
+    const abrindo = this.leilao && this.leilao.aposta === 0;
+    return MS_POR_LANCE + (abrindo ? MS_EXTRA_PRIMEIRO_LANCE : 0);
+  }
+
   /** Passa a palavra para a equipe da vez e liga o relógio do lance. */
   abrirLance() {
     if (!this.leilaoAberto()) return;
@@ -1731,11 +1745,11 @@ class Sala {
         && naMesa > 0 && this.leilao.equipeAposta !== equipe.id,
       podePassar: (this.ehLeilaoGeral() || reverso)
         && naMesa > 0 && this.leilao.equipeAposta !== equipe.id,
-      msPorLance: MS_POR_LANCE
+      msPorLance: this.tempoDoLance()
     });
 
     clearTimeout(this.temporizadorVez);
-    this.temporizadorVez = setTimeout(() => this.lanceNoTempo(equipe.id), MS_POR_LANCE);
+    this.temporizadorVez = setTimeout(() => this.lanceNoTempo(equipe.id), this.tempoDoLance());
   }
 
   /** O relógio do lance zerou sem ninguém dizer nada. */

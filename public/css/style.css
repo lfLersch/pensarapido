@@ -564,6 +564,17 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 .jogador { position: relative; }
 
+/* A linha do jogador nunca transborda a coluna da equipe.
+   Sem isto, "Lamine (voce) 👑 Lider" ficava mais largo que o time e vazava
+   por cima do time do lado — o que aparecia como uma lasca escura na borda
+   do cartao vizinho. O nome cede primeiro (quebra em vez de empurrar), e so
+   entao a coroa desce para a linha de baixo. */
+.jogador { min-width: 0; flex-wrap: wrap; row-gap: 6px; }
+.jogador__avatar,
+.jogador__expulsar,
+.coroa { flex: none; }
+.jogador__nome { min-width: 0; overflow-wrap: anywhere; }
+
 .jogador__expulsar {
   margin-left: 8px;
   width: 26px;
