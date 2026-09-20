@@ -322,6 +322,9 @@ class Sala {
     // Quem caiu, guardado pelo nickname: quem volta com o mesmo nome volta com
     // o que era dele. Uma queda de conexao nao devia custar a partida.
     this.desligados = new Map(); // nickname normalizado -> { pontos, acertos, ... }
+    // Se um socket ainda esta de pe. Quem sabe disso e o `index.js`, que tem o
+    // io; aqui vale tudo online, que e o que os testes querem.
+    this.estaOnline = () => true;
     // Sala sem ninguem no meio da partida: os relogios param e ela espera.
     this.congelada = false;
     this.estado = 'lobby';      // lobby | categoria | leilao | pergunta | resultado | fim
@@ -400,6 +403,12 @@ class Sala {
       return { erro: 'Esta sala ja esta cheia.' };
     }
 
+    // Reconectar e mais rapido do que o `disconnect` chegar ao servidor. Sem
+    // isto, a cadeira de quem caiu ainda estava ocupada por ele mesmo, e a
+    // pessoa voltava como "Ana (2)", do zero, olhando para os proprios pontos
+    // no lugar de outra pessoa.
+    this.liberarCadeiraFantasma(nickname);
+
     const chave = normalizar(nickname);
     const guardado = this.desligados.get(chave);
     // Nome ja em uso por quem esta na sala AGORA vira "Ana (2)"; nome de quem
@@ -443,6 +452,25 @@ class Sala {
     if (this.congelada) this.descongelar();
 
     return { jogador, voltou: Boolean(guardado) };
+  }
+
+  /**
+   * Tira da sala o jogador com esse nickname cujo socket ja morreu.
+   *
+   * E a mesma saida que o `disconnect` faria, so que na hora: o que sobra
+   * daquela pessoa vai para `desligados`, e a entrada logo abaixo devolve tudo
+   * a ela. Quem tem o mesmo nome e esta ONLINE nao e tocado — esse continua
+   * virando "Ana (2)", que e o certo.
+   */
+  liberarCadeiraFantasma(nickname) {
+    const alvo = normalizar(nickname);
+    for (const jogador of this.jogadores.values()) {
+      if (normalizar(jogador.nickname) !== alvo) continue;
+      if (this.estaOnline(jogador.id)) continue;
+      this.sair(jogador.id);
+      return true;
+    }
+    return false;
   }
 
   /**

@@ -88,6 +88,42 @@ function salaCom(quantos, modo = 'tempo') {
   sala.destruir();
 }
 
+/* ---------------- Reconectar antes de o servidor ver a queda ---------------- */
+{
+  // O caso que aparece de verdade na internet: a aba reconecta em menos de um
+  // segundo e o `disconnect` da conexao velha so chega depois. A cadeira ainda
+  // esta ocupada pela propria pessoa, e sem cuidado ela volta como "Ana (2)".
+  const { sala } = salaCom(2);
+  sala.iniciar();
+  sala.limparTemporizador();
+  sala.jogadores.get('ana').pontos = 25;
+
+  // O socket de Ana morreu, mas o servidor ainda nao soube: ela segue na sala.
+  const mortos = new Set(['ana']);
+  sala.estaOnline = (id) => !mortos.has(id);
+  conferir('a cadeira dela ainda esta ocupada', sala.jogadores.has('ana'), true);
+
+  const volta = sala.entrar('ana-reconectada', 'Ana');
+  conferir('ela volta com o proprio nome, sem sufixo', volta.jogador.nickname, 'Ana');
+  conferir('  e com os pontos', volta.jogador.pontos, 25);
+  conferir('  e a cadeira velha foi liberada', sala.jogadores.has('ana'), false);
+  conferir('  sem duplicar ninguem no placar', sala.placar().length, 2);
+  sala.destruir();
+}
+
+/* ---------------- Xara ONLINE nao perde a cadeira ---------------- */
+{
+  const { sala } = salaCom(2);
+  sala.jogadores.get('ana').pontos = 25;
+
+  // Todo mundo online: quem chega com o mesmo nome e outra pessoa mesmo.
+  const xara = sala.entrar('outra-ana', 'Ana');
+  conferir('com a Ana online, a xara vira (2)', xara.jogador.nickname, 'Ana (2)');
+  conferir('  e a Ana de verdade continua na sala com os pontos',
+    [sala.jogadores.has('ana'), sala.jogadores.get('ana').pontos], [true, 25]);
+  sala.destruir();
+}
+
 /* ---------------- Nick de quem ESTA na sala continua virando (2) ---------------- */
 {
   const { sala } = salaCom(2);

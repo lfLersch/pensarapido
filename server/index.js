@@ -93,6 +93,10 @@ function criarSala(config) {
     // quem está leiloando.
     (socketId, evento, dados) => io.to(socketId).emit(evento, dados)
   );
+  // A sala precisa saber quem ainda esta de pe para reconhecer a cadeira de
+  // quem caiu e o servidor ainda nao percebeu.
+  sala.estaOnline = (socketId) => io.sockets.sockets.has(socketId);
+
   salas.set(codigo, sala);
   return sala;
 }
