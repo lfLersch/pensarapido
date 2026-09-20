@@ -17,6 +17,19 @@
 
 const NOTAS = [
   {
+    versao: '1.14',
+    data: '2026-09-20',
+    titulo: 'Menos pergunta repetida, e 177 perguntas novas',
+    itens: [
+      'O servidor passou a contar quantas vezes cada pergunta ja entrou, e usa isso para sortear: quem ja saiu perde chance ate as outras alcancarem.',
+      'Quando todas estiverem empatadas, todas voltam a ter a mesma chance — e o que pesa e a distancia para a menos usada, nunca o numero absoluto.',
+      'Nao e proibicao, e rodizio: a pergunta repetida ainda pode sair, so nao na mesma frequencia de quem nunca saiu.',
+      'Antes, dentro de uma partida nada se repetia, mas a partida seguinte comecava de uma fila embaralhada do zero — e era ai que as mesmas perguntas voltavam.',
+      'O banco foi de 2700 para 2877 perguntas, engordando as categorias mais magras: Rap (27 para 62), Animais (63 para 98), Comidas (67 para 99), Games (79 para 119) e Mainstream (88 para 123).',
+      'Sobrenome de uma letra deixou de virar resposta aceita: "Cardi B" nao aceita mais so "B".'
+    ]
+  },
+  {
     versao: '1.13',
     data: '2026-09-20',
     titulo: 'Caiu? Volta com os pontos',

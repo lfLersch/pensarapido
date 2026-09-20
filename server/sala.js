@@ -6,6 +6,7 @@ const { paraRodada, itemDe } = require('./escalada');
 const { PALAVRAS } = require('./dicas');
 const { RANKINGS } = require('./rankings');
 const dificuldade = require('./dificuldade');
+const usos = require('./usos');
 
 /* ---------------------------- Regras do jogo ---------------------------- */
 
@@ -1037,7 +1038,7 @@ class Sala {
   sacarDaCategoria(categoria) {
     let fila = this.filas.get(categoria);
     if (!fila || fila.length === 0) {
-      fila = embaralhar(this.perguntasDaCategoria(categoria));
+      fila = this.novaFila(categoria);
       this.filas.set(categoria, fila);
     }
 
@@ -1049,17 +1050,38 @@ class Sala {
         // As puladas voltam para o fim: podem servir numa partida seguinte.
         if (puladas.length) fila.push(...puladas);
         this.respostasUsadas.add(chave);
-        return bruta;
+        return this.marcarUso(categoria, bruta);
       }
       puladas.push(bruta);
     }
 
     // Só sobrou repetição nesta categoria — a partida é mais longa que o
     // baralho dela. Recomeça a categoria em vez de ficar sem pergunta.
-    const nova = embaralhar(this.perguntasDaCategoria(categoria));
+    const nova = this.novaFila(categoria);
     const bruta = nova.shift();
     this.filas.set(categoria, nova);
     this.respostasUsadas.add(normalizar(bruta.resposta || ''));
+    return this.marcarUso(categoria, bruta);
+  }
+
+  /**
+   * A fila de uma categoria, com a frente para quem saiu menos vezes.
+   *
+   * Dentro de uma partida as perguntas já não se repetiam; o que se repetia
+   * era de uma partida para a outra, porque a fila nova nascia de um
+   * embaralhamento do zero. O contador de usos mora em `usos.js` e atravessa
+   * as partidas — é ele que faz o rodízio.
+   */
+  novaFila(categoria) {
+    return usos.embaralharPorUso(
+      this.perguntasDaCategoria(categoria),
+      (q) => idDaPergunta(categoria, q)
+    );
+  }
+
+  /** A pergunta entrou em jogo: anota isso para o sorteio das proximas. */
+  marcarUso(categoria, bruta) {
+    usos.registrar(idDaPergunta(categoria, bruta));
     return bruta;
   }
 

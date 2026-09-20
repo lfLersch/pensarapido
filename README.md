@@ -709,6 +709,47 @@ descola quando alguém edita só uma das listas.
 6. No fim da rodada aparecem a resposta certa, as outras formas aceitas, a
    dificuldade da pergunta e quem pontuou.
 
+## Rodízio: a mesma pergunta não volta tão cedo
+
+Dentro de uma partida nenhuma pergunta se repete — a sala guarda o que já caiu.
+O problema era **de uma partida para a outra**: a fila nova nascia embaralhada
+do zero, e as mesmas perguntas voltavam, ainda mais nas categorias magras.
+
+Agora o servidor conta **quantas vezes cada pergunta já entrou** e usa isso
+para montar a fila. A regra é a do rodízio, não a da proibição: quem já saiu
+**perde peso** até as outras alcançarem. Uma pergunta com contador 1 num monte
+de zeros entra com menos chance; **quando todas estiverem em 1, todas voltam a
+ter a mesma chance**.
+
+O que conta é sempre a **distância para a menos usada do grupo**, nunca o
+número absoluto — senão, depois de muitas partidas, o banco inteiro ficaria
+com pesos minúsculos e o sorteio viraria outra coisa. Cada uso a mais que o
+piso multiplica o peso por `0,55`: um uso a mais entra com pouco mais da
+metade da chance, dois a mais com um terço. **Ainda pode sair** — o que não
+pode é sair na mesma frequência de quem nunca saiu.
+
+Não é uma ordenação, é um sorteio: cada pergunta tira uma chave aleatória
+`-ln(u) / peso` e a fila sai ordenada por ela. Com todos os pesos iguais isso
+é exatamente um embaralhamento uniforme — o teste cobra as duas pontas.
+
+Na prática, simulando 40 partidas de 15 rodadas numa categoria de 30
+perguntas (o ideal seria 20 usos para cada uma):
+
+| | menos usada | mais usada | desvio |
+| --- | --- | --- | --- |
+| embaralhamento uniforme | 13 | 27 | 3,19 |
+| com o rodízio | 18 | 21 | 0,82 |
+
+O contador mora em [`server/usos.js`](server/usos.js) e é gravado em
+`server/dados/usos.json`, junto com as estatísticas de dificuldade — **no
+Render o disco zera a cada deploy**, então o rodízio recomeça do zero lá. Ele
+aparece no campo `usos` de `GET /api/dificuldades`.
+
+É diferente do `vezes` da dificuldade adaptativa: lá o contador só anda nas
+rodadas que alimentam a dificuldade (leilão e Mais ou Menos Pontos ficam de
+fora, de propósito). Aqui conta toda vez que a pergunta entrou, que é o que o
+rodízio precisa saber.
+
 ## Dificuldade adaptativa
 
 Toda pergunta tem um campo `dif` (0 a 100) em `questions.js`, que é só o **ponto
@@ -845,7 +886,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**2700 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**2877 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato

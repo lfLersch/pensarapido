@@ -10,6 +10,7 @@ const {
   categoriasEmJogo, perguntasEscolhidas
 } = require('./sala');
 const dificuldade = require('./dificuldade');
+const usos = require('./usos');
 const { NOTAS, VERSAO } = require('./notas');
 
 const PORTA = process.env.PORT || 3000;
@@ -43,7 +44,10 @@ app.get('/api/config', (_req, res) => {
 
 // Dificuldade aprendida de cada pergunta, da mais difícil para a mais fácil.
 app.get('/api/dificuldades', (_req, res) => {
-  res.json(dificuldade.resumo(indicePerguntas()));
+  // `usos` e o contador do rodizio do sorteio, que anda toda vez que a
+  // pergunta entra; `vezes` so conta as rodadas que alimentam a dificuldade.
+  res.json(dificuldade.resumo(indicePerguntas())
+    .map((linha) => ({ ...linha, usos: usos.usosDe(linha.id) })));
 });
 
 // Salas que ainda aceitam gente, para o saguao listar e a pessoa entrar sem
