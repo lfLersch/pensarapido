@@ -18,7 +18,7 @@
 const NOTAS = [
   {
     versao: '1.13',
-    data: '2026-09-19',
+    data: '2026-09-20',
     titulo: 'Caiu? Volta com os pontos',
     itens: [
       'Da para entrar na sala a qualquer momento, inclusive no meio de uma rodada — partida rolando tambem aparece na lista do saguao.',
