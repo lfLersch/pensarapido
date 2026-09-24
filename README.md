@@ -890,7 +890,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3075 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3165 perguntas em 19 categorias**, mais 609 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -964,6 +964,28 @@ As fotos vêm do **Wikimedia Commons** (licença livre), buscadas pela API da
 Wikipédia e gravadas como URL em `questions.js` — nada é baixado para o projeto.
 Como são imagens de terceiros, dependem do Commons continuar no ar; o comando
 `npm run checar-imagens` percorre todas e avisa se alguma sair.
+
+### Categoria Counter-Strike
+
+**90 perguntas** em quatro partes, mais as gerais do jogo (rounds, lados,
+economia):
+
+- **Lendas** — do CS 1.6 ao CS2: a line brasileira bicampeã de 2016 (FalleN,
+  coldzera, fer, TACO), os melhores do mundo pela HLTV (s1mple, ZywOo, donk,
+  olofmeister), NiP, Astralis, o Golden Five polonês e o Gaules;
+- **Mapas** — pelo lugar onde se passam e pelas regiões (*Palace*, *Banana*,
+  *Heaven*), mais as jogadas que fizeram história neles;
+- **Armas** — rifles, pistolas, granadas, a C4 e as skins famosas;
+- **Times** — do MIBR campeão da ESWC 2006 aos campeões de Major.
+
+O apelido é a resposta oficial e o nome de registro entra em `aceita`, igual
+aos jogadores de futebol: `coldzera` ou *Marcelo David*. Ficaram de fora as
+perguntas de número (segundos da C4, rounds para vencer): fora da Matemática,
+número é chute.
+
+Na Escalada entram sete listas com o tema `cs`: mapas, armas, times,
+jogadores brasileiros, jogadores lendários e duas fechadas — os dois lados do
+jogo e os cinco da Luminosity campeã de Columbus 2016.
 
 ### Categoria Marcas — logos
 
