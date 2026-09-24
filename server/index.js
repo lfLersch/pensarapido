@@ -11,6 +11,7 @@ const {
 } = require('./sala');
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
+const banco = require('./banco');
 const { NOTAS, VERSAO } = require('./notas');
 
 const PORTA = process.env.PORT || 3000;
@@ -429,6 +430,27 @@ setInterval(() => {
   }
 }, 60 * 1000).unref();
 
-servidor.listen(PORTA, () => {
-  console.log(`\n  🧠 PensaRápido rodando em http://localhost:${PORTA}\n`);
+// Com banco, os contadores chegam por rede: so abre a porta depois de le-los,
+// senao a primeira partida sortearia como se nada tivesse rodado ainda.
+Promise.all([dificuldade.pronto, usos.pronto]).then(() => {
+  servidor.listen(PORTA, () => {
+    const onde = banco.ativo() ? 'banco de dados' : 'arquivos em server/dados';
+    console.log(`\n  🧠 PensaRápido rodando em http://localhost:${PORTA} (dados: ${onde})\n`);
+  });
 });
+
+// O Render manda SIGTERM a cada deploy: grava o que falta antes de sair.
+let saindo = false;
+async function encerrar() {
+  if (saindo) return;
+  saindo = true;
+  try {
+    await Promise.all([dificuldade.salvar(), usos.salvar()]);
+    await banco.fechar();
+  } catch (erro) {
+    console.warn('Erro ao gravar antes de sair:', erro.message);
+  }
+  process.exit(0);
+}
+process.on('SIGTERM', encerrar);
+process.on('SIGINT', encerrar);

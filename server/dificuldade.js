@@ -17,6 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const banco = require('./banco');
 
 const ARQUIVO = path.join(__dirname, 'dados', 'estatisticas.json');
 const SALVAR_APOS = 5000; // junta as escritas em disco a cada 5s
@@ -43,11 +44,13 @@ const NIVEIS = [
 
 /** @type {Map<string, {vezes:number, jogadores:number, acertos:number, dificuldade:number, tempoMedio:number}>} */
 const estatisticas = new Map();
+/** Com banco, so vai para la o que mudou desde a ultima gravacao. */
+const sujos = new Set();
 let pendente = null;
 
 /* ------------------------------ Persistência ------------------------------ */
 
-function carregar() {
+function lerArquivo() {
   try {
     const bruto = JSON.parse(fs.readFileSync(ARQUIVO, 'utf8'));
     for (const [id, dados] of Object.entries(bruto)) {
@@ -60,14 +63,80 @@ function carregar() {
   }
 }
 
-function salvar() {
-  pendente = null;
+async function lerBanco() {
+  try {
+    const { rows } = await banco.consultar(
+      'SELECT id, vezes, jogadores, acertos, dificuldade, tempo_medio FROM perguntas_stats'
+    );
+    for (const linha of rows) {
+      // Rodada registrada antes da leitura terminar ganha: ela ja partiu da base.
+      if (estatisticas.has(linha.id)) continue;
+      estatisticas.set(linha.id, {
+        vezes: linha.vezes,
+        jogadores: linha.jogadores,
+        acertos: linha.acertos,
+        dificuldade: linha.dificuldade,
+        tempoMedio: linha.tempo_medio
+      });
+    }
+  } catch (erro) {
+    console.warn('Não consegui ler as estatísticas do banco, começando do zero:', erro.message);
+  }
+}
+
+/** Resolve quando as estatísticas já foram lidas (do banco ou do arquivo). */
+function carregar() {
+  if (banco.ativo()) return lerBanco();
+  lerArquivo();
+  return Promise.resolve();
+}
+
+function gravarArquivo() {
   try {
     fs.mkdirSync(path.dirname(ARQUIVO), { recursive: true });
     fs.writeFileSync(ARQUIVO, JSON.stringify(Object.fromEntries(estatisticas), null, 2), 'utf8');
   } catch (erro) {
     console.warn('Não consegui gravar as estatísticas:', erro.message);
   }
+}
+
+async function gravarBanco() {
+  if (!sujos.size) return;
+  const ids = [...sujos];
+  sujos.clear();
+  const linhas = ids.map((id) => estatisticas.get(id));
+  try {
+    await banco.consultar(
+      `INSERT INTO perguntas_stats (id, vezes, jogadores, acertos, dificuldade, tempo_medio)
+       SELECT * FROM unnest($1::text[], $2::int[], $3::int[], $4::int[], $5::real[], $6::int[])
+       ON CONFLICT (id) DO UPDATE SET
+         vezes = EXCLUDED.vezes,
+         jogadores = EXCLUDED.jogadores,
+         acertos = EXCLUDED.acertos,
+         dificuldade = EXCLUDED.dificuldade,
+         tempo_medio = EXCLUDED.tempo_medio,
+         atualizado_em = now()`,
+      [
+        ids,
+        linhas.map((d) => d.vezes),
+        linhas.map((d) => d.jogadores),
+        linhas.map((d) => d.acertos),
+        linhas.map((d) => d.dificuldade),
+        linhas.map((d) => d.tempoMedio)
+      ]
+    );
+  } catch (erro) {
+    for (const id of ids) sujos.add(id); // tenta de novo na próxima
+    console.warn('Não consegui gravar as estatísticas no banco:', erro.message);
+  }
+}
+
+function salvar() {
+  if (pendente) clearTimeout(pendente);
+  pendente = null;
+  if (banco.ativo()) return gravarBanco();
+  gravarArquivo();
+  return Promise.resolve();
 }
 
 function agendarSalvamento() {
@@ -151,6 +220,7 @@ function registrar(id, base, { jogadores, tempos, duracaoMs }) {
     tempoMedio: totalAcertos ? Math.round(somaTempos / totalAcertos) : 0
   });
 
+  sujos.add(id);
   agendarSalvamento();
   return estatisticas.get(id).dificuldade;
 }
@@ -176,7 +246,11 @@ function resumo(perguntasPorId) {
   return linhas.sort((a, b) => b.dificuldade - a.dificuldade);
 }
 
-carregar();
-process.on('exit', () => { if (pendente) salvar(); });
+const pronto = carregar();
+// So vale para o arquivo: gravar no banco e assincrono e nao cabe no `exit`
+// (o index.js grava antes de sair quando recebe SIGTERM).
+process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 
-module.exports = { idDe, registrar, dificuldadeDe, estatisticaDe, nivelDe, resumo, salvar, NIVEIS };
+module.exports = {
+  idDe, registrar, dificuldadeDe, estatisticaDe, nivelDe, resumo, salvar, pronto, NIVEIS
+};

@@ -23,6 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const banco = require('./banco');
 
 const ARQUIVO = path.join(__dirname, 'dados', 'usos.json');
 const SALVAR_APOS = 5000; // junta as escritas em disco a cada 5s
@@ -38,11 +39,13 @@ const PESO_POR_USO_EXTRA = 0.55;
 
 /** @type {Map<string, number>} id da pergunta -> quantas vezes ja entrou */
 const usos = new Map();
+/** Com banco, so vai para la o que mudou desde a ultima gravacao. */
+const sujos = new Set();
 let pendente = null;
 
 /* ------------------------------ Persistência ------------------------------ */
 
-function carregar() {
+function lerArquivo() {
   try {
     const bruto = JSON.parse(fs.readFileSync(ARQUIVO, 'utf8'));
     for (const [id, vezes] of Object.entries(bruto)) {
@@ -55,14 +58,56 @@ function carregar() {
   }
 }
 
-function salvar() {
-  pendente = null;
+async function lerBanco() {
+  try {
+    const { rows } = await banco.consultar('SELECT id, vezes FROM perguntas_usos');
+    // Soma em vez de sobrescrever: o que entrou em jogo antes da leitura
+    // terminar nao se perde.
+    for (const { id, vezes } of rows) usos.set(id, (usos.get(id) || 0) + vezes);
+  } catch (erro) {
+    console.warn('Nao consegui ler os usos do banco, comecando do zero:', erro.message);
+  }
+}
+
+/** Resolve quando os contadores ja foram lidos (do banco ou do arquivo). */
+function carregar() {
+  if (banco.ativo()) return lerBanco();
+  lerArquivo();
+  return Promise.resolve();
+}
+
+function gravarArquivo() {
   try {
     fs.mkdirSync(path.dirname(ARQUIVO), { recursive: true });
     fs.writeFileSync(ARQUIVO, JSON.stringify(Object.fromEntries(usos)), 'utf8');
   } catch (erro) {
     console.warn('Nao consegui gravar os usos das perguntas:', erro.message);
   }
+}
+
+async function gravarBanco() {
+  if (!sujos.size) return;
+  const ids = [...sujos];
+  sujos.clear();
+  try {
+    await banco.consultar(
+      `INSERT INTO perguntas_usos (id, vezes)
+       SELECT * FROM unnest($1::text[], $2::int[])
+       ON CONFLICT (id) DO UPDATE SET vezes = EXCLUDED.vezes`,
+      [ids, ids.map((id) => usos.get(id) || 0)]
+    );
+  } catch (erro) {
+    for (const id of ids) sujos.add(id); // tenta de novo na proxima
+    console.warn('Nao consegui gravar os usos no banco:', erro.message);
+  }
+}
+
+function salvar() {
+  if (pendente) clearTimeout(pendente);
+  pendente = null;
+  if (banco.ativo()) return gravarBanco();
+  gravarArquivo();
+  return Promise.resolve();
 }
 
 function agendarSalvamento() {
@@ -78,6 +123,7 @@ function registrar(id) {
   if (!id) return 0;
   const vezes = (usos.get(id) || 0) + 1;
   usos.set(id, vezes);
+  sujos.add(id);
   agendarSalvamento();
   return vezes;
 }
@@ -130,9 +176,11 @@ function resumo() {
   return Object.fromEntries(usos);
 }
 
-carregar();
-process.on('exit', () => { if (pendente) salvar(); });
+const pronto = carregar();
+// So vale para o arquivo: gravar no banco e assincrono e nao cabe no `exit`
+// (o index.js grava antes de sair quando recebe SIGTERM).
+process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 
 module.exports = {
-  registrar, usosDe, pesoDe, embaralharPorUso, resumo, salvar, PESO_POR_USO_EXTRA
+  registrar, usosDe, pesoDe, embaralharPorUso, resumo, salvar, pronto, PESO_POR_USO_EXTRA
 };

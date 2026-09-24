@@ -746,13 +746,51 @@ perguntas (o ideal seria 20 usos para cada uma):
 
 O contador mora em [`server/usos.js`](server/usos.js) e é gravado em
 `server/dados/usos.json`, junto com as estatísticas de dificuldade — **no
-Render o disco zera a cada deploy**, então o rodízio recomeça do zero lá. Ele
+Render o disco zera a cada deploy**, então lá ele vai para o banco de dados
+(veja [Banco de dados](#banco-de-dados)). Ele
 aparece no campo `usos` de `GET /api/dificuldades`.
 
 É diferente do `vezes` da dificuldade adaptativa: lá o contador só anda nas
 rodadas que alimentam a dificuldade (leilão e Mais ou Menos Pontos ficam de
 fora, de propósito). Aqui conta toda vez que a pergunta entrou, que é o que o
 rodízio precisa saber.
+
+## Banco de dados
+
+Sem configurar nada, o jogo grava os contadores (rodízio do sorteio e
+dificuldade adaptativa) em `server/dados/*.json`. Isso basta no PC, mas **no
+Render o disco zera a cada deploy**. Com a variável **`DATABASE_URL`**, os mesmos
+dados vão para um **Postgres** (Supabase, Neon ou outro) e voltam em cada subida.
+
+**As tabelas se criam sozinhas** quando o servidor sobe (`perguntas_usos` e
+`perguntas_stats`), então não há SQL para rodar no painel. A conexão fica em
+[`server/banco.js`](server/banco.js).
+
+Para ligar no Supabase:
+
+1. No projeto, clique em **Connect** → **Connection string** → **URI**, na
+   opção **Session pooler** (porta 5432, que funciona no Render sem IPv6).
+2. Troque `[YOUR-PASSWORD]` pela senha do banco.
+3. No Render, em **Environment**, crie `DATABASE_URL` com essa URL. O serviço
+   reinicia sozinho e o log mostra `dados: banco de dados`.
+
+A URL tem a senha: ela fica **só no Render**, nunca no repositório.
+
+Como funciona:
+
+- a porta só abre **depois** de ler os contadores do banco, senão a primeira
+  partida sortearia como se nada tivesse rodado;
+- as gravações continuam juntas a cada 5 s, e só vai para o banco o que
+  mudou;
+- no deploy o Render manda `SIGTERM`, e o servidor grava o que falta antes de
+  sair;
+- se o banco estiver fora do ar, o jogo **sobe assim mesmo** (começando do
+  zero) e tenta gravar de novo na próxima vez.
+
+O teste `testes/banco.test.js` simula um reinício contra um Postgres de
+verdade quando existe `TESTE_DATABASE_URL`, apontando para um banco
+descartável (as tabelas de lá são apagadas). Sem essa variável, a parte com
+banco é pulada.
 
 ## Dificuldade adaptativa
 
@@ -786,6 +824,7 @@ server/
   sala.js        regras da sala e da partida (estados, pontuação, rodadas, chat)
   comparar.js    normalização e a régua de acerto / quase / chat
   escalada.js    listas de resposta múltipla do Modo Escalada
+  banco.js       conexão com o Postgres (só com DATABASE_URL)
   dificuldade.js dificuldade adaptativa e persistência das estatísticas
   questions.js   banco de perguntas por categoria
   dados/         estatísticas acumuladas (criado sozinho)
