@@ -7904,6 +7904,159 @@ const LISTAS = [
     ]
   },
   {
+    pergunta: 'Cite {n} personagens de The Big Bang Theory',
+    tema: 'cinema', dif: 40,
+    respostas: [
+      ['Sheldon', 'Sheldon Cooper'],
+      ['Leonard', 'Leonard Hofstadter'],
+      'Penny',
+      ['Howard', 'Howard Wolowitz', 'Wolowitz'],
+      ['Raj', 'Rajesh', 'Koothrappali'],
+      ['Amy', 'Amy Farrah Fowler'],
+      'Bernadette',
+      'Stuart',
+      ['Kripke', 'Barry Kripke'],
+      ['Leslie Winkle', 'Leslie'],
+      ['Mary Cooper', 'Mae do Sheldon'],
+      ['Wil Wheaton', 'Wheaton'],
+      'Priya',
+      'Zack',
+      'Emily'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de How I Met Your Mother',
+    tema: 'cinema', dif: 40,
+    respostas: [
+      ['Ted', 'Ted Mosby'],
+      ['Barney', 'Barney Stinson'],
+      ['Marshall', 'Marshall Eriksen'],
+      ['Lily', 'Lily Aldrin'],
+      ['Robin', 'Robin Scherbatsky'],
+      ['Tracy', 'Tracy McConnell', 'A Mae'],
+      'Ranjit',
+      'Carl',
+      'Victoria',
+      'Stella',
+      'Zoey',
+      'Nora',
+      'Quinn',
+      'Patrice',
+      'Marvin'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de iCarly',
+    tema: 'cinema', dif: 40,
+    respostas: [
+      ['Carly', 'Carly Shay'],
+      ['Sam', 'Sam Puckett'],
+      ['Freddie', 'Freddie Benson'],
+      'Spencer',
+      'Gibby',
+      'Lewbert',
+      ['Nevel', 'Nevel Papperman'],
+      ['Sra. Benson', 'Marissa Benson'],
+      'T-Bo',
+      'Chuck',
+      'Guppy',
+      ['Sra. Briggs', 'Briggs'],
+      ['Sr. Howard', 'Howard']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Prison Break',
+    tema: 'cinema', dif: 45,
+    respostas: [
+      ['Michael Scofield', 'Michael', 'Scofield'],
+      ['Lincoln Burrows', 'Lincoln', 'Burrows'],
+      ['Sara Tancredi', 'Sara', 'Tancredi'],
+      ['T-Bag', 'Theodore Bagwell'],
+      ['Sucre', 'Fernando Sucre'],
+      ['Abruzzi', 'John Abruzzi'],
+      'C-Note',
+      ['Mahone', 'Alexander Mahone'],
+      ['Bellick', 'Brad Bellick'],
+      'Kellerman',
+      'LJ',
+      ['Veronica', 'Veronica Donovan'],
+      ['Pope', 'Diretor Pope'],
+      'Tweener',
+      'Haywire',
+      'Gretchen',
+      'Westmoreland'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} personagens de Dark',
+    tema: 'cinema', dif: 55,
+    respostas: [
+      ['Jonas', 'Jonas Kahnwald'],
+      ['Martha', 'Martha Nielsen'],
+      ['Mikkel', 'Mikkel Nielsen'],
+      ['Ulrich', 'Ulrich Nielsen'],
+      'Hannah',
+      ['Claudia', 'Claudia Tiedemann'],
+      'Noah',
+      'Adam',
+      'Eva',
+      'Charlotte',
+      'Elisabeth',
+      'Franziska',
+      'Magnus',
+      'Bartosz',
+      'Regina',
+      'Aleksander',
+      'Egon',
+      'Helge',
+      'Katharina',
+      'Tronte',
+      'Ines',
+      'Peter'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} series da Nickelodeon',
+    tema: 'cinema', dif: 35,
+    respostas: [
+      'iCarly',
+      ['Drake e Josh', 'Drake & Josh'],
+      ['Brilhante Victoria', 'Victorious'],
+      'Zoey 101',
+      ['Manual de Sobrevivencia Escolar do Ned', 'Ned'],
+      ['Sam & Cat', 'Sam e Cat'],
+      'Henry Danger',
+      ['Os Thundermans', 'Thundermans'],
+      ['Kenan e Kel', 'Kenan & Kel'],
+      'Big Time Rush',
+      'Game Shakers',
+      ['Nicky, Ricky, Dicky & Dawn', 'Nicky Ricky Dicky e Dawn'],
+      'All That'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} series do Disney Channel',
+    tema: 'cinema', dif: 35,
+    respostas: [
+      'Hannah Montana',
+      ['Zack e Cody: Gemeos em Acao', 'Zack e Cody', 'Gemeos em Acao'],
+      ['Zack e Cody: Gemeos a Bordo', 'Gemeos a Bordo'],
+      ['Os Feiticeiros de Waverly Place', 'Feiticeiros de Waverly Place', 'Waverly Place'],
+      ['Sunny entre Estrelas', 'Sonny with a Chance'],
+      'JONAS',
+      ['Boa Sorte, Charlie!', 'Boa Sorte Charlie'],
+      'Lizzie McGuire',
+      ['As Visoes da Raven', 'Visoes da Raven', 'Raven'],
+      ['Austin & Ally', 'Austin e Ally'],
+      'Jessie',
+      ['Garota Conhece o Mundo', 'Girl Meets World'],
+      ['Liv e Maddie', 'Liv and Maddie'],
+      ['No Ritmo', 'Shake It Up'],
+      ['Phil do Futuro', 'Phil of the Future'],
+      ['Cory na Casa Branca', 'Cory in the House']
+    ]
+  },
+  {
   pergunta: 'Cite {n} personagens da Disney',
   tema: 'cinema', dif: 20,
   respostas: [

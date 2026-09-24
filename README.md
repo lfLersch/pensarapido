@@ -890,7 +890,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3268 perguntas em 19 categorias**, mais 616 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3386 perguntas em 19 categorias**, mais 623 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -982,6 +982,21 @@ Jojo*, *Chemical X*, *Krusty Krab*).
 Na Escalada entram as listas de personagens de Winx, Jackie Chan, Kim Possible
 e Dragão Ocidental, e as de desenhos do Cartoon Network, da Nickelodeon e do
 Disney Channel.
+
+### Cinema & TV — Séries
+
+A parte **Séries e TV** tem **243 perguntas**. Além do *"qual série tem X"*, elas
+perguntam pelos personagens e pelos detalhes — o *Bazinga* do Sheldon, o bar
+MacLaren's, o Los Pollos Hermanos, a ilha Lian Yu, o S.T.A.R. Labs, a
+Triquetra de *Dark*, a Fox River. Cobrem os seriados teen da Nickelodeon e da
+Disney (iCarly, Drake e Josh, Brilhante Victória, Hannah Montana, Zack e
+Cody), as sitcoms (Friends, The Office, How I Met Your Mother, Todo Mundo Odeia
+o Chris, Um Maluco no Pedaço) e as séries de maratona (Breaking Bad, Prison
+Break, Dark, Arrow, The Flash, Supernatural, Stranger Things, Lost).
+
+Na Escalada entram os personagens de The Big Bang Theory, How I Met Your
+Mother, iCarly, Prison Break e Dark, e as séries da Nickelodeon e do Disney
+Channel.
 
 ### Categoria Counter-Strike
 
