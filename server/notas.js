@@ -19,13 +19,16 @@ const NOTAS = [
   {
     versao: '1.16',
     data: '2026-09-24',
-    titulo: 'Categoria nova: Counter-Strike',
+    titulo: 'Counter-Strike e os desenhos das manhas',
     itens: [
       'Counter-Strike virou categoria, com 90 perguntas em quatro partes que da para escolher separadas: Lendas, Mapas, Armas e Times.',
       'Lendas vai do CS 1.6 ao CS2: FalleN, coldzera, fer e TACO, s1mple, ZywOo, donk, GeT_RiGhT, olofmeister, device, NiKo e companhia. Vale o apelido ou o nome de registro.',
       'Mapas pergunta pelo lugar e pelas regioes: Dust2, Mirage, Inferno, Nuke, Overpass, Ancient, Anubis e os classicos Cache, Cobblestone, Office e Italy.',
       'Armas tem rifles, pistolas, granadas, a C4 e as skins mais famosas. Times vai do MIBR campeao de 2006 a FURIA, NAVI, Astralis, Vitality e Spirit.',
-      'A Escalada ganhou sete listas de CS: mapas, armas, times, jogadores brasileiros, jogadores lendarios, os dois lados do jogo e a Luminosity campea de Columbus 2016.'
+      'A Escalada ganhou sete listas de CS: mapas, armas, times, jogadores brasileiros, jogadores lendarios, os dois lados do jogo e a Luminosity campea de Columbus 2016.',
+      'Desenhos (em Cinema & TV) foi de 61 para 164 perguntas, com o que passava no Bom Dia & Cia, na TV Globinho e nos canais infantis: Padrinhos Magicos, Bob Esponja, As Aventuras de Jackie Chan, Dragao Ocidental, Meninas Superpoderosas, Winx, Tres Espias Demais, Kim Possible e muito mais.',
+      'Tem pergunta sobre os proprios programas tambem: o videogame pelo telefone do Bom Dia & Cia, o "Playstation" do Yudi, a TV Colosso e o Castelo Ra-Tim-Bum.',
+      'A Escalada ganhou mais sete listas de desenho: personagens de Winx, de Jackie Chan, de Kim Possible e de Dragao Ocidental, e desenhos do Cartoon Network, da Nickelodeon e do Disney Channel.'
     ]
   },
   {

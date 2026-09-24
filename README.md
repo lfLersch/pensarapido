@@ -890,7 +890,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3165 perguntas em 19 categorias**, mais 609 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3268 perguntas em 19 categorias**, mais 616 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -964,6 +964,24 @@ As fotos vêm do **Wikimedia Commons** (licença livre), buscadas pela API da
 Wikipédia e gravadas como URL em `questions.js` — nada é baixado para o projeto.
 Como são imagens de terceiros, dependem do Commons continuar no ar; o comando
 `npm run checar-imagens` percorre todas e avisa se alguma sair.
+
+### Cinema & TV — Desenhos
+
+A parte **Desenhos** tem **164 perguntas**: as 61 de imagem (*"Que desenho é
+este?"*) e 103 de texto sobre os desenhos que passavam no **Bom Dia & Cia**, na
+**TV Globinho** e nos canais infantis dos anos 90 e 2000 — Os Padrinhos
+Mágicos, Bob Esponja, As Aventuras de Jackie Chan, Dragão Ocidental, As Meninas
+Superpoderosas, Winx, Três Espiãs Demais, Kim Possible, Danny Phantom, Dexter,
+Os Anjinhos, Doug, Tartarugas Ninja e outros. Alguns falam dos próprios
+programas (o Yudi do *"Playstation"*, a TV Colosso, o Castelo Rá-Tim-Bum).
+
+Os nomes seguem a **dublagem brasileira** — *Florzinha*, *Macaco Louco*,
+*Elemento X*, *Siri Cascudo* —, com o original em `aceita` (*Blossom*, *Mojo
+Jojo*, *Chemical X*, *Krusty Krab*).
+
+Na Escalada entram as listas de personagens de Winx, Jackie Chan, Kim Possible
+e Dragão Ocidental, e as de desenhos do Cartoon Network, da Nickelodeon e do
+Disney Channel.
 
 ### Categoria Counter-Strike
 
