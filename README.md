@@ -626,8 +626,8 @@ responder, então ela não mede nada sobre a pergunta.
 
 O sorteio escolhe primeiro a **categoria** e só depois a pergunta. Numa janela
 de **80% das categorias** escolhidas nenhuma se repete: com 10 categorias,
-quaisquer 8 perguntas seguidas são de 8 categorias diferentes; com todas as 16,
-quaisquer 13. Dentro da janela o sorteio é livre, então a ordem não vira um
+quaisquer 8 perguntas seguidas são de 8 categorias diferentes; com todas as 20,
+quaisquer 16. Dentro da janela o sorteio é livre, então a ordem não vira um
 rodízio previsível.
 
 Antes o sorteio era por pergunta, num monte só — e a categoria mais recheada
@@ -862,7 +862,8 @@ dificuldade entre elas.
 ## Subcategorias
 
 Uma categoria pode ser dividida em partes escolhidas separadamente — por
-exemplo **Anime → Naruto**, **Esportes → NBA** e **Marcas → Carros**. A
+exemplo **Anime → Naruto**, **Esportes → NBA**, **Marcas → Carros** e **Séries e TV →
+iCarly**. A
 máquina serve para qualquer uma:
 
 ```js
@@ -890,7 +891,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3710 perguntas em 19 categorias**, mais 623 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3761 perguntas em 20 categorias**, mais 623 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -983,10 +984,32 @@ Na Escalada entram as listas de personagens de Winx, Jackie Chan, Kim Possible
 e Dragão Ocidental, e as de desenhos do Cartoon Network, da Nickelodeon e do
 Disney Channel.
 
-### Cinema & TV — Séries
+### Categoria Séries e TV
 
-A parte **Séries e TV** tem **493 perguntas**. Além do *"qual série tem X"*, elas
-perguntam pelos personagens e pelos detalhes — o *Bazinga* do Sheldon, o bar
+**Séries e TV** saiu de dentro de Cinema & TV quando cresceu, e virou categoria
+própria com **581 perguntas** em **19 partes, uma por série** — dá para criar
+a sala só com iCarly, ou só com Chaves e Friends:
+
+| Parte | Perguntas | Parte | Perguntas |
+| --- | --- | --- | --- |
+| iCarly | 26 | How I Met Your Mother | 25 |
+| Drake e Josh | 12 | Friends | 25 |
+| Disney e Nick | 42 | The Office | 21 |
+| Chaves | 30 | Breaking Bad | 29 |
+| Todo Mundo Odeia o Chris | 18 | Prison Break | 26 |
+| Eu, a Patroa e as Crianças | 12 | Dark | 27 |
+| Um Maluco no Pedaço | 12 | Arrow e The Flash | 33 |
+| Brooklyn Nine-Nine | 19 | Stranger Things | 19 |
+| The Big Bang Theory | 35 | Game of Thrones | 22 |
+| | | La Casa de Papel | 14 |
+
+As outras 134 (Lost, House, Supernatural, os reality shows, os apresentadores,
+o *"que série é esta?"* das fotos) não têm parte: vêm junto quando a categoria
+inteira está marcada. *Disney e Nick* junta os seriados teen que não ganharam
+parte própria — Hannah Montana, Zack e Cody, Brilhante Victória, Os Feiticeiros
+de Waverly Place, Henry Danger e companhia.
+
+Além do *"qual série tem X"*, as perguntas pelos personagens e pelos detalhes — o *Bazinga* do Sheldon, o bar
 MacLaren's, o Los Pollos Hermanos, a ilha Lian Yu, o S.T.A.R. Labs, a
 Triquetra de *Dark*, a Fox River. Cobrem os seriados teen da Nickelodeon e da
 Disney (iCarly, Drake e Josh, Brilhante Victória, Hannah Montana, Zack e
@@ -1000,6 +1023,11 @@ Carly, Sam e Freddie a Gibby, Guppy, Lewbert, Chuck e a Srta. Briggs, e dali ao
 PearPod, ao Bushwell Plaza e ao Groovy Smoothie. O mesmo vale para Big Bang,
 HIMYM, Friends, The Office, Breaking Bad, Prison Break, Dark, Arrow, The Flash,
 Stranger Things, Chaves, Game of Thrones, La Casa de Papel e as outras.
+
+**Bordão de dublagem vale.** Os que todo mundo sabe de cor viram pergunta de
+completar: *"Não contavam com minha..."* → astúcia, *"Cale-se, cale-se, cale-se,
+você me deixa..."* → louco, *"Eu não preciso disso! Meu marido tem..."* → dois
+empregos, *"Legal, legal, legal, sem dúvida, sem dúvida"* → Jake Peralta.
 
 Na Escalada entram os personagens de The Big Bang Theory, How I Met Your
 Mother, iCarly, Prison Break e Dark, e as séries da Nickelodeon e do Disney

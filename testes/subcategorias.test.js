@@ -58,6 +58,28 @@ const contar = (filtro) => cinema.filter(filtro).length;
   conferir('categoria que nao foi escolhida fica de fora', perguntasEscolhidas(config, 'cinema').length, 0);
 }
 
+/* ---------- toda parte existe e tem pergunta ---------- */
+{
+  // Series saiu de dentro de Cinema & TV com 19 partes. Pergunta com `sub`
+  // que a categoria nao tem nunca sai com so as partes marcadas; parte sem
+  // pergunta faz o servidor recusar a sala.
+  const { CATEGORIAS } = require('../server/questions.js');
+  const orfas = [];
+  const magras = [];
+  for (const c of CATEGORIAS) {
+    const ids = new Set((c.subs || []).map((s) => s.id));
+    for (const p of QUESTOES[c.id] || []) {
+      if (p.sub && !ids.has(p.sub)) orfas.push(`${c.id}:${p.sub} "${p.pergunta}"`);
+    }
+    for (const s of c.subs || []) {
+      const n = (QUESTOES[c.id] || []).filter((p) => p.sub === s.id).length;
+      if (n < 8) magras.push(`${c.id}:${s.id} (${n})`);
+    }
+  }
+  conferir('toda pergunta aponta para uma parte que existe', orfas, []);
+  conferir('toda parte tem pelo menos 8 perguntas', magras, []);
+}
+
 /* ---------- Ouvir musicas ---------- */
 {
   const ouvir = perguntasEscolhidas({ categorias: ['ouvir'] }, 'ouvir');
