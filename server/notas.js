@@ -29,9 +29,10 @@ const NOTAS = [
       'Desenhos (em Cinema & TV) foi de 61 para 209 perguntas, com o que passava no Bom Dia & Cia, na TV Globinho e nos canais infantis: Padrinhos Magicos, Bob Esponja, As Aventuras de Jackie Chan, Dragao Ocidental, Meninas Superpoderosas, Winx, Tres Espias Demais, Kim Possible e muito mais.',
       'Tem pergunta sobre os proprios programas tambem: o videogame pelo telefone do Bom Dia & Cia, o "Playstation" do Yudi, a TV Colosso e o Castelo Ra-Tim-Bum.',
       'A Escalada ganhou mais sete listas de desenho: personagens de Winx, de Jackie Chan, de Kim Possible e de Dragao Ocidental, e desenhos do Cartoon Network, da Nickelodeon e do Disney Channel.',
-      'Series e TV foi de 125 para 279 perguntas, agora sobre os personagens e os detalhes: iCarly, Drake e Josh, The Big Bang Theory, How I Met Your Mother, Breaking Bad, Arrow, The Flash, Dark e Prison Break.',
+      'Series e TV foi de 125 para 493 perguntas, agora sobre os personagens e os detalhes: iCarly, Drake e Josh, The Big Bang Theory, How I Met Your Mother, Breaking Bad, Arrow, The Flash, Dark e Prison Break.',
       'E as parecidas: Friends, The Office, Todo Mundo Odeia o Chris, Um Maluco no Pedaco, Hannah Montana, Zack e Cody, Brilhante Victoria, Supernatural, Stranger Things, Lost, House e outras.',
       'A Escalada ganhou sete listas de series: personagens de The Big Bang Theory, How I Met Your Mother, iCarly, Prison Break e Dark, e series da Nickelodeon e do Disney Channel.',
+      'Cada serie ganhou perguntas por dentro: os principais, os secundarios e as coisas do proprio universo — o PearPod de iCarly, o Acordo de Colega de Quarto do Sheldon, o grampeador na gelatina de The Office, o A1A de Breaking Bad, o Casamento Vermelho. Chaves, Game of Thrones, La Casa de Papel, Lost e House entraram tambem.',
       'E o que so estava nessas listas virou pergunta do Modo Tempo tambem: as armas e os mapas de CS que faltavam, os Especialistas e as Trix das Winx, os viloes de Jackie Chan, Phineas e Ferb, Gravity Falls, Os Feiticeiros de Waverly Place, Henry Danger e companhia.'
     ]
   },

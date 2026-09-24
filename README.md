@@ -890,7 +890,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3496 perguntas em 19 categorias**, mais 623 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3710 perguntas em 19 categorias**, mais 623 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -985,7 +985,7 @@ Disney Channel.
 
 ### Cinema & TV — Séries
 
-A parte **Séries e TV** tem **279 perguntas**. Além do *"qual série tem X"*, elas
+A parte **Séries e TV** tem **493 perguntas**. Além do *"qual série tem X"*, elas
 perguntam pelos personagens e pelos detalhes — o *Bazinga* do Sheldon, o bar
 MacLaren's, o Los Pollos Hermanos, a ilha Lian Yu, o S.T.A.R. Labs, a
 Triquetra de *Dark*, a Fox River. Cobrem os seriados teen da Nickelodeon e da
@@ -993,6 +993,13 @@ Disney (iCarly, Drake e Josh, Brilhante Victória, Hannah Montana, Zack e
 Cody), as sitcoms (Friends, The Office, How I Met Your Mother, Todo Mundo Odeia
 o Chris, Um Maluco no Pedaço) e as séries de maratona (Breaking Bad, Prison
 Break, Dark, Arrow, The Flash, Supernatural, Stranger Things, Lost).
+
+Cada série é tratada **por dentro**, com uma leva de perguntas só dela: os
+principais, os secundários e as coisas do próprio universo. Em iCarly vão de
+Carly, Sam e Freddie a Gibby, Guppy, Lewbert, Chuck e a Srta. Briggs, e dali ao
+PearPod, ao Bushwell Plaza e ao Groovy Smoothie. O mesmo vale para Big Bang,
+HIMYM, Friends, The Office, Breaking Bad, Prison Break, Dark, Arrow, The Flash,
+Stranger Things, Chaves, Game of Thrones, La Casa de Papel e as outras.
 
 Na Escalada entram os personagens de The Big Bang Theory, How I Met Your
 Mother, iCarly, Prison Break e Dark, e as séries da Nickelodeon e do Disney
