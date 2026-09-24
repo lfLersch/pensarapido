@@ -890,7 +890,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3386 perguntas em 19 categorias**, mais 623 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3496 perguntas em 19 categorias**, mais 623 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -967,8 +967,8 @@ Como são imagens de terceiros, dependem do Commons continuar no ar; o comando
 
 ### Cinema & TV — Desenhos
 
-A parte **Desenhos** tem **164 perguntas**: as 61 de imagem (*"Que desenho é
-este?"*) e 103 de texto sobre os desenhos que passavam no **Bom Dia & Cia**, na
+A parte **Desenhos** tem **209 perguntas**: as 61 de imagem (*"Que desenho é
+este?"*) e 148 de texto sobre os desenhos que passavam no **Bom Dia & Cia**, na
 **TV Globinho** e nos canais infantis dos anos 90 e 2000 — Os Padrinhos
 Mágicos, Bob Esponja, As Aventuras de Jackie Chan, Dragão Ocidental, As Meninas
 Superpoderosas, Winx, Três Espiãs Demais, Kim Possible, Danny Phantom, Dexter,
@@ -985,7 +985,7 @@ Disney Channel.
 
 ### Cinema & TV — Séries
 
-A parte **Séries e TV** tem **243 perguntas**. Além do *"qual série tem X"*, elas
+A parte **Séries e TV** tem **279 perguntas**. Além do *"qual série tem X"*, elas
 perguntam pelos personagens e pelos detalhes — o *Bazinga* do Sheldon, o bar
 MacLaren's, o Los Pollos Hermanos, a ilha Lian Yu, o S.T.A.R. Labs, a
 Triquetra de *Dark*, a Fox River. Cobrem os seriados teen da Nickelodeon e da
@@ -998,9 +998,14 @@ Na Escalada entram os personagens de The Big Bang Theory, How I Met Your
 Mother, iCarly, Prison Break e Dark, e as séries da Nickelodeon e do Disney
 Channel.
 
+Lista da Escalada não chega ao Modo Tempo — ele sorteia só do banco de
+perguntas. Por isso o que as listas novas de desenho, série e CS traziam de
+diferente (as armas e mapas que faltavam, os coadjuvantes, os seriados da
+Disney e da Nickelodeon) também virou pergunta de uma resposta só.
+
 ### Categoria Counter-Strike
 
-**90 perguntas** em quatro partes, mais as gerais do jogo (rounds, lados,
+**119 perguntas** em quatro partes, mais as gerais do jogo (rounds, lados,
 economia):
 
 - **Lendas** — do CS 1.6 ao CS2: a line brasileira bicampeã de 2016 (FalleN,
