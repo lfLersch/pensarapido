@@ -790,10 +790,45 @@ conquista na próxima rodada que jogar.
 Quem entra sem carteirinha (navegador muito antigo) joga normalmente, só não
 acumula perfil.
 
+### Nota por categoria
+
+Cada categoria tem uma nota de 0 a 100, na **mesma escala da dificuldade**
+das perguntas: nota 70 quer dizer que, numa pergunta de dificuldade 70, a
+chance de acertar é meio a meio. É a ideia do Elo do xadrez, com as
+perguntas no papel do adversário.
+
+Antes da rodada, a nota dá a chance esperada; depois, anda na direção da
+surpresa:
+
+```
+esperado = 1 / (1 + e^((dificuldade - nota) / 10))
+nota    += passo × (resultado - esperado)        resultado: 1 acertou, 0 errou
+passo    = max(3, 20 / (1 + rodadas / 10))
+```
+
+Com nota 50 e já com 10 rodadas jogadas:
+
+| | dificuldade 20 | dificuldade 50 | dificuldade 80 |
+| --- | --- | --- | --- |
+| acertou | +0,5 | +5 | +9,5 |
+| errou | −9,5 | −5 | −0,5 |
+
+- A dificuldade usada é a de **antes** da rodada, porque a de depois já traz
+  o resultado dela.
+- **Contam o Modo Tempo e a Escalada**, em que todos respondem a mesma
+  pergunta. Leilões, Carrossel, Mais ou Menos Pontos e Veni ficam de fora,
+  porque neles quem não acertou nem sempre errou.
+- **Quem chega no meio da rodada não leva erro:** só conta quem viu a pergunta
+  abrir.
+- Com menos de 5 rodadas na categoria, a nota aparece como provisória.
+- No login, notas de dois aparelhos viram a média pesada pelas rodadas.
+
 ### Login com Google (opcional)
 
 Com o login, o perfil passa a ser da **conta**, e vale em qualquer aparelho.
 
+- **Convite:** o saguão oferece o login logo de cara. **"Agora não"** esconde
+  o convite de vez naquele navegador, e o login continua na tela do perfil.
 - **Como liga:** a carteirinha do navegador fica ligada à conta (tabela
   `vinculos`), e o perfil passa a morar em `g:<id do Google>`. A sala não
   muda nada: ela continua mandando a carteirinha, e `perfis.js` descobre de

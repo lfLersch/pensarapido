@@ -31,6 +31,48 @@ const MS_RELAMPAGO = 2000;
 /** Pergunta a partir desta dificuldade é "Muito difícil" (a mesma faixa de dificuldade.js). */
 const DIF_MUITO_DIFICIL = 75;
 
+/* ------------------------- Nota por categoria ------------------------- *
+ *
+ * A nota de cada categoria vai de 0 a 100 e fica na MESMA escala da
+ * dificuldade das perguntas. Nota 70 quer dizer: numa pergunta de
+ * dificuldade 70, a chance de acertar e meio a meio.
+ *
+ * Antes de cada rodada, a nota diz a chance esperada de acerto:
+ *
+ *     esperado = 1 / (1 + e^((dificuldade - nota) / ESCALA_NOTA))
+ *
+ * e depois dela a nota anda na direcao da surpresa:
+ *
+ *     nota += passo * (resultado - esperado)      resultado: 1 acertou, 0 errou
+ *
+ * Por isso acertar pergunta dificil sobe muito (ninguem esperava), acertar
+ * facil sobe pouco (era o esperado), errar facil derruba muito e errar
+ * dificil quase nao pesa. O passo comeca grande, para a nota achar o lugar
+ * dela rapido, e diminui com as rodadas, para ela ficar estavel.
+ */
+
+/** Nota de quem ainda nao jogou a categoria. */
+const NOTA_INICIAL = 50;
+/** Diferenca que muda a chance: 10 pontos acima da nota = 27% de chance; 20 = 12%. */
+const ESCALA_NOTA = 10;
+/** Tamanho do passo: `PASSO_INICIAL / (1 + rodadas / 10)`, nunca abaixo de `PASSO_MINIMO`. */
+const PASSO_INICIAL = 20;
+const PASSO_MINIMO = 3;
+/** Com menos rodadas que isto, a nota aparece como provisoria. */
+const RODADAS_PARA_NOTA = 5;
+
+function chanceDeAcerto(nota, dificuldade) {
+  return 1 / (1 + Math.exp((dificuldade - nota) / ESCALA_NOTA));
+}
+
+/** A nota depois de uma rodada. `rodadas` e quantas a pessoa ja tinha jogado nesta categoria. */
+function novaNota(nota, rodadas, acertou, dificuldade) {
+  const passo = Math.max(PASSO_MINIMO, PASSO_INICIAL / (1 + rodadas / 10));
+  const esperado = chanceDeAcerto(nota, dificuldade);
+  const nova = nota + passo * ((acertou ? 1 : 0) - esperado);
+  return Math.round(Math.min(100, Math.max(0, nova)) * 10) / 10;
+}
+
 /**
  * As conquistas, na ordem em que aparecem no perfil.
  * `feita(p)` recebe o perfil e diz se ela já foi alcançada.
@@ -65,6 +107,8 @@ function perfilVazio() {
     dificeis: 0,
     maiorSequencia: 0,
     categorias: [],
+    // id da categoria -> { rodadas, acertos, nota, somaDificuldade }
+    porCategoria: {},
     conquistas: {} // id -> quando foi alcançada (ms)
   };
 }
@@ -83,6 +127,7 @@ function normalizarPerfil(bruto) {
   const p = Object.assign(perfilVazio(), bruto || {});
   if (!Array.isArray(p.categorias)) p.categorias = [];
   if (!p.conquistas || typeof p.conquistas !== 'object') p.conquistas = {};
+  if (!p.porCategoria || typeof p.porCategoria !== 'object') p.porCategoria = {};
   return p;
 }
 
@@ -261,6 +306,14 @@ function anotarRodada(cliente, nickname, r) {
     if (r.categoria && !p.categorias.includes(r.categoria)) p.categorias.push(r.categoria);
   }
   p.maiorSequencia = Math.max(p.maiorSequencia, r.sequencia || 0);
+  if (r.medeCategoria && r.categoria && Number.isFinite(r.dificuldade)) {
+    const c = p.porCategoria[r.categoria]
+      || (p.porCategoria[r.categoria] = { rodadas: 0, acertos: 0, nota: NOTA_INICIAL, somaDificuldade: 0 });
+    c.nota = novaNota(c.nota, c.rodadas, r.acertou, r.dificuldade);
+    c.rodadas += 1;
+    if (r.acertou) c.acertos += 1;
+    c.somaDificuldade += r.dificuldade;
+  }
   marcar(chave);
   return conferirConquistas(p);
 }
@@ -290,6 +343,20 @@ function somar(para, de) {
     para.conquistas[id] = para.conquistas[id] ? Math.min(para.conquistas[id], quando) : quando;
   }
   if (!para.nickname) para.nickname = de.nickname;
+
+  // Por categoria: somam as contagens, e a nota vira a media pesada pelas rodadas.
+  for (const [id, c] of Object.entries(de.porCategoria || {})) {
+    const alvo = para.porCategoria[id];
+    if (!alvo) {
+      para.porCategoria[id] = { ...c };
+      continue;
+    }
+    const total = alvo.rodadas + c.rodadas;
+    alvo.nota = total ? Math.round(((alvo.nota * alvo.rodadas + c.nota * c.rodadas) / total) * 10) / 10 : alvo.nota;
+    alvo.rodadas = total;
+    alvo.acertos += c.acertos;
+    alvo.somaDificuldade += c.somaDificuldade;
+  }
 }
 
 /**
@@ -342,6 +409,16 @@ function verPerfil(cliente) {
     pontos: p.pontos,
     maiorSequencia: p.maiorSequencia,
     categorias: p.categorias.length,
+    desempenho: Object.entries(p.porCategoria)
+      .map(([id, c]) => ({
+        id,
+        nota: Math.round(c.nota),
+        provisoria: c.rodadas < RODADAS_PARA_NOTA,
+        rodadas: c.rodadas,
+        acertos: c.acertos,
+        dificuldadeMedia: c.rodadas ? Math.round(c.somaDificuldade / c.rodadas) : null
+      }))
+      .sort((a, b) => a.provisoria - b.provisoria || b.nota - a.nota || b.rodadas - a.rodadas),
     conquistas: CONQUISTAS.map((c) => ({ ...publica(c), quando: p.conquistas[c.id] || null }))
   };
 }
@@ -366,5 +443,6 @@ process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 
 module.exports = {
   anotarRodada, fimDePartida, verPerfil, melhores, salvar, pronto, entrarComConta, sairDaConta,
-  CONQUISTAS, MS_RELAMPAGO, DIF_MUITO_DIFICIL
+  CONQUISTAS, MS_RELAMPAGO, DIF_MUITO_DIFICIL,
+  chanceDeAcerto, novaNota, NOTA_INICIAL, RODADAS_PARA_NOTA
 };

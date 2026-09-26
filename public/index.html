@@ -46,6 +46,14 @@
         <button class="btn btn--primario btn--bloco" id="btn-entrar">Entrar</button>
       </div>
 
+      <div class="convite" id="convite-login" hidden>
+        <p class="convite__texto">Quer guardar suas conquistas e seu desempenho em qualquer aparelho? Entre com o Google. Sem login tambem da para jogar.</p>
+        <div class="convite__acoes">
+          <div id="convite-google"></div>
+          <button class="btn btn--fantasma" type="button" id="btn-convite-agora-nao">Agora nao</button>
+        </div>
+      </div>
+
       <button class="btn btn--fantasma btn--bloco perfil-atalho" type="button" id="btn-abrir-perfil">
         <span class="btn__icone">🏅</span> Meu perfil e conquistas
       </button>
@@ -90,6 +98,13 @@
       </div>
 
       <div class="perfil-numeros" id="perfil-numeros"></div>
+
+      <h3 class="salas__titulo perfil-secao">Desempenho por categoria</h3>
+      <p class="perfil-explica">
+        A nota vai de 0 a 100 e leva em conta a dificuldade: acertar pergunta dificil sobe muito,
+        errar facil derruba muito. Nota 70 quer dizer que numa pergunta de dificuldade 70 a chance e meio a meio.
+      </p>
+      <ul class="desempenho" id="perfil-desempenho"></ul>
 
       <h3 class="salas__titulo perfil-secao">Conquistas <span id="perfil-contagem"></span></h3>
       <ul class="conquistas" id="perfil-conquistas"></ul>

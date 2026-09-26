@@ -362,6 +362,7 @@ class Sala {
     this.errouRanking = new Set(); // Mais ou Menos Pontos: quem ja gastou a vez errando
     this.ultimoTema = null;     // tema da rodada anterior, para não repetir
     this.jogadoresNaRodada = 0;
+    this.naRodada = new Set();
 
     this.filas = new Map();     // categoria -> perguntas embaralhadas ainda não usadas
     this.ultimasCategorias = []; // de onde vieram as últimas perguntas, para variar
@@ -1602,6 +1603,8 @@ class Sala {
     this.estado = 'pergunta';
     this.inicioPergunta = Date.now();
     this.jogadoresNaRodada = this.jogadores.size;
+    // Quem viu a pergunta abrir: so essas pessoas contam no desempenho da categoria.
+    this.naRodada = new Set(this.jogadores.keys());
 
     const duracaoMs = this.duracaoDaRodada();
 
@@ -3112,6 +3115,13 @@ class Sala {
    * vale para todos os modos do mesmo jeito.
    */
   anotarRodadaNosPerfis(pergunta, valorDificuldade) {
+    // A dificuldade de ANTES desta rodada: a de depois ja carrega o resultado dela.
+    const difAntes = Number.isFinite(pergunta.dificuldade) ? pergunta.dificuldade : valorDificuldade;
+    const categoria = pergunta.categoria && CATEGORIAS.some((c) => c.id === pergunta.categoria.id)
+      ? pergunta.categoria.id
+      : null;
+    const medeCategoria = Boolean(categoria) && this.rodadaMedeTodos();
+
     for (const jogador of this.jogadores.values()) {
       const acertou = jogador.acertos > (jogador.acertosAnotados || 0);
       jogador.acertosAnotados = jogador.acertos;
@@ -3122,12 +3132,26 @@ class Sala {
         acertou,
         ms: acerto ? acerto.ms : null,
         primeiro: Boolean(acerto && acerto.posicao === 1),
-        dificuldade: valorDificuldade,
-        categoria: pergunta.categoria ? pergunta.categoria.id : null,
-        sequencia: jogador.sequencia
+        dificuldade: difAntes,
+        categoria,
+        sequencia: jogador.sequencia,
+        medeCategoria: medeCategoria && this.naRodada.has(jogador.id)
       });
       this.anunciarConquistas(jogador, novas);
     }
+  }
+
+  /**
+   * A rodada mede a categoria de TODO mundo que estava nela?
+   *
+   * So quando todos respondem a mesma pergunta ao mesmo tempo (Modo Tempo e
+   * Escalada). No leilao responde uma pessoa so, no Carrossel a vez passa e
+   * quem cai nem chega a responder, e as listas de Mais ou Menos Pontos e o
+   * Veni nao sao perguntas de categoria: nesses casos quem nao acertou nao
+   * errou, e contar como erro puxaria a nota para baixo sem motivo.
+   */
+  rodadaMedeTodos() {
+    return !this.ehLeilao() && !this.ehRanking() && !this.ehCarrossel() && !this.ehVeni();
   }
 
   /** Conquista nova: a pessoa recebe o aviso dela e a sala fica sabendo. */

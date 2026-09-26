@@ -262,9 +262,45 @@ function carregarGoogle() {
   return googlePronto;
 }
 
+/**
+ * O convite do saguao: oferece o login logo de cara, mas "Agora nao" some
+ * com ele de vez neste navegador. Quem ja esta com a conta ligada nem ve.
+ */
+const SEM_LOGIN = 'pensarapido:semLogin';
+
+function lerSemLogin() {
+  try { return localStorage.getItem(SEM_LOGIN) === '1'; } catch { return false; }
+}
+
+function mostrarConviteDeLogin() {
+  const convite = $('convite-login');
+  convite.hidden = true;
+  if (!estado.config?.googleClientId || lerSemLogin()) return;
+
+  socket.emit('perfil:ver', { cliente: carteirinha() }, (resposta) => {
+    if (resposta?.perfil?.conta) return;
+    carregarGoogle()
+      .then(() => {
+        const lugar = $('convite-google');
+        lugar.innerHTML = '';
+        google.accounts.id.renderButton(lugar, {
+          theme: 'filled_black', text: 'signin_with', shape: 'pill', locale: 'pt-BR'
+        });
+        convite.hidden = false;
+      })
+      .catch(() => {});
+  });
+}
+
+$('btn-convite-agora-nao').addEventListener('click', () => {
+  $('convite-login').hidden = true;
+  try { localStorage.setItem(SEM_LOGIN, '1'); } catch { /* sem armazenamento: o convite volta na proxima */ }
+});
+
 function entrarComGoogle({ credential }) {
   socket.emit('conta:entrar', { credencial: credential, cliente: carteirinha() }, (resposta) => {
     if (resposta?.erro) return brindar(resposta.erro);
+    $('convite-login').hidden = true;
     renderizarPerfil(resposta.perfil);
     brindar('Conta ligada: seu perfil agora vale em qualquer aparelho.');
     for (const c of resposta.conquistas || []) brindar(`${c.icone} Conquista: ${c.nome}`);
@@ -315,6 +351,8 @@ function renderizarPerfil(perfil) {
       <span class="perfil-numero__rotulo">${rotulo}</span>
     </div>`).join('');
 
+  renderizarDesempenho(perfil.desempenho || []);
+
   const feitas = perfil.conquistas.filter((c) => c.quando).length;
   $('perfil-contagem').textContent = `${feitas}/${perfil.conquistas.length}`;
   $('perfil-conquistas').innerHTML = perfil.conquistas.map((c) => `
@@ -324,6 +362,32 @@ function renderizarPerfil(perfil) {
       <span class="conquista__nome">${escapar(c.nome)}</span>
       <span class="conquista__descricao">${escapar(c.descricao)}</span>
     </li>`).join('');
+}
+
+/** Uma linha por categoria jogada: a nota, a barra e o quanto ja jogou. */
+function renderizarDesempenho(linhas) {
+  const lista = $('perfil-desempenho');
+  if (!linhas.length) {
+    lista.innerHTML = '<li class="desempenho__vazio">Jogue uma partida no Modo Tempo ou na Escalada para aparecer sua nota em cada categoria.</li>';
+    return;
+  }
+  const categorias = new Map((estado.config?.categorias || []).map((c) => [c.id, c]));
+  lista.innerHTML = linhas.map((l) => {
+    const c = categorias.get(l.id) || { nome: l.id, icone: '❓', cor: 'var(--primaria)' };
+    const detalhe = l.provisoria
+      ? `provisoria · ${plural(l.rodadas, 'rodada', 'rodadas')}`
+      : `${l.acertos}/${l.rodadas} acertos · dificuldade media ${l.dificuldadeMedia}`;
+    return `
+      <li class="desempenho__linha${l.provisoria ? ' desempenho__linha--provisoria' : ''}">
+        <span class="desempenho__icone">${c.icone}</span>
+        <span class="desempenho__meio">
+          <span class="desempenho__nome">${escapar(c.nome)}</span>
+          <span class="desempenho__barra"><span style="width:${l.nota}%;background:${c.cor}"></span></span>
+          <span class="desempenho__detalhe">${detalhe}</span>
+        </span>
+        <span class="desempenho__nota">${l.nota}</span>
+      </li>`;
+  }).join('');
 }
 
 function renderizarMelhores(jogadores) {
@@ -373,6 +437,7 @@ async function carregarConfig() {
   estado.config = await resposta.json();
   // A versao fica no rodape do saguao, ao lado do link das novidades.
   $('versao-atual').textContent = estado.config.versao ? `v${estado.config.versao}` : '';
+  mostrarConviteDeLogin();
   montarCategorias();
   montarModos();
   montarMetas();

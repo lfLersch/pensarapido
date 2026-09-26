@@ -110,6 +110,55 @@ conferir('perfil desconhecido vem zerado', perfis.verPerfil('ninguem-000').parti
   conferir('ranking nao lista o perfil somado duas vezes', perfis.melhores().filter((j) => j.nickname === 'Ana').length, 1);
 }
 
+/* ---------------- Nota por categoria: facil e dificil pesam diferente ---------------- */
+{
+  const { novaNota, chanceDeAcerto } = perfis;
+  const sobe = (acertou, dif) => Math.round((novaNota(50, 10, acertou, dif) - 50) * 10) / 10;
+
+  conferir('nota igual a dificuldade: chance meio a meio', chanceDeAcerto(70, 70), 0.5);
+  conferir('acertar dificil sobe mais que acertar facil', sobe(true, 80) > sobe(true, 20), true);
+  conferir('errar facil derruba mais que errar dificil', sobe(false, 20) < sobe(false, 80), true);
+  conferir('acertar facil quase nao mexe (< 1 ponto)', sobe(true, 20) < 1, true);
+  conferir('errar dificil quase nao mexe (> -1 ponto)', sobe(false, 80) > -1, true);
+  conferir('o passo diminui com as rodadas',
+    novaNota(50, 0, true, 50) - 50 > novaNota(50, 100, true, 50) - 50, true);
+  conferir('a nota fica entre 0 e 100', [novaNota(99, 0, true, 100), novaNota(1, 0, false, 0)].every((n) => n >= 0 && n <= 100), true);
+
+  // Quem acerta sempre as dificeis sobe; quem erra sempre as faceis desce.
+  let craque = 50;
+  let novato = 50;
+  for (let i = 0; i < 30; i++) {
+    craque = novaNota(craque, i, true, 75);
+    novato = novaNota(novato, i, false, 25);
+  }
+  conferir('acertando sempre dificuldade 75, passa de 75', craque > 75, true);
+  conferir('errando sempre dificuldade 25, cai abaixo de 25', novato < 25, true);
+}
+
+/* Na sala: so conta quem estava na rodada, e so nos modos em que todos respondem. */
+{
+  const partida = (modo) => {
+    const sala = new Sala('PER2', {
+      modo, categorias: ['geografia'], metaPontos: 999, segundosPorPergunta: 20
+    }, () => {}, () => {});
+    sala.entrar('x', 'Xena', `cliente-xena-${modo}`);
+    sala.entrar('y', 'Yuri', `cliente-yuri-${modo}`);
+    sala.naRodada = new Set(['x']); // Yuri chegou com a rodada no ar
+    sala.acertos = new Map();
+    sala.anotarRodadaNosPerfis({ categoria: { id: 'geografia' }, dificuldade: 60 }, 60);
+    return sala;
+  };
+
+  partida('tempo');
+  const xena = perfis.verPerfil('cliente-xena-tempo').desempenho;
+  conferir('Modo Tempo: erro de quem estava conta na categoria', xena.map((l) => [l.id, l.rodadas, l.acertos]), [['geografia', 1, 0]]);
+  conferir('com poucas rodadas a nota e provisoria', xena[0].provisoria, true);
+  conferir('quem chegou no meio nao leva erro', perfis.verPerfil('cliente-yuri-tempo').desempenho, []);
+
+  partida('presente-grego');
+  conferir('leilao nao mexe na nota da categoria', perfis.verPerfil('cliente-xena-presente-grego').desempenho, []);
+}
+
 /* O servidor nunca aceita um bilhete sem conferir. */
 (async () => {
   const google = require('../server/google.js');

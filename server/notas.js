@@ -17,6 +17,18 @@
 
 const NOTAS = [
   {
+    versao: '1.17',
+    data: '2026-09-26',
+    titulo: 'Sua nota em cada categoria',
+    itens: [
+      'O perfil ganhou "Desempenho por categoria": uma nota de 0 a 100 em cada categoria que voce joga, com os acertos e a dificuldade media das perguntas.',
+      'A nota leva em conta a dificuldade. Acertar pergunta dificil sobe muito e acertar facil sobe pouco; errar facil derruba muito e errar dificil quase nao pesa.',
+      'Nota 70 quer dizer que, numa pergunta de dificuldade 70, a sua chance e meio a meio. Nas primeiras 5 rodadas de uma categoria a nota aparece como provisoria.',
+      'Contam o Modo Tempo e a Escalada, em que todo mundo responde a mesma pergunta. Quem entra com a rodada no ar nao leva erro por ela.',
+      'O login com Google agora aparece logo no saguao, com um "Agora nao" para quem prefere jogar sem conta. Sem login continua valendo tudo, so que o perfil fica neste navegador.'
+    ]
+  },
+  {
     versao: '1.16',
     data: '2026-09-26',
     titulo: 'Conquistas, perfil e partida que esquenta',
