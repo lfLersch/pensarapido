@@ -660,7 +660,10 @@ class Sala {
       jogador.acertos = 0;
       jogador.acertosAnotados = 0;
       jogador.sequencia = 0;
+      jogador.errosPartida = 0;
+      jogador.rodadasMedidas = 0;
     }
+    this.ultimosNaMetade = null;
 
     this.rodada = 0;
     this.filas = new Map();
@@ -1607,6 +1610,7 @@ class Sala {
     this.naRodada = new Set(this.jogadores.keys());
 
     const duracaoMs = this.duracaoDaRodada();
+    this.duracaoPerguntaMs = duracaoMs;
 
     this.emitir('rodada:pergunta', {
       rodada: this.rodada,
@@ -3122,23 +3126,58 @@ class Sala {
       : null;
     const medeCategoria = Boolean(categoria) && this.rodadaMedeTodos();
 
+    const quantosAcertaram = [...this.jogadores.values()]
+      .filter((j) => j.acertos > (j.acertosAnotados || 0)).length;
+
     for (const jogador of this.jogadores.values()) {
       const acertou = jogador.acertos > (jogador.acertosAnotados || 0);
       jogador.acertosAnotados = jogador.acertos;
       jogador.sequencia = acertou ? (jogador.sequencia || 0) + 1 : 0;
 
+      const mediu = medeCategoria && this.naRodada.has(jogador.id);
+      if (mediu) {
+        jogador.rodadasMedidas = (jogador.rodadasMedidas || 0) + 1;
+        if (!acertou) jogador.errosPartida = (jogador.errosPartida || 0) + 1;
+      }
+
       const acerto = this.acertos.get(jogador.id);
+      const ms = acerto && Number.isFinite(acerto.ms) ? acerto.ms : null;
       const novas = perfis.anotarRodada(jogador.cliente, jogador.nickname, {
         acertou,
-        ms: acerto ? acerto.ms : null,
+        ms,
+        // Quanto sobrava no relogio quando acertou (para o "no ultimo segundo").
+        restanteMs: ms !== null && this.duracaoPerguntaMs ? this.duracaoPerguntaMs - ms : null,
+        // O unico a acertar numa rodada com pelo menos 4 pessoas.
+        soEle: acertou && quantosAcertaram === 1 && this.naRodada.size >= 4,
         primeiro: Boolean(acerto && acerto.posicao === 1),
         dificuldade: difAntes,
         categoria,
         sequencia: jogador.sequencia,
-        medeCategoria: medeCategoria && this.naRodada.has(jogador.id)
+        medeCategoria: mediu
       });
       this.anunciarConquistas(jogador, novas);
     }
+
+    // Quem estava em ultimo quando a partida chegou na metade: se vencer, foi virada.
+    if (!this.ultimosNaMetade && this.jogadores.size >= 2 && this.andamento() >= 0.5) {
+      const menor = Math.min(...[...this.jogadores.values()].map((j) => j.pontos));
+      const maior = Math.max(...[...this.jogadores.values()].map((j) => j.pontos));
+      this.ultimosNaMetade = new Set(menor < maior
+        ? [...this.jogadores.values()].filter((j) => j.pontos === menor).map((j) => j.id)
+        : []);
+    }
+  }
+
+  /** Os pontos do melhor adversario (de outra equipe, nos modos em equipe). */
+  pontosDoSegundo(jogador) {
+    const minhaEquipe = this.temEquipes() ? this.equipeDe(jogador.id) : null;
+    let segundo = null;
+    for (const outro of this.jogadores.values()) {
+      if (outro.id === jogador.id) continue;
+      if (minhaEquipe && this.equipeDe(outro.id) === minhaEquipe) continue;
+      segundo = segundo === null ? outro.pontos : Math.max(segundo, outro.pontos);
+    }
+    return segundo;
   }
 
   /**
@@ -3166,9 +3205,18 @@ class Sala {
     // Chamado duas vezes, a partida contaria dobrado no perfil.
     const jaTerminou = this.estado === 'fim';
     for (const jogador of jaTerminou ? [] : this.jogadores.values()) {
+      const venceu = Boolean(meta) && jogador.pontos >= meta;
+      const segundo = this.pontosDoSegundo(jogador);
       const novas = perfis.fimDePartida(jogador.cliente, jogador.nickname, {
-        venceu: Boolean(meta) && jogador.pontos >= meta,
-        pontos: jogador.pontos
+        venceu,
+        pontos: jogador.pontos,
+        rodadas: this.rodada,
+        jogadores: this.jogadores.size,
+        // Sem errar: pelo menos 5 rodadas medidas e nenhuma errada.
+        perfeita: (jogador.rodadasMedidas || 0) >= 5 && (jogador.errosPartida || 0) === 0,
+        lavada: venceu && segundo !== null && jogador.pontos >= 2 * segundo,
+        porUmTriz: venceu && segundo !== null && jogador.pontos - segundo <= Math.max(1, meta * 0.05),
+        virada: venceu && Boolean(this.ultimosNaMetade && this.ultimosNaMetade.has(jogador.id))
       });
       this.anunciarConquistas(jogador, novas);
     }

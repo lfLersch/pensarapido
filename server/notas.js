@@ -17,6 +17,17 @@
 
 const NOTAS = [
   {
+    versao: '1.18',
+    data: '2026-09-26',
+    titulo: '43 conquistas, e agora secretas',
+    itens: [
+      'As conquistas foram de 15 para 43: tem para quem e rapido, para quem acerta no sufoco, para quem joga sem errar e para quem vira o jogo.',
+      'Varias vem em degraus: a primeira vez vale uma, depois 10 vezes, 50 vezes, e por ai vai.',
+      'Agora elas sao secretas: no perfil aparece so um cadeado, e o que precisa fazer so aparece depois que a conquista sai.',
+      'O que voce ja tinha conquistado continua la.'
+    ]
+  },
+  {
     versao: '1.17',
     data: '2026-09-26',
     titulo: 'Sua nota em cada categoria',

@@ -73,26 +73,89 @@ function novaNota(nota, rodadas, acertou, dificuldade) {
   return Math.round(Math.min(100, Math.max(0, nova)) * 10) / 10;
 }
 
+/** Acerto abaixo disto conta para as conquistas de gatilho. */
+const MS_GATILHO = 2500;
+/** Acerto com menos que isto sobrando no relógio conta como "no último segundo". */
+const MS_ULTIMO_SEGUNDO = 1000;
+/** Nota e rodadas para contar como especialista numa categoria. */
+const NOTA_ESPECIALISTA = 80;
+const RODADAS_ESPECIALISTA = 20;
+const TOTAL_CATEGORIAS = require('./questions').CATEGORIAS.length;
+
+const marca = (p, nome) => (p.marcas && p.marcas[nome]) || 0;
+const especialidades = (p) => Object.values(p.porCategoria || {})
+  .filter((c) => c.rodadas >= RODADAS_ESPECIALISTA && c.nota >= NOTA_ESPECIALISTA).length;
+
 /**
  * As conquistas, na ordem em que aparecem no perfil.
  * `feita(p)` recebe o perfil e diz se ela já foi alcançada.
+ *
+ * Enquanto não sai, a conquista é secreta: a tela mostra só um cadeado, sem
+ * nome nem regra (e o servidor nem manda). Para criar uma nova, basta uma
+ * linha aqui; se ela precisar de um contador novo, use `p.marcas`, que soma
+ * sozinho no login e não muda o formato do banco.
  */
 const CONQUISTAS = [
+  // Partidas e vitórias
   { id: 'estreia', icone: '🎮', nome: 'Estreia', descricao: 'Jogou a primeira partida', feita: (p) => p.partidas >= 1 },
   { id: 'veterano', icone: '🎖️', nome: 'Veterano', descricao: 'Jogou 25 partidas', feita: (p) => p.partidas >= 25 },
   { id: 'maratonista', icone: '🏃', nome: 'Maratonista', descricao: 'Jogou 100 partidas', feita: (p) => p.partidas >= 100 },
   { id: 'primeira-vitoria', icone: '🏆', nome: 'Primeira vitoria', descricao: 'Venceu uma partida', feita: (p) => p.vitorias >= 1 },
   { id: 'campeao', icone: '👑', nome: 'Campeao', descricao: 'Venceu 10 partidas', feita: (p) => p.vitorias >= 10 },
   { id: 'lenda', icone: '🌟', nome: 'Lenda', descricao: 'Venceu 50 partidas', feita: (p) => p.vitorias >= 50 },
+
+  // Acertos
+  { id: 'dez-acertos', icone: '✅', nome: 'Aquecendo', descricao: 'Acertou 10 rodadas', feita: (p) => p.acertos >= 10 },
+  { id: 'cinquenta-acertos', icone: '📚', nome: 'Pegando o jeito', descricao: 'Acertou 50 rodadas', feita: (p) => p.acertos >= 50 },
   { id: 'cem-acertos', icone: '💯', nome: 'Cem acertos', descricao: 'Acertou 100 rodadas', feita: (p) => p.acertos >= 100 },
+  { id: 'quinhentos-acertos', icone: '🧩', nome: 'Cabeca cheia', descricao: 'Acertou 500 rodadas', feita: (p) => p.acertos >= 500 },
   { id: 'mil-acertos', icone: '🧠', nome: 'Enciclopedia', descricao: 'Acertou 1000 rodadas', feita: (p) => p.acertos >= 1000 },
+  { id: 'cinco-mil-acertos', icone: '🔮', nome: 'Oraculo', descricao: 'Acertou 5000 rodadas', feita: (p) => p.acertos >= 5000 },
+
+  // Velocidade
+  { id: 'gatilho', icone: '🔫', nome: 'Rapido no gatilho', descricao: 'Acertou em menos de 2,5 segundos', feita: (p) => marca(p, 'gatilhos') >= 1 },
+  { id: 'gatilho-10', icone: '🌡️', nome: 'Gatilho quente', descricao: 'Acertou 10 vezes em menos de 2,5 segundos', feita: (p) => marca(p, 'gatilhos') >= 10 },
+  { id: 'gatilho-50', icone: '🤠', nome: 'Mais rapido do oeste', descricao: 'Acertou 50 vezes em menos de 2,5 segundos', feita: (p) => marca(p, 'gatilhos') >= 50 },
+  { id: 'gatilho-200', icone: '🐆', nome: 'Reflexo de guepardo', descricao: 'Acertou 200 vezes em menos de 2,5 segundos', feita: (p) => marca(p, 'gatilhos') >= 200 },
   { id: 'relampago', icone: '⚡', nome: 'Relampago', descricao: 'Acertou em menos de 2 segundos', feita: (p) => p.relampagos >= 1 },
+  { id: 'relampago-25', icone: '🌩️', nome: 'Tempestade', descricao: 'Acertou 25 vezes em menos de 2 segundos', feita: (p) => p.relampagos >= 25 },
+  { id: 'na-frente', icone: '🏁', nome: 'Na frente', descricao: 'Foi o primeiro a acertar 10 vezes', feita: (p) => p.primeiros >= 10 },
   { id: 'sempre-primeiro', icone: '🥇', nome: 'Sempre primeiro', descricao: 'Foi o primeiro a acertar 50 vezes', feita: (p) => p.primeiros >= 50 },
+
+  // No sufoco
+  { id: 'ultimo-segundo', icone: '⏱️', nome: 'No ultimo segundo', descricao: 'Acertou com menos de 1 segundo no relogio', feita: (p) => marca(p, 'ultimoSegundo') >= 1 },
+  { id: 'ultimo-segundo-10', icone: '😅', nome: 'Especialista em sufoco', descricao: 'Acertou 10 vezes com menos de 1 segundo no relogio', feita: (p) => marca(p, 'ultimoSegundo') >= 10 },
+  { id: 'so-eu', icone: '🦉', nome: 'So eu sei', descricao: 'Foi o unico a acertar numa rodada com 4 ou mais pessoas', feita: (p) => marca(p, 'soEu') >= 1 },
+  { id: 'so-eu-10', icone: '🗝️', nome: 'Guardiao do saber', descricao: 'Foi o unico a acertar 10 vezes, com 4 ou mais pessoas na rodada', feita: (p) => marca(p, 'soEu') >= 10 },
+
+  // Perguntas difíceis
   { id: 'sabichao', icone: '🎓', nome: 'Sabichao', descricao: 'Acertou uma pergunta Muito dificil', feita: (p) => p.dificeis >= 1 },
   { id: 'genio', icone: '🔥', nome: 'Genio', descricao: 'Acertou 25 perguntas Muito dificeis', feita: (p) => p.dificeis >= 25 },
+  { id: 'cerebro-de-ouro', icone: '🏅', nome: 'Cerebro de ouro', descricao: 'Acertou 100 perguntas Muito dificeis', feita: (p) => p.dificeis >= 100 },
+
+  // Sequências e partidas sem erro
   { id: 'embalado', icone: '🎯', nome: 'Embalado', descricao: 'Acertou 5 rodadas seguidas numa partida', feita: (p) => p.maiorSequencia >= 5 },
   { id: 'imparavel', icone: '🚀', nome: 'Imparavel', descricao: 'Acertou 10 rodadas seguidas numa partida', feita: (p) => p.maiorSequencia >= 10 },
-  { id: 'ecletico', icone: '🌍', nome: 'Ecletico', descricao: 'Acertou perguntas de 10 categorias diferentes', feita: (p) => p.categorias.length >= 10 }
+  { id: 'maquina', icone: '🤖', nome: 'Maquina', descricao: 'Acertou 20 rodadas seguidas numa partida', feita: (p) => p.maiorSequencia >= 20 },
+  { id: 'perfeicao', icone: '💎', nome: 'Perfeicao', descricao: 'Terminou uma partida sem errar nenhuma rodada (pelo menos 5)', feita: (p) => marca(p, 'perfeitas') >= 1 },
+  { id: 'impecavel', icone: '👼', nome: 'Impecavel', descricao: 'Terminou 5 partidas sem errar nenhuma rodada', feita: (p) => marca(p, 'perfeitas') >= 5 },
+
+  // Jeitos de vencer
+  { id: 'virada', icone: '🔄', nome: 'Virada historica', descricao: 'Venceu estando em ultimo na metade da partida', feita: (p) => marca(p, 'viradas') >= 1 },
+  { id: 'atropelo', icone: '🚜', nome: 'Atropelo', descricao: 'Venceu com o dobro dos pontos do segundo colocado', feita: (p) => marca(p, 'lavadas') >= 1 },
+  { id: 'por-um-triz', icone: '📸', nome: 'Por um triz', descricao: 'Venceu por uma diferenca minima', feita: (p) => marca(p, 'trizes') >= 1 },
+
+  // Categorias
+  { id: 'curioso', icone: '🧭', nome: 'Curioso', descricao: 'Acertou perguntas de 5 categorias diferentes', feita: (p) => p.categorias.length >= 5 },
+  { id: 'ecletico', icone: '🌍', nome: 'Ecletico', descricao: 'Acertou perguntas de 10 categorias diferentes', feita: (p) => p.categorias.length >= 10 },
+  { id: 'sabe-tudo', icone: '🌌', nome: 'Sabe-tudo', descricao: 'Acertou perguntas de todas as categorias', feita: (p) => p.categorias.length >= TOTAL_CATEGORIAS },
+  { id: 'especialista', icone: '🔬', nome: 'Especialista', descricao: 'Chegou a nota 80 numa categoria, com 20 rodadas ou mais', feita: (p) => especialidades(p) >= 1 },
+  { id: 'mestre', icone: '🧙', nome: 'Mestre', descricao: 'Chegou a nota 80 em 3 categorias, com 20 rodadas ou mais em cada', feita: (p) => especialidades(p) >= 3 },
+
+  // Jeitos de jogar
+  { id: 'casa-cheia', icone: '🏟️', nome: 'Casa cheia', descricao: 'Jogou uma partida com 6 ou mais pessoas', feita: (p) => marca(p, 'casaCheia') >= 1 },
+  { id: 'folego', icone: '🫁', nome: 'Folego de sobra', descricao: 'Jogou uma partida de 30 rodadas ou mais', feita: (p) => marca(p, 'maratonas') >= 1 },
+  { id: 'coruja', icone: '🌙', nome: 'Coruja', descricao: 'Terminou uma partida entre meia-noite e 5 da manha', feita: (p) => marca(p, 'madrugadas') >= 1 }
 ];
 
 function perfilVazio() {
@@ -109,6 +172,8 @@ function perfilVazio() {
     categorias: [],
     // id da categoria -> { rodadas, acertos, nota, somaDificuldade }
     porCategoria: {},
+    // Contadores das conquistas mais novas (gatilhos, perfeitas, viradas...)
+    marcas: {},
     conquistas: {} // id -> quando foi alcançada (ms)
   };
 }
@@ -128,6 +193,7 @@ function normalizarPerfil(bruto) {
   if (!Array.isArray(p.categorias)) p.categorias = [];
   if (!p.conquistas || typeof p.conquistas !== 'object') p.conquistas = {};
   if (!p.porCategoria || typeof p.porCategoria !== 'object') p.porCategoria = {};
+  if (!p.marcas || typeof p.marcas !== 'object') p.marcas = {};
   return p;
 }
 
@@ -259,6 +325,18 @@ function perfilDe(chave, nickname) {
   return p;
 }
 
+function contar(p, nome) {
+  p.marcas[nome] = (p.marcas[nome] || 0) + 1;
+}
+
+/** A hora (0 a 23) no horário de Brasília: é daqui que vem quase todo mundo. */
+function horaDeBrasilia(quando = Date.now()) {
+  const hora = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo', hour: 'numeric', hourCycle: 'h23'
+  }).format(new Date(quando));
+  return Number(hora);
+}
+
 function marcar(chave) {
   sujos.add(chave);
   agendarSalvamento();
@@ -301,6 +379,9 @@ function anotarRodada(cliente, nickname, r) {
   if (r.acertou) {
     p.acertos += 1;
     if (Number.isFinite(r.ms) && r.ms < MS_RELAMPAGO) p.relampagos += 1;
+    if (Number.isFinite(r.ms) && r.ms < MS_GATILHO) contar(p, 'gatilhos');
+    if (Number.isFinite(r.restanteMs) && r.restanteMs >= 0 && r.restanteMs < MS_ULTIMO_SEGUNDO) contar(p, 'ultimoSegundo');
+    if (r.soEle) contar(p, 'soEu');
     if (r.primeiro) p.primeiros += 1;
     if (Number.isFinite(r.dificuldade) && r.dificuldade >= DIF_MUITO_DIFICIL) p.dificeis += 1;
     if (r.categoria && !p.categorias.includes(r.categoria)) p.categorias.push(r.categoria);
@@ -319,13 +400,21 @@ function anotarRodada(cliente, nickname, r) {
 }
 
 /** A partida acabou para esta pessoa. */
-function fimDePartida(cliente, nickname, { venceu, pontos }) {
+function fimDePartida(cliente, nickname, fim) {
   if (!cliente) return [];
+  const { venceu, pontos } = fim;
   const chave = chaveDe(cliente);
   const p = perfilDe(chave, nickname);
   p.partidas += 1;
   if (venceu) p.vitorias += 1;
   p.pontos += Math.max(0, pontos || 0);
+  if (fim.perfeita) contar(p, 'perfeitas');
+  if (fim.virada) contar(p, 'viradas');
+  if (fim.lavada) contar(p, 'lavadas');
+  if (fim.porUmTriz) contar(p, 'trizes');
+  if ((fim.jogadores || 0) >= 6) contar(p, 'casaCheia');
+  if ((fim.rodadas || 0) >= 30) contar(p, 'maratonas');
+  if (horaDeBrasilia(fim.quando) < 5) contar(p, 'madrugadas');
   marcar(chave);
   return conferirConquistas(p);
 }
@@ -343,6 +432,7 @@ function somar(para, de) {
     para.conquistas[id] = para.conquistas[id] ? Math.min(para.conquistas[id], quando) : quando;
   }
   if (!para.nickname) para.nickname = de.nickname;
+  for (const [nome, n] of Object.entries(de.marcas || {})) para.marcas[nome] = (para.marcas[nome] || 0) + n;
 
   // Por categoria: somam as contagens, e a nota vira a media pesada pelas rodadas.
   for (const [id, c] of Object.entries(de.porCategoria || {})) {
@@ -419,7 +509,10 @@ function verPerfil(cliente) {
         dificuldadeMedia: c.rodadas ? Math.round(c.somaDificuldade / c.rodadas) : null
       }))
       .sort((a, b) => a.provisoria - b.provisoria || b.nota - a.nota || b.rodadas - a.rodadas),
-    conquistas: CONQUISTAS.map((c) => ({ ...publica(c), quando: p.conquistas[c.id] || null }))
+    // Secretas ate sair: sem nome, sem regra, nem o id (que ja entregaria a regra).
+    conquistas: CONQUISTAS.map((c) => (p.conquistas[c.id]
+      ? { ...publica(c), quando: p.conquistas[c.id] }
+      : { secreta: true }))
   };
 }
 
@@ -443,6 +536,6 @@ process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 
 module.exports = {
   anotarRodada, fimDePartida, verPerfil, melhores, salvar, pronto, entrarComConta, sairDaConta,
-  CONQUISTAS, MS_RELAMPAGO, DIF_MUITO_DIFICIL,
+  CONQUISTAS, MS_RELAMPAGO, MS_GATILHO, MS_ULTIMO_SEGUNDO, DIF_MUITO_DIFICIL, horaDeBrasilia,
   chanceDeAcerto, novaNota, NOTA_INICIAL, RODADAS_PARA_NOTA
 };
