@@ -13,7 +13,9 @@
  * pessoa, e do primeiro nome para mostrar no perfil.
  */
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+// Colado no painel do Render, o valor pode vir com espaco ou quebra de linha
+// no fim, e ai nenhum bilhete bateria com ele.
+const CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim();
 
 let verificador = null;
 
