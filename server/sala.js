@@ -15,6 +15,10 @@ const PONTOS_MAX = 10;        // base de quem responde na primeira faixa
 const MS_POR_FAIXA = 5000;    // a cada 5s de rodada, a base cai 1 ponto
 const PONTOS_MIN = 1;         // acertar sempre vale pelo menos 1
 
+// Modo Tempo e Escalada: cada um erra no maximo isto por pergunta. Sem teto,
+// quem nao sabia metralhava palpites ate um colar. O "quase" tambem gasta.
+const CHANCES_POR_PERGUNTA = 5;
+
 // Escalada: cada item lembrado já vale ponto, e fechar a lista dá um empurrão.
 const PONTOS_POR_ITEM = 2;
 const BONUS_ESCALADA = 5;
@@ -158,14 +162,14 @@ const MODOS = [
     id: 'tempo',
     nome: 'Modo Tempo',
     icone: '⏱',
-    descricao: 'Escreva a resposta no chat. A cada 5s de rodada a base cai 1 ponto (10, 9, 8, 7) e cai mais 1 para cada pessoa que acertou antes de voce.',
+    descricao: 'Escreva a resposta no chat. A cada 5s de rodada a base cai 1 ponto (10, 9, 8, 7) e cai mais 1 para cada pessoa que acertou antes de voce. Sao 5 chances por pergunta: cada palpite errado gasta uma.',
     disponivel: true
   },
   {
     id: 'escalada',
     nome: 'Escalada',
     icone: '🧗',
-    descricao: 'Cada rodada pede uma resposta a mais: 1 na primeira, 2 na segunda, 3 na terceira… Cada item lembrado vale 2 pontos e fechar a lista da +5 de bonus.',
+    descricao: 'Cada rodada pede uma resposta a mais: 1 na primeira, 2 na segunda, 3 na terceira… Cada item lembrado vale 2 pontos e fechar a lista da +5 de bonus. Sao 5 chances de errar por rodada.',
     disponivel: true
   },
   {
@@ -360,6 +364,10 @@ class Sala {
     this.pontosRodada = new Map(); // socketId -> pontos feitos nesta rodada
     this.pulos = new Set();        // quem votou para pular a rodada atual
     this.errouRanking = new Set(); // Mais ou Menos Pontos: quem ja gastou a vez errando
+    // Modo Tempo e Escalada: palpites errados de cada um nesta rodada. A chave
+    // e o nickname, que sobrevive a cair e voltar; o socket muda na volta, e
+    // recarregar a pagina devolveria as chances.
+    this.chancesGastas = new Map();
     this.ultimoTema = null;     // tema da rodada anterior, para não repetir
     this.jogadoresNaRodada = 0;
     this.naRodada = new Set();
@@ -578,7 +586,7 @@ class Sala {
     }
 
     // Só faltava quem saiu para fechar a rodada.
-    if (this.estado === 'pergunta' && this.todosAcertaram()) {
+    if (this.estado === 'pergunta' && this.ninguemMaisPontua()) {
       this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
     }
 
@@ -1556,6 +1564,7 @@ class Sala {
     this.pontosRodada = new Map();
     this.pulos = new Set();
     this.errouRanking = new Set();
+    this.chancesGastas = new Map();
     this.dicaAtual = 0;
     this.palpitesVeni = new Map();
     this.primeiroAcertoEm = null;
@@ -1628,6 +1637,8 @@ class Sala {
         ? this.perguntaAtual.resposta.replace(/[\p{L}\p{N}]/gu, '•')
         : null,
       duracaoMs: this.ehCarrossel() ? null : duracaoMs,
+      // Modo Tempo e Escalada: quantos palpites errados cada um pode dar.
+      chances: this.usaChances() ? CHANCES_POR_PERGUNTA : null,
       // Mais ou Menos Pontos: a mesa precisa saber ate onde vai a lista.
       ranking: this.ehRanking()
         ? {
@@ -2304,27 +2315,39 @@ class Sala {
       return { veredito: 'errado', gastou: true };
     }
 
-    // Longe de tudo: é conversa, vai para todo mundo.
+    // Quem ainda disputa a pergunta: ela esta no ar e a pessoa nao fechou.
+    // Quem gastou as chances vira plateia, igual a quem ja acertou.
+    const disputando = this.estado === 'pergunta' && !this.acertos.has(socketId);
+    const semChances = disputando && this.chancesRestantes(jogador) === 0;
+
+    // Longe de tudo: vai para todo mundo. Para quem ainda disputa, e tambem um
+    // palpite errado — nao ha como separar conversa de chute.
     if (novoItem < 0 && repetido < 0 && !perto) {
       this.publicarChat(jogador, limpo);
-      return { veredito: 'chat' };
+      if (!disputando || semChances) return { veredito: 'chat' };
+      return { veredito: 'chat', chances: this.gastarChance(jogador) };
     }
 
     // Perto de alguma resposta, mas essa pessoa não pode mais pontuar (já
-    // completou, ou a pergunta ainda nem apareceu): a mensagem morre aqui.
-    if (this.estado !== 'pergunta' || this.acertos.has(socketId)) {
-      return { veredito: 'bloqueado' };
-    }
+    // completou, gastou as chances, ou a pergunta ainda nem apareceu): a
+    // mensagem morre aqui.
+    if (!disputando) return { veredito: 'bloqueado' };
+    if (semChances) return { veredito: 'bloqueado', motivo: 'chances' };
 
+    // Repetir o que ja disse nao gasta chance: nao e um palpite novo.
     if (novoItem < 0 && repetido >= 0) {
       return { veredito: 'repetido', item: this.perguntaAtual.itens[repetido].oficial };
     }
 
     // De 10% a 20% de erro: em vez de um "quase" seco, devolve o que ja bateu
     // — "c_ra" para quem escreveu "cera" com "cara" na frente. A mensagem
-    // continua sendo so de quem escreveu.
+    // continua sendo so de quem escreveu, e gasta uma chance como qualquer erro.
     if (novoItem < 0) {
-      return { veredito: 'quase', dica: mascaraDeAcerto(limpo, quaseAlvo) };
+      return {
+        veredito: 'quase',
+        dica: mascaraDeAcerto(limpo, quaseAlvo),
+        chances: this.gastarChance(jogador)
+      };
     }
 
     /* --- acertou um item --- */
@@ -2392,7 +2415,7 @@ class Sala {
       placar: this.placar()
     });
 
-    if (this.todosAcertaram()) {
+    if (this.ninguemMaisPontua()) {
       this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
     }
 
@@ -2608,6 +2631,49 @@ class Sala {
       ? this.acertos.size + this.errouRanking.size
       : this.acertos.size;
     return gastaram >= this.jogadores.size;
+  }
+
+  /**
+   * A rodada nao tem mais o que esperar: cada um acertou, gastou a vez (Mais
+   * ou Menos Pontos) ou gastou as chances. Diferente de `todosAcertaram`, que
+   * decide a espera do resultado: quem ficou sem chances nao acertou, e a tela
+   * da resposta fica o tempo cheio para essa pessoa.
+   */
+  ninguemMaisPontua() {
+    if (this.jogadores.size === 0) return false;
+    return [...this.jogadores.values()].every((j) => this.acertos.has(j.id)
+      || this.errouRanking.has(j.id) || this.chancesRestantes(j) === 0);
+  }
+
+  /**
+   * Modo Tempo e Escalada: todos respondem a mesma pergunta ao mesmo tempo,
+   * digitando livre. Os outros modos ja tem regra propria para o palpite — a
+   * vez do Carrossel, o respondedor do leilao, a vez unica do Mais ou Menos
+   * Pontos, o palpite fechado do 1 eh bom.
+   */
+  usaChances() {
+    return !this.ehCarrossel() && !this.ehLeilao() && !this.ehRanking() && !this.ehVeni();
+  }
+
+  /** Quantos palpites errados a pessoa ainda pode dar nesta pergunta. */
+  chancesRestantes(jogador) {
+    if (!this.usaChances()) return Infinity;
+    const gastas = this.chancesGastas.get(normalizar(jogador.nickname)) || 0;
+    return Math.max(CHANCES_POR_PERGUNTA - gastas, 0);
+  }
+
+  /**
+   * Um palpite errado: desconta uma chance e devolve quantas sobraram. Quem
+   * gastou a ultima pode ser justamente quem a rodada ainda esperava.
+   */
+  gastarChance(jogador) {
+    const chave = normalizar(jogador.nickname);
+    this.chancesGastas.set(chave, (this.chancesGastas.get(chave) || 0) + 1);
+    const restam = this.chancesRestantes(jogador);
+    if (restam === 0 && this.ninguemMaisPontua()) {
+      this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
+    }
+    return restam;
   }
 
   /**
@@ -3195,6 +3261,7 @@ class Sala {
     this.pontosRodada = new Map();
     this.pulos = new Set();
     this.errouRanking = new Set();
+    this.chancesGastas = new Map();
     this.voltaRanking = 0;
     this.itensJaDitos = new Set();
     // As equipes continuam como estavam: quem já escolheu não escolhe de novo.
@@ -3311,6 +3378,6 @@ function perguntasEscolhidas(config, idCategoria) {
 }
 
 module.exports = {
-  Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO,
+  Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, CHANCES_POR_PERGUNTA,
   gerarCodigo, calcularPontos, indicePerguntas, categoriasEmJogo, perguntasEscolhidas
 };

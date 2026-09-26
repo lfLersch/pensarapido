@@ -1177,7 +1177,10 @@ socket.on('rodada:pergunta', (dados) => {
   $('status-respostas').textContent = '';
 
   inputChat.disabled = false;
-  inputChat.placeholder = 'Escreva sua resposta…';
+  // Modo Tempo e Escalada: cada palpite errado gasta uma das chances.
+  inputChat.placeholder = dados.chances
+    ? `Escreva sua resposta… (${plural(dados.chances, 'chance', 'chances')})`
+    : 'Escreva sua resposta…';
   if (!('ontouchstart' in window)) inputChat.focus();
 
   // Modo Carrossel: a fila de jogadores e de quem é a vez.
@@ -2025,7 +2028,9 @@ formChat.addEventListener('submit', (evento) => {
         'msg--privado', resposta.dica);
 
     } else if (resposta.veredito === 'bloqueado') {
-      avisoParticular('Segurei essa mensagem para nao entregar a resposta.');
+      avisoParticular(resposta.motivo === 'chances'
+        ? 'Suas chances acabaram nesta pergunta. Segurei a mensagem para nao entregar a resposta.'
+        : 'Segurei essa mensagem para nao entregar a resposta.');
 
     } else if (resposta.veredito === 'repetido') {
       avisoParticular(`Voce ja tinha dito "${resposta.item}". Tente outra.`);
@@ -2071,8 +2076,22 @@ formChat.addEventListener('submit', (evento) => {
       if (resposta.item) registrarItem(resposta.item);
       inputChat.placeholder = 'Acertou! Agora e so papo…';
     }
+
+    // Modo Tempo e Escalada: o palpite errado (ou o "quase") gastou uma chance.
+    if (typeof resposta.chances === 'number') mostrarChances(resposta.chances);
   });
 });
+
+/** Quantos palpites errados ainda cabem nesta pergunta, no proprio campo. */
+function mostrarChances(restam) {
+  if (restam > 0) {
+    if (restam === 1) avisoParticular('Ultima chance nesta pergunta!');
+    inputChat.placeholder = `Restam ${plural(restam, 'chance', 'chances')}…`;
+    return;
+  }
+  avisoParticular('Acabaram suas chances nesta pergunta.');
+  inputChat.placeholder = 'Sem chances nesta pergunta. Agora e so papo…';
+}
 
 socket.on('rodada:acertou', (dados) => {
   $('status-respostas').textContent =

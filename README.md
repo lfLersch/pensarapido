@@ -153,6 +153,28 @@ Os limites ficam no topo de [`server/comparar.js`](server/comparar.js)
 > como "quase". Numa resposta de 10 letras, 1 letra errada dá exatamente 10% e
 > cai no "quase". Para aceitar esse caso, troque `<` por `<=` em `LIMITE_CERTO`.
 
+### Cinco chances por pergunta
+
+No **Modo Tempo** e na **Escalada**, cada pessoa pode errar **5 vezes por
+pergunta**. Sem esse teto, quem não sabia metralhava palpites até um colar.
+
+- Gasta chance todo palpite que não acerta: o que vai para o chat e o "quase".
+  Durante a pergunta não há como separar conversa de chute, então o "kkk"
+  também conta.
+- Não gasta: acertar, repetir um item que você já disse na Escalada e
+  escrever na tela da categoria, antes de a pergunta aparecer.
+- O campo de resposta mostra quantas chances restam, e a última vem avisada.
+- Sem chances, a pessoa vira plateia, igual a quem já acertou: a conversa
+  continua indo ao chat, mas nada parecido com a resposta sai dela e nada
+  mais pontua.
+- A contagem é pelo nickname. Cair e voltar no meio da pergunta não devolve
+  as chances.
+
+Os outros modos já tinham regra própria para o palpite e não mudam: a vez do
+Carrossel, o respondedor dos leilões, o palpite único do Mais ou Menos Pontos
+e o palpite fechado do 1 é bom 2 ok 3 é demais. O número fica em
+`CHANCES_POR_PERGUNTA`, no topo de [`server/sala.js`](server/sala.js).
+
 ### Acentos
 
 **O texto do jogo não usa acentos** — perguntas, respostas, categorias e a
@@ -195,8 +217,9 @@ Ou seja: **quem acerta em terceiro depois de 15s leva 5 pontos** — a faixa val
 7 e saem 2 de quem chegou na frente.
 
 - Um acerto nunca vale menos que **1 ponto**, por mais tarde e mais atrás que venha.
-- Não existe punição por errar: dá para tentar quantas vezes quiser até o tempo acabar.
-- A rodada fecha quando todos acertam ou quando o tempo acaba.
+- Errar não tira ponto, mas cada um tem **5 chances por pergunta** (veja abaixo).
+- A rodada fecha quando ninguém mais pode pontuar — cada um acertou ou gastou
+  as chances — ou quando o tempo acaba.
 - A partida acaba assim que alguém alcança a meta definida pelo líder.
 
 As faixas são de 5s independente da duração escolhida, então uma rodada de 30s
@@ -214,6 +237,9 @@ segunda, 3 na terceira. A rodada ganha **3 segundos por resposta extra** — a d
 **Pontuação:** cada item lembrado vale **2 pontos**, e fechar a lista dá **+5 de
 bônus**. Quem lembra 3 de 4 leva 6; quem fecha as 4 leva 8 + 5 = 13. Progresso
 parcial conta, então ninguém sai de mãos vazias por ter parado a um item do fim.
+
+Cada rodada dá **5 chances de errar**, como no Modo Tempo: item fora da lista
+gasta uma, item novo e item repetido não.
 
 **Escolha da lista.** Cada lista tem um `tema`, e o sorteio faz duas coisas:
 
@@ -1186,7 +1212,10 @@ a dica de uma palavra só e a rodada que paga igual custe 1 ou 10),
 enunciado, as duas pontas do "duvido" e o que acontece quando alguém sai no
 meio), o **Leilão Geral** (a pergunta pública, passar o lance, o leilão que
 fecha em quem sobrou e as duas contas da pontuação), a **votação para pular** (o teto de metade mais um, o voto que
-alterna, as três fases em que vale e o que acontece quando quem votou sai)
+alterna, as três fases em que vale e o que acontece quando quem votou sai),
+as **5 chances por pergunta** (o que gasta, o que não gasta, a resposta certa
+que não vale nem vaza depois da última, a rodada que fecha quando ninguém mais
+pode pontuar e a chance que não volta ao recarregar a página)
 e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim
