@@ -230,7 +230,79 @@ $('btn-abrir-perfil').addEventListener('click', () => {
 });
 $('btn-voltar-perfil').addEventListener('click', () => mostrarTela('tela-lobby'));
 
+/**
+ * Login com Google, opcional.
+ *
+ * O botao oficial do Google entrega um bilhete assinado; quem confere e o
+ * servidor. Sem `googleClientId` na configuracao o login esta desligado e a
+ * area nem aparece.
+ */
+let googlePronto = null;
+
+function carregarGoogle() {
+  if (!googlePronto) {
+    googlePronto = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.onload = () => {
+        google.accounts.id.initialize({
+          client_id: estado.config.googleClientId,
+          callback: entrarComGoogle
+        });
+        resolve();
+      };
+      script.onerror = () => {
+        googlePronto = null;
+        reject(new Error('sem Google'));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return googlePronto;
+}
+
+function entrarComGoogle({ credential }) {
+  socket.emit('conta:entrar', { credencial: credential, cliente: carteirinha() }, (resposta) => {
+    if (resposta?.erro) return brindar(resposta.erro);
+    renderizarPerfil(resposta.perfil);
+    brindar('Conta ligada: seu perfil agora vale em qualquer aparelho.');
+    for (const c of resposta.conquistas || []) brindar(`${c.icone} Conquista: ${c.nome}`);
+  });
+}
+
+$('btn-conta-sair').addEventListener('click', () => {
+  socket.emit('conta:sair', { cliente: carteirinha() }, (resposta) => {
+    if (window.google?.accounts?.id) google.accounts.id.disableAutoSelect();
+    if (resposta?.perfil) renderizarPerfil(resposta.perfil);
+  });
+});
+
+function renderizarConta(perfil) {
+  const area = $('perfil-conta');
+  area.hidden = !estado.config?.googleClientId;
+  if (area.hidden) return;
+
+  const ligada = Boolean(perfil.conta);
+  $('conta-texto').textContent = ligada
+    ? `Conectado com o Google${perfil.conta.nome ? ` como ${perfil.conta.nome}` : ''}. Seu perfil vale em qualquer aparelho.`
+    : 'Entre com o Google para levar seu perfil e suas conquistas para qualquer aparelho. O que voce ja jogou aqui vai junto.';
+  $('btn-conta-sair').hidden = !ligada;
+
+  const botao = $('conta-google');
+  botao.hidden = ligada;
+  botao.innerHTML = '';
+  if (!ligada) {
+    carregarGoogle()
+      .then(() => google.accounts.id.renderButton(botao, {
+        theme: 'filled_black', text: 'signin_with', shape: 'pill', locale: 'pt-BR'
+      }))
+      .catch(() => { $('conta-texto').textContent = 'O login com Google nao carregou. Confira a internet.'; });
+  }
+}
+
 function renderizarPerfil(perfil) {
+  renderizarConta(perfil);
   const numeros = [
     ['Partidas', perfil.partidas],
     ['Vitorias', perfil.vitorias],

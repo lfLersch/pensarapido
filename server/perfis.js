@@ -4,12 +4,18 @@
  * O perfil de cada jogador: números de todas as partidas e as conquistas.
  *
  * Quem é quem vem da carteirinha do navegador (`cliente`), a mesma que já
- * reconhece a aba voltando depois de uma queda. Não há conta nem senha: o
- * perfil é daquele navegador. Trocar de nickname não perde nada; trocar de
- * navegador (ou limpar os dados dele) começa um perfil novo.
+ * reconhece a aba voltando depois de uma queda. Sem login, o perfil é daquele
+ * navegador: trocar de nickname não perde nada, trocar de navegador começa do
+ * zero.
  *
- * Com `DATABASE_URL` os perfis moram na tabela `jogadores`; sem ela, em
- * `server/dados/perfis.json`, igual aos outros contadores.
+ * Com login do Google, a carteirinha fica LIGADA à conta (`vinculos`), e o
+ * perfil passa a ser da conta ("g:" + id do Google): vale em qualquer
+ * navegador em que a pessoa entrar. No primeiro login, o que o navegador já
+ * tinha é somado à conta. A sala não sabe de nada disso: ela continua
+ * mandando a carteirinha, e é aqui que se descobre de quem é o perfil.
+ *
+ * Com `DATABASE_URL` os perfis moram na tabela `jogadores` e as ligações em
+ * `vinculos`; sem ela, em `server/dados/perfis.json`.
  */
 
 const fs = require('fs');
@@ -63,9 +69,13 @@ function perfilVazio() {
   };
 }
 
-/** @type {Map<string, ReturnType<typeof perfilVazio>>} cliente -> perfil */
+/** @type {Map<string, ReturnType<typeof perfilVazio>>} cliente ou conta -> perfil */
 const perfis = new Map();
+/** @type {Map<string, string>} carteirinha -> conta do Google ligada a ela */
+const vinculos = new Map();
+/** O que mudou desde a última gravação (inclui o que foi apagado). */
 const sujos = new Set();
+const vinculosSujos = new Set();
 let pendente = null;
 
 /** Junta o que veio de fora com o formato atual (campos novos entram zerados). */
@@ -76,12 +86,20 @@ function normalizarPerfil(bruto) {
   return p;
 }
 
+/** De quem é o perfil desta carteirinha: da conta ligada, ou dela mesma. */
+function chaveDe(cliente) {
+  return vinculos.get(cliente) || cliente;
+}
+
 /* ------------------------------ Persistência ------------------------------ */
 
 function lerArquivo() {
   try {
     const bruto = JSON.parse(fs.readFileSync(ARQUIVO, 'utf8'));
-    for (const [cliente, dados] of Object.entries(bruto)) perfis.set(cliente, normalizarPerfil(dados));
+    // O formato antigo era só o mapa de perfis, sem ligações.
+    const lidos = bruto.perfis && typeof bruto.perfis === 'object' ? bruto.perfis : bruto;
+    for (const [chave, dados] of Object.entries(lidos)) perfis.set(chave, normalizarPerfil(dados));
+    for (const [cliente, conta] of Object.entries(bruto.vinculos || {})) vinculos.set(cliente, conta);
   } catch (erro) {
     if (erro.code !== 'ENOENT') console.warn('Nao consegui ler os perfis, comecando do zero:', erro.message);
   }
@@ -89,12 +107,18 @@ function lerArquivo() {
 
 async function lerBanco() {
   try {
-    const { rows } = await banco.consultar('SELECT cliente, dados FROM jogadores');
-    for (const { cliente, dados } of rows) {
+    const [jogadores, ligacoes] = await Promise.all([
+      banco.consultar('SELECT cliente, dados FROM jogadores'),
+      banco.consultar('SELECT cliente, conta FROM vinculos')
+    ]);
+    for (const { cliente, dados } of jogadores.rows) {
       // Quem jogou antes da leitura terminar ja esta no mapa: fica o que tiver mais partidas.
       const atual = perfis.get(cliente);
       const lido = normalizarPerfil(dados);
       if (!atual || lido.partidas > atual.partidas) perfis.set(cliente, lido);
+    }
+    for (const { cliente, conta } of ligacoes.rows) {
+      if (!vinculos.has(cliente)) vinculos.set(cliente, conta);
     }
   } catch (erro) {
     console.warn('Nao consegui ler os perfis do banco, comecando do zero:', erro.message);
@@ -110,30 +134,55 @@ function carregar() {
 function gravarArquivo() {
   try {
     fs.mkdirSync(path.dirname(ARQUIVO), { recursive: true });
-    fs.writeFileSync(ARQUIVO, JSON.stringify(Object.fromEntries(perfis)), 'utf8');
+    fs.writeFileSync(ARQUIVO, JSON.stringify({
+      perfis: Object.fromEntries(perfis),
+      vinculos: Object.fromEntries(vinculos)
+    }), 'utf8');
   } catch (erro) {
     console.warn('Nao consegui gravar os perfis:', erro.message);
   }
 }
 
 async function gravarBanco() {
-  if (!sujos.size) return;
-  const clientes = [...sujos];
+  if (!sujos.size && !vinculosSujos.size) return;
+  const chaves = [...sujos];
+  const ligacoes = [...vinculosSujos];
   sujos.clear();
+  vinculosSujos.clear();
+
+  // O que sumiu do mapa (perfil somado numa conta, login desfeito) sai do banco.
+  const vivos = chaves.filter((c) => perfis.has(c));
+  const apagados = chaves.filter((c) => !perfis.has(c));
+  const ligados = ligacoes.filter((c) => vinculos.has(c));
+  const desligados = ligacoes.filter((c) => !vinculos.has(c));
+
   try {
-    await banco.consultar(
-      `INSERT INTO jogadores (cliente, nickname, dados, atualizado_em)
-       SELECT c, n, d::jsonb, now() FROM unnest($1::text[], $2::text[], $3::text[]) AS t(c, n, d)
-       ON CONFLICT (cliente) DO UPDATE
-         SET nickname = EXCLUDED.nickname, dados = EXCLUDED.dados, atualizado_em = now()`,
-      [
-        clientes,
-        clientes.map((c) => perfis.get(c).nickname),
-        clientes.map((c) => JSON.stringify(perfis.get(c)))
-      ]
-    );
+    if (vivos.length) {
+      await banco.consultar(
+        `INSERT INTO jogadores (cliente, nickname, dados, atualizado_em)
+         SELECT c, n, d::jsonb, now() FROM unnest($1::text[], $2::text[], $3::text[]) AS t(c, n, d)
+         ON CONFLICT (cliente) DO UPDATE
+           SET nickname = EXCLUDED.nickname, dados = EXCLUDED.dados, atualizado_em = now()`,
+        [vivos, vivos.map((c) => perfis.get(c).nickname), vivos.map((c) => JSON.stringify(perfis.get(c)))]
+      );
+    }
+    if (apagados.length) {
+      await banco.consultar('DELETE FROM jogadores WHERE cliente = ANY($1::text[])', [apagados]);
+    }
+    if (ligados.length) {
+      await banco.consultar(
+        `INSERT INTO vinculos (cliente, conta)
+         SELECT * FROM unnest($1::text[], $2::text[])
+         ON CONFLICT (cliente) DO UPDATE SET conta = EXCLUDED.conta`,
+        [ligados, ligados.map((c) => vinculos.get(c))]
+      );
+    }
+    if (desligados.length) {
+      await banco.consultar('DELETE FROM vinculos WHERE cliente = ANY($1::text[])', [desligados]);
+    }
   } catch (erro) {
-    for (const c of clientes) sujos.add(c);
+    for (const c of chaves) sujos.add(c);
+    for (const c of ligacoes) vinculosSujos.add(c);
     console.warn('Nao consegui gravar os perfis no banco:', erro.message);
   }
 }
@@ -154,14 +203,20 @@ function agendarSalvamento() {
 
 /* -------------------------------- Registro -------------------------------- */
 
-function perfilDe(cliente, nickname) {
-  let p = perfis.get(cliente);
+/** O perfil (criado na hora se preciso) de uma carteirinha ou de uma conta. */
+function perfilDe(chave, nickname) {
+  let p = perfis.get(chave);
   if (!p) {
     p = perfilVazio();
-    perfis.set(cliente, p);
+    perfis.set(chave, p);
   }
   if (nickname) p.nickname = nickname;
   return p;
+}
+
+function marcar(chave) {
+  sujos.add(chave);
+  agendarSalvamento();
 }
 
 /** Marca as conquistas recém-alcançadas e devolve só elas. */
@@ -196,7 +251,8 @@ function publica(c) {
  */
 function anotarRodada(cliente, nickname, r) {
   if (!cliente) return [];
-  const p = perfilDe(cliente, nickname);
+  const chave = chaveDe(cliente);
+  const p = perfilDe(chave, nickname);
   if (r.acertou) {
     p.acertos += 1;
     if (Number.isFinite(r.ms) && r.ms < MS_RELAMPAGO) p.relampagos += 1;
@@ -205,27 +261,80 @@ function anotarRodada(cliente, nickname, r) {
     if (r.categoria && !p.categorias.includes(r.categoria)) p.categorias.push(r.categoria);
   }
   p.maiorSequencia = Math.max(p.maiorSequencia, r.sequencia || 0);
-  sujos.add(cliente);
-  agendarSalvamento();
+  marcar(chave);
   return conferirConquistas(p);
 }
 
 /** A partida acabou para esta pessoa. */
 function fimDePartida(cliente, nickname, { venceu, pontos }) {
   if (!cliente) return [];
-  const p = perfilDe(cliente, nickname);
+  const chave = chaveDe(cliente);
+  const p = perfilDe(chave, nickname);
   p.partidas += 1;
   if (venceu) p.vitorias += 1;
   p.pontos += Math.max(0, pontos || 0);
-  sujos.add(cliente);
-  agendarSalvamento();
+  marcar(chave);
   return conferirConquistas(p);
 }
 
+/* --------------------------------- Contas --------------------------------- */
+
+const SOMAM = ['partidas', 'vitorias', 'acertos', 'pontos', 'relampagos', 'primeiros', 'dificeis'];
+
+/** Junta o perfil `de` dentro de `para`: soma os números e fica com a conquista mais antiga. */
+function somar(para, de) {
+  for (const campo of SOMAM) para[campo] += de[campo] || 0;
+  para.maiorSequencia = Math.max(para.maiorSequencia, de.maiorSequencia || 0);
+  for (const c of de.categorias) if (!para.categorias.includes(c)) para.categorias.push(c);
+  for (const [id, quando] of Object.entries(de.conquistas)) {
+    para.conquistas[id] = para.conquistas[id] ? Math.min(para.conquistas[id], quando) : quando;
+  }
+  if (!para.nickname) para.nickname = de.nickname;
+}
+
+/**
+ * Liga a carteirinha a uma conta do Google.
+ *
+ * O que o navegador jogou sem login vai para a conta (somado) e o perfil
+ * solto dele deixa de existir. Entrar de novo na mesma conta não soma nada.
+ * Um navegador que estava em OUTRA conta só troca de conta: o perfil daquela
+ * continua dela.
+ */
+function entrarComConta(cliente, conta, nome) {
+  if (!cliente || !conta) return [];
+  const antes = vinculos.get(cliente);
+  const destino = perfilDe(conta);
+  if (nome) destino.nomeConta = nome;
+
+  if (antes !== conta) {
+    const solto = antes ? null : perfis.get(cliente);
+    if (solto) {
+      somar(destino, solto);
+      perfis.delete(cliente);
+      sujos.add(cliente);
+    }
+    vinculos.set(cliente, conta);
+    vinculosSujos.add(cliente);
+  }
+  marcar(conta);
+  return conferirConquistas(destino);
+}
+
+/** Desliga a carteirinha da conta: o navegador volta a jogar sem login, do zero. */
+function sairDaConta(cliente) {
+  if (!cliente || !vinculos.has(cliente)) return;
+  vinculos.delete(cliente);
+  vinculosSujos.add(cliente);
+  agendarSalvamento();
+}
+
+
 /** O perfil para a tela: os números e todas as conquistas, feitas ou não. */
 function verPerfil(cliente) {
-  const p = (cliente && perfis.get(cliente)) || perfilVazio();
+  const conta = cliente ? vinculos.get(cliente) : null;
+  const p = (cliente && perfis.get(chaveDe(cliente))) || perfilVazio();
   return {
+    conta: conta ? { nome: p.nomeConta || p.nickname || '' } : null,
     nickname: p.nickname,
     partidas: p.partidas,
     vitorias: p.vitorias,
@@ -256,6 +365,6 @@ const pronto = carregar();
 process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 
 module.exports = {
-  anotarRodada, fimDePartida, verPerfil, melhores, salvar, pronto,
+  anotarRodada, fimDePartida, verPerfil, melhores, salvar, pronto, entrarComConta, sairDaConta,
   CONQUISTAS, MS_RELAMPAGO, DIF_MUITO_DIFICIL
 };

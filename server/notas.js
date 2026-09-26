@@ -25,7 +25,9 @@ const NOTAS = [
       'A comparacao e dentro de cada categoria: Rap tambem tem suas faceis no comeco e suas dificeis no fim.',
       'Novo botao "Meu perfil e conquistas" no saguao: partidas, vitorias, acertos e a maior sequencia de acertos, somando todas as partidas.',
       'Sao 15 conquistas, de Estreia e Primeira vitoria ate Relampago (acertar em menos de 2 segundos), Genio e Imparavel. Quando uma sai, aparece na hora e a sala fica sabendo.',
-      'O perfil e deste navegador: trocar de nickname nao perde nada, mas outro navegador comeca do zero.',
+      'Sem login, o perfil e deste navegador: trocar de nickname nao perde nada, mas outro navegador comeca do zero.',
+      'Com o botao "Fazer login com o Google" no perfil, ele passa a valer em qualquer aparelho. O que voce ja tinha jogado no navegador vai junto para a conta.',
+      'Do Google, o jogo guarda so o seu primeiro nome e um numero que identifica a conta. E-mail e foto ficam de fora.',
       'O perfil ainda mostra quem mais venceu entre todos os jogadores.',
       'O que o jogo aprende passou a ficar guardado num banco de dados: a dificuldade de cada pergunta, o rodizio e os perfis nao zeram mais a cada atualizacao do site.'
     ]

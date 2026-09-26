@@ -788,7 +788,34 @@ conquista na próxima rodada que jogar.
 - `GET /api/melhores` lista quem mais venceu.
 
 Quem entra sem carteirinha (navegador muito antigo) joga normalmente, só não
-acumula perfil. `testes/perfis.test.js` simula uma partida inteira.
+acumula perfil.
+
+### Login com Google (opcional)
+
+Com o login, o perfil passa a ser da **conta**, e vale em qualquer aparelho.
+
+- **Como liga:** a carteirinha do navegador fica ligada à conta (tabela
+  `vinculos`), e o perfil passa a morar em `g:<id do Google>`. A sala não
+  muda nada: ela continua mandando a carteirinha, e `perfis.js` descobre de
+  quem é o perfil.
+- **Primeiro login:** o que o navegador tinha jogado sem login é somado à
+  conta. Entrar de novo na mesma conta não soma de novo.
+- **Sair da conta:** o navegador volta a jogar sem login, do zero, e a conta
+  continua intacta nos outros aparelhos.
+- **Quem confere:** o servidor ([`server/google.js`](server/google.js)) confere
+  a assinatura do bilhete do Google e se ele foi emitido para o nosso app.
+- **O que fica guardado:** só o primeiro nome e o `sub` (o id fixo da conta).
+  E-mail e foto não.
+
+Para ligar:
+
+1. No [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
+   configure a tela de consentimento (público **Externo**) e clique em
+   **Publicar app**. Em teste, só os testadores cadastrados conseguem entrar.
+2. Crie um **ID do cliente OAuth** do tipo **Aplicativo da Web**, com as
+   origens `https://pensarapido.onrender.com` e `http://localhost:3000`.
+3. No Render, crie `GOOGLE_CLIENT_ID` com esse ID. Ele não é segredo: vai
+   para a página em `/api/config`. Sem ele, o botão não aparece. `testes/perfis.test.js` simula uma partida inteira.
 
 ## Banco de dados
 

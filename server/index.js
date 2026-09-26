@@ -12,6 +12,7 @@ const {
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
 const perfis = require('./perfis');
+const google = require('./google');
 const banco = require('./banco');
 const { NOTAS, VERSAO } = require('./notas');
 
@@ -40,7 +41,9 @@ app.get('/api/config', (_req, res) => {
     meta: { min: META_MIN, max: META_MAX },
     niveis: dificuldade.NIVEIS,
     versao: VERSAO,
-    notas: NOTAS
+    notas: NOTAS,
+    // O ID do cliente do Google nao e segredo: o botao precisa dele na pagina.
+    googleClientId: google.ativo() ? google.CLIENT_ID : null
   });
 });
 
@@ -52,13 +55,13 @@ app.get('/api/dificuldades', (_req, res) => {
     .map((linha) => ({ ...linha, usos: usos.usosDe(linha.id) })));
 });
 
-// Salas que ainda aceitam gente, para o saguao listar e a pessoa entrar sem
-// precisar que alguem dite o codigo.
 // Os que mais venceram, de todas as salas e de sempre.
 app.get('/api/melhores', (_req, res) => {
   res.json({ jogadores: perfis.melhores(10) });
 });
 
+// Salas que ainda aceitam gente, para o saguao listar e a pessoa entrar sem
+// precisar que alguem dite o codigo.
 app.get('/api/salas', (_req, res) => {
   const abertas = [];
   for (const sala of salas.values()) {
@@ -325,6 +328,26 @@ io.on('connection', (socket) => {
   // O perfil desta carteirinha: numeros de sempre e conquistas.
   socket.on('perfil:ver', ({ cliente } = {}, callback) => {
     responder(callback, { perfil: perfis.verPerfil(limparCliente(cliente)) });
+  });
+
+  // Login com Google: o servidor confere o bilhete antes de ligar a conta.
+  socket.on('conta:entrar', async ({ credencial, cliente } = {}, callback) => {
+    const carteirinha = limparCliente(cliente);
+    if (!carteirinha) return responder(callback, { erro: 'Navegador sem carteirinha.' });
+    try {
+      const { conta, nome } = await google.verificar(credencial);
+      const novas = perfis.entrarComConta(carteirinha, conta, nome);
+      responder(callback, { perfil: perfis.verPerfil(carteirinha), conquistas: novas });
+    } catch (erro) {
+      console.warn('Login com Google recusado:', erro.message);
+      responder(callback, { erro: 'Nao deu para entrar com o Google. Tente de novo.' });
+    }
+  });
+
+  socket.on('conta:sair', ({ cliente } = {}, callback) => {
+    const carteirinha = limparCliente(cliente);
+    perfis.sairDaConta(carteirinha);
+    responder(callback, { perfil: perfis.verPerfil(carteirinha) });
   });
 
   socket.on('sala:novoJogo', (_dados, callback) => {

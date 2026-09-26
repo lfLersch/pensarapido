@@ -13,6 +13,8 @@ const os = require('os');
 const path = require('path');
 process.env.PERFIS_ARQUIVO = path.join(os.tmpdir(), `perfis-teste-${process.pid}.json`);
 delete process.env.DATABASE_URL;
+// Um ID de mentira: liga o login, e nenhum bilhete de verdade vai bater com ele.
+process.env.GOOGLE_CLIENT_ID = 'teste.apps.googleusercontent.com';
 
 const { Sala } = require('../server/sala.js');
 const perfis = require('../server/perfis.js');
@@ -78,11 +80,52 @@ conferir('Bia: jogou e nao venceu', [perfis.verPerfil('cliente-bia-0002').partid
 conferir('sem carteirinha nao vira perfil', perfis.melhores().map((j) => j.nickname), ['Ana', 'Bia']);
 conferir('perfil desconhecido vem zerado', perfis.verPerfil('ninguem-000').partidas, 0);
 
-require('fs').rmSync(process.env.PERFIS_ARQUIVO, { force: true });
+/* ---------------- Login com Google: a conta junta os navegadores ---------------- */
+{
+  // Ana (1 partida, 1 vitoria neste navegador) entra com a conta do Google.
+  perfis.entrarComConta('cliente-ana-0001', 'g:123', 'Ana');
+  const ligada = perfis.verPerfil('cliente-ana-0001');
+  conferir('login leva o que o navegador tinha', [ligada.partidas, ligada.vitorias, ligada.acertos], [1, 1, 5]);
+  conferir('perfil mostra a conta', ligada.conta, { nome: 'Ana' });
 
-if (falhas) {
-  console.log(`\n${falhas} falha(s).`);
-  process.exit(1);
+  // Entrar de novo na mesma conta nao soma de novo.
+  perfis.entrarComConta('cliente-ana-0001', 'g:123', 'Ana');
+  conferir('entrar duas vezes nao dobra', perfis.verPerfil('cliente-ana-0001').partidas, 1);
+
+  // No celular (outra carteirinha), Ana joga uma partida sem login e depois entra.
+  perfis.fimDePartida('cliente-ana-celular', 'Ana', { venceu: false, pontos: 10 });
+  perfis.entrarComConta('cliente-ana-celular', 'g:123', 'Ana');
+  conferir('o celular soma na mesma conta', perfis.verPerfil('cliente-ana-celular').partidas, 2);
+  conferir('e o computador ve o mesmo perfil', perfis.verPerfil('cliente-ana-0001').partidas, 2);
+
+  // Jogando ja ligada, a partida vai para a conta.
+  perfis.fimDePartida('cliente-ana-0001', 'Ana', { venceu: true, pontos: 50 });
+  conferir('partida com login conta na conta', perfis.verPerfil('cliente-ana-celular').vitorias, 2);
+  conferir('a conquista mais antiga fica', Boolean(perfis.verPerfil('cliente-ana-celular').conquistas.find((c) => c.id === 'relampago').quando), true);
+
+  // Saindo, o navegador volta a jogar sem login, do zero; a conta continua.
+  perfis.sairDaConta('cliente-ana-0001');
+  conferir('sair: navegador volta do zero', [perfis.verPerfil('cliente-ana-0001').partidas, perfis.verPerfil('cliente-ana-0001').conta], [0, null]);
+  conferir('sair: a conta continua no outro aparelho', perfis.verPerfil('cliente-ana-celular').partidas, 3);
+  conferir('ranking nao lista o perfil somado duas vezes', perfis.melhores().filter((j) => j.nickname === 'Ana').length, 1);
 }
-console.log('\nTudo certo.');
-process.exit(0);
+
+/* O servidor nunca aceita um bilhete sem conferir. */
+(async () => {
+  const google = require('../server/google.js');
+  let recusou = false;
+  try { await google.verificar('bilhete-inventado'); } catch { recusou = true; }
+  conferir('bilhete do Google inventado e recusado', recusou, true);
+  terminarTeste();
+})();
+
+function terminarTeste() {
+  require('fs').rmSync(process.env.PERFIS_ARQUIVO, { force: true });
+
+  if (falhas) {
+    console.log(`\n${falhas} falha(s).`);
+    process.exit(1);
+  }
+  console.log('\nTudo certo.');
+  process.exit(0);
+}

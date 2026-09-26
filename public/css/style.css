@@ -2321,3 +2321,16 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
 @media (max-width: 480px) {
   .perfil-numeros { grid-template-columns: repeat(2, 1fr); }
 }
+
+.conta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-peq);
+}
+.conta__texto { margin: 0; font-size: 13.5px; color: var(--texto-suave); }
+.conta__acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

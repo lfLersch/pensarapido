@@ -36,6 +36,11 @@ const TABELAS = `
     dados         jsonb NOT NULL,
     atualizado_em timestamptz NOT NULL DEFAULT now()
   );
+
+  CREATE TABLE IF NOT EXISTS vinculos (
+    cliente text PRIMARY KEY,
+    conta   text NOT NULL
+  );
 `;
 
 let pool = null;
