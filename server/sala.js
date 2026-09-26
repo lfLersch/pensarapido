@@ -32,6 +32,13 @@ const MS_TETO_RODADA = 90000;
 // perguntas seguidas sao de 8 categorias diferentes.
 const VARIACAO_CATEGORIAS = 0.8;
 
+// Dificuldade crescente: a partida começa pelas perguntas mais fáceis da
+// categoria e termina pelas mais difíceis. A escolha só acontece entre as da
+// frente da fila (as que saíram menos vezes), para não brigar com o rodízio:
+// um quarto da fila, e nunca menos que 8 opções.
+const JANELA_DIFICULDADE = 0.25;
+const JANELA_DIFICULDADE_MIN = 8;
+
 // Carrossel: a vez passa de jogador em jogador e quem não souber sai da
 // rodada. Cada pessoa tem 7s, e a cada 2 rodadas o carrossel dá uma volta a
 // mais — rodadas 1-2 uma volta, 3-4 duas, 5-6 três.
@@ -1045,17 +1052,23 @@ class Sala {
       this.filas.set(categoria, fila);
     }
 
-    const puladas = [];
-    while (fila.length > 0) {
-      const bruta = fila.shift();
+    const livre = (bruta) => {
       const chave = normalizar(bruta.resposta || '');
-      if (/^[0-9]+$/.test(chave) || !this.respostasUsadas.has(chave)) {
-        // As puladas voltam para o fim: podem servir numa partida seguinte.
-        if (puladas.length) fila.push(...puladas);
-        this.respostasUsadas.add(chave);
-        return this.marcarUso(categoria, bruta);
-      }
-      puladas.push(bruta);
+      return /^[0-9]+$/.test(chave) || !this.respostasUsadas.has(chave);
+    };
+
+    // As candidatas: as primeiras da fila que não repetem resposta.
+    const janela = Math.max(JANELA_DIFICULDADE_MIN, Math.ceil(fila.length * JANELA_DIFICULDADE));
+    const candidatas = [];
+    for (let i = 0; i < fila.length && candidatas.length < janela; i++) {
+      if (livre(fila[i])) candidatas.push(i);
+    }
+
+    if (candidatas.length > 0) {
+      const indice = this.maisPertoDoAlvo(categoria, fila, candidatas);
+      const [bruta] = fila.splice(indice, 1);
+      this.respostasUsadas.add(normalizar(bruta.resposta || ''));
+      return this.marcarUso(categoria, bruta);
     }
 
     // Só sobrou repetição nesta categoria — a partida é mais longa que o
@@ -1065,6 +1078,57 @@ class Sala {
     this.filas.set(categoria, nova);
     this.respostasUsadas.add(normalizar(bruta.resposta || ''));
     return this.marcarUso(categoria, bruta);
+  }
+
+  /**
+   * Quanto a partida já andou, de 0 a 1: os pontos do líder sobre a meta.
+   *
+   * É a meta que decide quando acaba, então é ela que diz se estamos no
+   * começo (perguntas fáceis) ou na reta final (perguntas difíceis).
+   */
+  andamento() {
+    const meta = this.config.metaPontos;
+    if (!meta) return 0;
+    let lider = 0;
+    for (const jogador of this.jogadores.values()) lider = Math.max(lider, jogador.pontos);
+    return Math.min(1, Math.max(0, lider / meta));
+  }
+
+  /**
+   * Entre as candidatas, a que tem a dificuldade mais perto do andamento.
+   *
+   * A dificuldade é medida DENTRO da categoria (em que ponto ela fica entre
+   * as mais fáceis e as mais difíceis de lá), senão categoria difícil nunca
+   * apareceria no começo e categoria fácil nunca apareceria no fim.
+   */
+  maisPertoDoAlvo(categoria, fila, candidatas) {
+    if (candidatas.length === 1) return candidatas[0];
+
+    const difDe = (q) => dificuldade.dificuldadeDe(idDaPergunta(categoria, q), q.dif ?? 40);
+    const todas = this.perguntasDaCategoria(categoria).map(difDe).sort((a, b) => a - b);
+    const posicao = (valor) => {
+      // Fração das perguntas da categoria abaixo deste valor (empates no meio).
+      let abaixo = 0;
+      let iguais = 0;
+      for (const d of todas) {
+        if (d < valor) abaixo++;
+        else if (d === valor) iguais++;
+        else break;
+      }
+      return todas.length ? (abaixo + iguais / 2) / todas.length : 0.5;
+    };
+
+    const alvo = this.andamento();
+    let melhor = candidatas[0];
+    let menorDistancia = Infinity;
+    for (const i of candidatas) {
+      const distancia = Math.abs(posicao(difDe(fila[i])) - alvo);
+      if (distancia < menorDistancia) {
+        menorDistancia = distancia;
+        melhor = i;
+      }
+    }
+    return melhor;
   }
 
   /**
