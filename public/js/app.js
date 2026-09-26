@@ -355,13 +355,20 @@ function renderizarPerfil(perfil) {
 
   const feitas = perfil.conquistas.filter((c) => c.quando).length;
   $('perfil-contagem').textContent = `${feitas}/${perfil.conquistas.length}`;
-  $('perfil-conquistas').innerHTML = perfil.conquistas.map((c) => `
-    <li class="conquista${c.quando ? ' conquista--feita' : ''}"
-        title="${c.quando ? 'Desde ' + new Date(c.quando).toLocaleDateString('pt-BR') : 'Ainda nao'}">
-      <span class="conquista__icone">${c.quando ? c.icone : '🔒'}</span>
+  // As que ainda nao sairam sao secretas: o servidor nem manda nome ou regra.
+  $('perfil-conquistas').innerHTML = perfil.conquistas.map((c) => (c.secreta
+    ? `
+    <li class="conquista conquista--secreta">
+      <span class="conquista__icone">🔒</span>
+      <span class="conquista__nome">???</span>
+      <span class="conquista__descricao">Conquista secreta</span>
+    </li>`
+    : `
+    <li class="conquista conquista--feita" title="Desde ${new Date(c.quando).toLocaleDateString('pt-BR')}">
+      <span class="conquista__icone">${c.icone}</span>
       <span class="conquista__nome">${escapar(c.nome)}</span>
       <span class="conquista__descricao">${escapar(c.descricao)}</span>
-    </li>`).join('');
+    </li>`)).join('');
 }
 
 /** Uma linha por categoria jogada: a nota, a barra e o quanto ja jogou. */

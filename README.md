@@ -777,9 +777,27 @@ que já traz a aba de volta depois de uma queda). Não há conta nem senha:
 trocar de nickname não perde nada, trocar de navegador começa do zero.
 
 O perfil soma partidas, vitórias, acertos, a maior sequência de acertos e as
-categorias em que a pessoa já acertou. Dessas somas saem as **15 conquistas**
-de [`server/perfis.js`](server/perfis.js). Para criar uma nova, é só
-acrescentar uma linha em `CONQUISTAS`. Quem já cumpre a regra ganha a
+categorias em que a pessoa já acertou. Dessas somas saem as **43 conquistas**
+de [`server/perfis.js`](server/perfis.js), várias em degraus (1, 10, 50...
+vezes). Para criar uma nova, é só acrescentar uma linha em `CONQUISTAS`. Se
+ela precisar de um contador novo, use `p.marcas`, que soma sozinho no login e
+não muda o formato do banco.
+
+**As conquistas são secretas até sair.** Para as que ainda não saíram,
+`perfil:ver` manda só `{ secreta: true }`, sem nome, regra nem id (o id já
+entregaria a regra), e a tela mostra um cadeado.
+
+Algumas regras que não são óbvias:
+
+- **Rápido no gatilho:** acerto em menos de 2,5 s. **Relâmpago:** menos de 2 s.
+- **No último segundo:** acerto com menos de 1 s sobrando no relógio.
+- **Perfeição:** terminar a partida sem errar nenhuma rodada, com pelo menos
+  5 rodadas no Modo Tempo ou na Escalada.
+- **Só eu sei:** ser a única pessoa a acertar, numa rodada com 4 ou mais.
+- **Virada histórica:** vencer estando em último quando o líder chegou na
+  metade da meta.
+- **Por um triz:** vencer com diferença de até 5% da meta.
+- **Coruja:** terminar uma partida entre meia-noite e 5h, horário de Brasília. Quem já cumpre a regra ganha a
 conquista na próxima rodada que jogar.
 
 - Conquista nova chega na hora (`conquista:nova` para quem ganhou, e um aviso

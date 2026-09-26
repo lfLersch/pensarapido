@@ -57,7 +57,9 @@ const meio = perfis.verPerfil('cliente-ana-0001');
 const feitas = (p) => p.conquistas.filter((c) => c.quando).map((c) => c.id);
 conferir('Ana: 5 acertos contados', meio.acertos, 5);
 conferir('Ana: sequencia de 5', meio.maiorSequencia, 5);
-conferir('Ana: conquistas no meio da partida', feitas(meio), ['relampago', 'sabichao', 'embalado']);
+conferir('Ana: conquistas no meio da partida', feitas(meio), ['gatilho', 'relampago', 'sabichao', 'embalado']);
+conferir('as que nao sairam vem secretas, sem nome nem regra',
+  meio.conquistas.filter((c) => !c.quando).every((c) => c.secreta && !c.nome && !c.descricao && !c.id), true);
 conferir('Ana recebeu o aviso no socket dela', paraSocket.every((x) => x.socketId === 'a' && x.evento === 'conquista:nova'), true);
 conferir('a sala ficou sabendo', avisos.some((t) => /Ana desbloqueou .*Relampago/.test(t)), true);
 
@@ -157,6 +159,96 @@ conferir('perfil desconhecido vem zerado', perfis.verPerfil('ninguem-000').parti
 
   partida('presente-grego');
   conferir('leilao nao mexe na nota da categoria', perfis.verPerfil('cliente-xena-presente-grego').desempenho, []);
+}
+
+/* ---------------- Conquistas de jogo: gatilho, sufoco, partida sem erro, virada ---------------- */
+{
+  const ids = (cliente) => perfis.verPerfil(cliente).conquistas.filter((c) => c.quando).map((c) => c.id);
+
+  // Uma partida de Modo Tempo com 4 pessoas; so a Duda e a Eva tem carteirinha.
+  const sala = new Sala('PER3', {
+    modo: 'tempo', categorias: ['cinema'], metaPontos: 40, segundosPorPergunta: 20
+  }, () => {}, () => {});
+  for (const [id, nome] of [['d', 'Duda'], ['e', 'Eva'], ['f', 'Fabi'], ['g', 'Gil']]) {
+    sala.entrar(id, nome, `cliente-${nome.toLowerCase()}-0003`);
+  }
+  sala.iniciar();
+  sala.limparTemporizador();
+  const [duda, eva] = [sala.jogadores.get('d'), sala.jogadores.get('e')];
+
+  /** Uma rodada: `quem` acerta, cada um com o seu tempo; o resto erra. */
+  const rodada = (quem) => {
+    sala.naRodada = new Set(sala.jogadores.keys());
+    sala.duracaoPerguntaMs = 20000;
+    sala.acertos = new Map();
+    quem.forEach(([jogador, ms], i) => {
+      sala.acertos.set(jogador.id, { ms, pontos: 10, posicao: i + 1, bonus: 0 });
+      jogador.acertos += 1;
+      jogador.pontos += 10;
+    });
+    sala.anotarRodadaNosPerfis({ categoria: { id: 'cinema' }, dificuldade: 40 }, 40);
+  };
+
+  rodada([[eva, 3000]]);                 // Eva na frente: a Duda em ultimo na metade? ainda nao
+  rodada([[eva, 3000]]);                 // Eva 20 de 40: metade. Duda (0) esta em ultimo
+  rodada([[duda, 19500], [eva, 4000]]);  // Duda acerta com meio segundo no relogio
+  rodada([[duda, 2200]]);                // Duda sozinha, com 4 na rodada, em 2,2 s
+  rodada([[duda, 5000]]);
+  rodada([[duda, 5000]]);
+  duda.pontos = 40;                      // e fecha a partida na frente
+  sala.terminar();
+
+  const d = ids('cliente-duda-0003');
+  conferir('no ultimo segundo (19,5 s de 20)', d.includes('ultimo-segundo'), true);
+  conferir('rapido no gatilho (2,2 s)', d.includes('gatilho'), true);
+  conferir('so eu sei (unica a acertar, com 4 na rodada)', d.includes('so-eu'), true);
+  conferir('virada: estava em ultimo na metade e venceu', d.includes('virada'), true);
+  conferir('Duda errou 2 rodadas: sem Perfeicao', d.includes('perfeicao'), false);
+  conferir('Eva perdeu: sem virada nem atropelo', ['virada', 'atropelo'].some((id) => ids('cliente-eva-0003').includes(id)), false);
+}
+
+/* Uma partida inteira sem errar, vencida com o dobro de pontos. */
+{
+  const ids = (cliente) => perfis.verPerfil(cliente).conquistas.filter((c) => c.quando).map((c) => c.id);
+  const sala = new Sala('PER4', {
+    modo: 'tempo', categorias: ['cinema'], metaPontos: 50, segundosPorPergunta: 20
+  }, () => {}, () => {});
+  sala.entrar('h', 'Hugo', 'cliente-hugo-0004');
+  sala.entrar('i', 'Iris', 'cliente-iris-0004');
+  sala.iniciar();
+  sala.limparTemporizador();
+  const hugo = sala.jogadores.get('h');
+  for (let i = 0; i < 5; i++) {
+    sala.naRodada = new Set(sala.jogadores.keys());
+    sala.duracaoPerguntaMs = 20000;
+    sala.acertos = new Map([['h', { ms: 6000, pontos: 10, posicao: 1, bonus: 0 }]]);
+    hugo.acertos += 1;
+    hugo.pontos += 10;
+    sala.anotarRodadaNosPerfis({ categoria: { id: 'cinema' }, dificuldade: 40 }, 40);
+  }
+  sala.terminar();
+  const h = ids('cliente-hugo-0004');
+  conferir('5 rodadas, nenhuma errada: Perfeicao', h.includes('perfeicao'), true);
+  conferir('50 a 0: Atropelo', h.includes('atropelo'), true);
+  conferir('Iris errou todas: sem Perfeicao', ids('cliente-iris-0004').includes('perfeicao'), false);
+}
+
+/* Horario de Brasilia para a Coruja, e os contadores novos somam no login. */
+{
+  conferir('03:30 em Brasilia e madrugada', perfis.horaDeBrasilia(Date.parse('2026-09-26T06:30:00Z')), 3);
+  conferir('15:00 em Brasilia nao e', perfis.horaDeBrasilia(Date.parse('2026-09-26T18:00:00Z')), 15);
+  perfis.fimDePartida('cliente-coruja-0005', 'Coruja', { venceu: false, pontos: 0, quando: Date.parse('2026-09-26T06:30:00Z') });
+  conferir('partida terminada de madrugada: Coruja',
+    perfis.verPerfil('cliente-coruja-0005').conquistas.some((c) => c.id === 'coruja'), true);
+
+  perfis.anotarRodada('cliente-junta-a', 'Juca', { acertou: true, ms: 2000, sequencia: 1 });
+  perfis.anotarRodada('cliente-junta-b', 'Juca', { acertou: true, ms: 2000, sequencia: 1 });
+  perfis.entrarComConta('cliente-junta-a', 'g:juca', 'Juca');
+  perfis.entrarComConta('cliente-junta-b', 'g:juca', 'Juca');
+  // Dois gatilhos (um em cada aparelho) viram dois na conta.
+  for (let i = 0; i < 8; i++) perfis.anotarRodada('cliente-junta-a', 'Juca', { acertou: true, ms: 2000, sequencia: 1 });
+  conferir('gatilhos dos dois aparelhos somam (2 + 8 = 10)',
+    perfis.verPerfil('cliente-junta-a').conquistas.some((c) => c.id === 'gatilho-10'), true);
 }
 
 /* O servidor nunca aceita um bilhete sem conferir. */
