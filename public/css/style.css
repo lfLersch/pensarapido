@@ -841,6 +841,16 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   letter-spacing: -0.5px;
 }
 
+/* Charada de emoji: os emojis descem para uma linha propria, grandes, e sem
+   o espacamento apertado do titulo. */
+.pergunta__emojis {
+  display: block;
+  margin-top: 12px;
+  font-size: 1.9em;
+  line-height: 1.2;
+  letter-spacing: normal;
+}
+
 /* Trecho de letra de música */
 
 .letra {

@@ -17,6 +17,17 @@
 
 const NOTAS = [
   {
+    versao: '1.18',
+    data: '2026-09-26',
+    titulo: 'Filmes em emojis e 246 perguntas de cinema',
+    itens: [
+      'Cinema & TV ganhou a parte Emojis: 81 charadas em que os emojis contam um filme, como 🦁👑🌅, ou formam o nome de um ator.',
+      'Os emojis da charada aparecem grandes, numa linha so deles, embaixo da pergunta.',
+      'Mais 165 perguntas de filmes: personagens, atores, diretores e frases famosas, de Frozen e Moana a Matrix, Star Wars e O Auto da Compadecida.',
+      'O banco foi de 3277 para 3523 perguntas, e Cinema & TV passou de 890 para 1136.'
+    ]
+  },
+  {
     versao: '1.17',
     data: '2026-09-26',
     titulo: 'Sua nota em cada categoria',

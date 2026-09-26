@@ -1099,6 +1099,24 @@ socket.on('rodada:categoria', (dados) => {
 
 /* --------------------------- 4b. Pergunta --------------------------- */
 
+// Charada de emoji ("Que filme estes emojis representam? 🦁👑🌅"): os emojis
+// do fim do enunciado descem para uma linha propria, grandes como no telao.
+// O teclado numerico (1️⃣) e a bandeira (🇺🇸) tambem contam como emoji.
+const EMOJIS_NO_FIM = /^(.*?)\s*((?:[0-9#*]️?⃣|[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Modifier}‍️]|\s)+)$/u;
+
+function escreverPergunta(texto) {
+  const alvo = $('pergunta-texto');
+  const partes = String(texto ?? '').match(EMOJIS_NO_FIM);
+  if (!partes || !/\p{Extended_Pictographic}/u.test(partes[2])) {
+    alvo.textContent = texto;
+    return;
+  }
+  alvo.textContent = partes[1];
+  const emojis = criar('span', 'pergunta__emojis');
+  emojis.textContent = partes[2].trim();
+  alvo.appendChild(emojis);
+}
+
 socket.on('rodada:pergunta', (dados) => {
   revelacao.hidden = true;
   jogo.hidden = false;
@@ -1115,7 +1133,7 @@ socket.on('rodada:pergunta', (dados) => {
   $('pergunta-categoria-icone').textContent = dados.categoria.icone;
   $('pergunta-categoria-nome').textContent = dados.categoria.nome;
 
-  $('pergunta-texto').textContent = dados.pergunta;
+  escreverPergunta(dados.pergunta);
   $('pergunta-texto').classList.remove('pergunta__texto--segredo');
   $('mascara').textContent = dados.mascara || '';
 
@@ -1528,7 +1546,7 @@ socket.on('leilao:pergunta', (dados) => {
     $('pergunta-texto').textContent = 'Faca seu parceiro dizer:';
     mostrarSegredo(dados.segredo);
   } else {
-    $('pergunta-texto').textContent = dados.pergunta;
+    escreverPergunta(dados.pergunta);
   }
   $('pergunta-texto').classList.remove('pergunta__texto--segredo');
 });

@@ -99,5 +99,30 @@ const todas = CATEGORIAS.flatMap((c) => (QUESTOES[c.id] || []).map((q) => ({ ...
   conferir('os trechos de musica viraram pergunta', todas.filter((q) => q.audio).length >= 22, true);
 }
 
+/* ---------- 6. charadas de emoji ---------- */
+{
+  // A tela so poe em destaque os emojis do FIM do enunciado — a mesma regra
+  // de EMOJIS_NO_FIM, em public/js/app.js. Emoji no meio da frase sai pequeno.
+  const EMOJIS_NO_FIM = /^(.*?)\s*((?:[0-9#*]️?⃣|[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Modifier}‍️]|\s)+)$/u;
+  const charadas = todas.filter((q) => q.sub === 'emojis');
+  conferir('a parte Emojis tem charada que chegue', charadas.length >= 50, true);
+
+  const tortas = charadas.filter((q) => {
+    const partes = q.pergunta.match(EMOJIS_NO_FIM);
+    return !partes || !partes[1].trim() || !/\p{Extended_Pictographic}/u.test(partes[2]);
+  });
+  conferir('toda charada tem texto e termina nos emojis', tortas.map((q) => q.pergunta), []);
+
+  const respostas = charadas.map((q) => normalizar(q.resposta));
+  conferir('nenhuma resposta repetida entre as charadas',
+    respostas.filter((r, i) => respostas.indexOf(r) !== i), []);
+
+  // O Windows 10 parou no Unicode 12: emoji mais novo (a pedra, a varinha, o
+  // burro) vira quadradinho, e a charada fica sem uma das pistas.
+  const NOVO_DEMAIS = /[\u{1FA74}-\u{1FA77}\u{1FA7B}-\u{1FA7F}\u{1FA83}-\u{1FA8F}\u{1FA96}-\u{1FAFF}\u{1F972}\u{1F977}-\u{1F979}\u{1F90C}\u{1F9A3}\u{1F9A4}\u{1F9AB}-\u{1F9AD}\u{1F9CB}\u{1F9CC}\u{1F6D6}\u{1F6D7}\u{1F6DC}-\u{1F6DF}\u{1F6FB}\u{1F6FC}\u{1F7F0}\u{26A7}]/u;
+  conferir('nenhuma charada usa emoji depois do Unicode 12',
+    charadas.filter((q) => NOVO_DEMAIS.test(q.pergunta)).map((q) => q.pergunta), []);
+}
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');
 process.exit(falhas ? 1 : 0);

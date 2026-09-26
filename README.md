@@ -1052,7 +1052,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3075 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3523 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -1190,6 +1190,30 @@ Depois de preencher, confira o tamanho:
 ```bash
 npm run checar-letras
 ```
+
+### Cinema — charadas de emoji
+
+A parte **Emojis** de Cinema & TV conta um filme em emojis, como no quiz de
+filmes do canal Aculturados. A charada vai no **fim do enunciado**, e é só
+isso que a pergunta precisa:
+
+```js
+{ pergunta: 'Que filme estes emojis representam? 🦁👑🌅', sub: 'emojis',
+  resposta: 'O Rei Leao', aceita: ['Rei Leao', 'The Lion King'], dif: 15 }
+```
+
+O cliente separa os emojis do fim do texto (`EMOJIS_NO_FIM`, em
+`public/js/app.js`) e os mostra grandes, numa linha própria. Como eles fazem
+parte do enunciado, chegam também a quem lê a pergunta no leilão. A charada
+pode formar o nome de uma pessoa em vez de um filme — *"Que ator estes emojis
+formam? 🍷⛽"* → **Vin Diesel** —, e aí o sobrenome vale sozinho, como em toda
+pergunta que começa por "Que ator".
+
+**Só emoji até o Unicode 12.** O Windows 10 parou nessa versão e desenha os
+mais novos (🪨, 🪄, 🫏…) como um quadradinho. Bandeira de país vira duas letras
+no Windows (🇺🇸 aparece como "US"), então só entra onde as letras também
+servem de pista. `testes/perguntas.test.js` reprova charada com emoji novo
+demais, emoji fora do fim do enunciado e filme repetido.
 
 ### Criar uma categoria nova
 
