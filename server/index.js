@@ -11,6 +11,7 @@ const {
 } = require('./sala');
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
+const perfis = require('./perfis');
 const banco = require('./banco');
 const { NOTAS, VERSAO } = require('./notas');
 
@@ -53,6 +54,11 @@ app.get('/api/dificuldades', (_req, res) => {
 
 // Salas que ainda aceitam gente, para o saguao listar e a pessoa entrar sem
 // precisar que alguem dite o codigo.
+// Os que mais venceram, de todas as salas e de sempre.
+app.get('/api/melhores', (_req, res) => {
+  res.json({ jogadores: perfis.melhores(10) });
+});
+
 app.get('/api/salas', (_req, res) => {
   const abertas = [];
   for (const sala of salas.values()) {
@@ -316,6 +322,11 @@ io.on('connection', (socket) => {
     responder(callback, sala.duvidar(socket.id));
   });
 
+  // O perfil desta carteirinha: numeros de sempre e conquistas.
+  socket.on('perfil:ver', ({ cliente } = {}, callback) => {
+    responder(callback, { perfil: perfis.verPerfil(limparCliente(cliente)) });
+  });
+
   socket.on('sala:novoJogo', (_dados, callback) => {
     const sala = salaDoSocket();
     if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
@@ -432,7 +443,7 @@ setInterval(() => {
 
 // Com banco, os contadores chegam por rede: so abre a porta depois de le-los,
 // senao a primeira partida sortearia como se nada tivesse rodado ainda.
-Promise.all([dificuldade.pronto, usos.pronto]).then(() => {
+Promise.all([dificuldade.pronto, usos.pronto, perfis.pronto]).then(() => {
   servidor.listen(PORTA, () => {
     const onde = banco.ativo() ? 'banco de dados' : 'arquivos em server/dados';
     console.log(`\n  🧠 PensaRápido rodando em http://localhost:${PORTA} (dados: ${onde})\n`);
@@ -445,7 +456,7 @@ async function encerrar() {
   if (saindo) return;
   saindo = true;
   try {
-    await Promise.all([dificuldade.salvar(), usos.salvar()]);
+    await Promise.all([dificuldade.salvar(), usos.salvar(), perfis.salvar()]);
     await banco.fechar();
   } catch (erro) {
     console.warn('Erro ao gravar antes de sair:', erro.message);

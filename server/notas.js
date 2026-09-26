@@ -17,6 +17,20 @@
 
 const NOTAS = [
   {
+    versao: '1.16',
+    data: '2026-09-26',
+    titulo: 'Conquistas, perfil e partida que esquenta',
+    itens: [
+      'A partida agora comeca pelas perguntas mais faceis e vai endurecendo conforme o lider chega perto da meta. A reta final e das mais dificeis.',
+      'A comparacao e dentro de cada categoria: Rap tambem tem suas faceis no comeco e suas dificeis no fim.',
+      'Novo botao "Meu perfil e conquistas" no saguao: partidas, vitorias, acertos e a maior sequencia de acertos, somando todas as partidas.',
+      'Sao 15 conquistas, de Estreia e Primeira vitoria ate Relampago (acertar em menos de 2 segundos), Genio e Imparavel. Quando uma sai, aparece na hora e a sala fica sabendo.',
+      'O perfil e deste navegador: trocar de nickname nao perde nada, mas outro navegador comeca do zero.',
+      'O perfil ainda mostra quem mais venceu entre todos os jogadores.',
+      'O que o jogo aprende passou a ficar guardado num banco de dados: a dificuldade de cada pergunta, o rodizio e os perfis nao zeram mais a cada atualizacao do site.'
+    ]
+  },
+  {
     versao: '1.15',
     data: '2026-09-20',
     titulo: 'Mais 198 perguntas e leilao com mais tempo',

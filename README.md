@@ -755,15 +755,50 @@ rodadas que alimentam a dificuldade (leilão e Mais ou Menos Pontos ficam de
 fora, de propósito). Aqui conta toda vez que a pergunta entrou, que é o que o
 rodízio precisa saber.
 
+## Dificuldade crescente
+
+Dentro da partida, as perguntas começam fáceis e endurecem até a meta. O
+"andamento" é a pontuação do líder sobre a meta (de 0 a 1), e o sorteio pega,
+entre as perguntas da frente da fila, a de dificuldade mais perto dele.
+
+- A escolha fica entre as perguntas que **saíram menos** (um quarto da fila,
+  no mínimo 8), então o rodízio continua valendo.
+- A dificuldade é medida **dentro da categoria**: em que ponto a pergunta fica
+  entre as mais fáceis e as mais difíceis de lá. Sem isso, categoria difícil
+  nunca apareceria no começo.
+
+`testes/crescente.test.js` simula uma partida: em Cinema, a média sai de
+0,05 (entre as mais fáceis) no começo para 0,98 no fim.
+
+## Perfil e conquistas
+
+Cada navegador tem um perfil, reconhecido pela carteirinha (o mesmo número
+que já traz a aba de volta depois de uma queda). Não há conta nem senha:
+trocar de nickname não perde nada, trocar de navegador começa do zero.
+
+O perfil soma partidas, vitórias, acertos, a maior sequência de acertos e as
+categorias em que a pessoa já acertou. Dessas somas saem as **15 conquistas**
+de [`server/perfis.js`](server/perfis.js). Para criar uma nova, é só
+acrescentar uma linha em `CONQUISTAS`. Quem já cumpre a regra ganha a
+conquista na próxima rodada que jogar.
+
+- Conquista nova chega na hora (`conquista:nova` para quem ganhou, e um aviso
+  no chat da sala).
+- O saguão tem o botão **Meu perfil e conquistas** (evento `perfil:ver`).
+- `GET /api/melhores` lista quem mais venceu.
+
+Quem entra sem carteirinha (navegador muito antigo) joga normalmente, só não
+acumula perfil. `testes/perfis.test.js` simula uma partida inteira.
+
 ## Banco de dados
 
-Sem configurar nada, o jogo grava os contadores (rodízio do sorteio e
-dificuldade adaptativa) em `server/dados/*.json`. Isso basta no PC, mas **no
+Sem configurar nada, o jogo grava os contadores (rodízio do sorteio,
+dificuldade adaptativa e perfis dos jogadores) em `server/dados/*.json`. Isso basta no PC, mas **no
 Render o disco zera a cada deploy**. Com a variável **`DATABASE_URL`**, os mesmos
 dados vão para um **Postgres** (Supabase, Neon ou outro) e voltam em cada subida.
 
-**As tabelas se criam sozinhas** quando o servidor sobe (`perguntas_usos` e
-`perguntas_stats`), então não há SQL para rodar no painel. A conexão fica em
+**As tabelas se criam sozinhas** quando o servidor sobe (`perguntas_usos`,
+`perguntas_stats` e `jogadores`), então não há SQL para rodar no painel. A conexão fica em
 [`server/banco.js`](server/banco.js).
 
 Para ligar no Supabase:

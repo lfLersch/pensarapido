@@ -22,7 +22,11 @@ const conferir = (nome, obtido, esperado) => {
     ok ? '' : '<-- esperava ' + JSON.stringify(esperado));
 };
 
-const idDe = (categoria, q) => dificuldade.idDe(categoria, q.pergunta, q.resposta);
+// O mesmo id que sala.js usa: pergunta com imagem ou audio leva a midia junto.
+const idDe = (categoria, q) => {
+  const midia = q.audio || q.imagem;
+  return dificuldade.idDe(categoria, q.pergunta, midia ? `${q.resposta}|${midia}` : q.resposta);
+};
 const difDe = (categoria, q) => dificuldade.dificuldadeDe(idDe(categoria, q), q.dif ?? 40);
 
 /** Em que ponto da categoria a pergunta fica: 0 = a mais fácil, 1 = a mais difícil. */

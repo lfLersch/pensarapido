@@ -46,6 +46,10 @@
         <button class="btn btn--primario btn--bloco" id="btn-entrar">Entrar</button>
       </div>
 
+      <button class="btn btn--fantasma btn--bloco perfil-atalho" type="button" id="btn-abrir-perfil">
+        <span class="btn__icone">🏅</span> Meu perfil e conquistas
+      </button>
+
       <p class="aviso" id="aviso-lobby" role="alert"></p>
 
       <section class="salas" aria-labelledby="salas-titulo">
@@ -62,6 +66,27 @@
         &middot; Fotos e mapas do <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a>
         &middot; <a href="/creditos.html">creditos e licencas</a>
       </p>
+    </div>
+  </section>
+
+  <!-- ======================= 1A. PERFIL ======================= -->
+  <section class="tela" id="tela-perfil">
+    <div class="caixa caixa--media">
+      <div class="topo-tela">
+        <button class="btn btn--fantasma btn--icone" id="btn-voltar-perfil" aria-label="Voltar">←</button>
+        <div>
+          <h2 class="titulo">Meu perfil</h2>
+          <p class="subtitulo">Fica guardado neste navegador, em todas as partidas.</p>
+        </div>
+      </div>
+
+      <div class="perfil-numeros" id="perfil-numeros"></div>
+
+      <h3 class="salas__titulo perfil-secao">Conquistas <span id="perfil-contagem"></span></h3>
+      <ul class="conquistas" id="perfil-conquistas"></ul>
+
+      <h3 class="salas__titulo perfil-secao">Quem mais venceu</h3>
+      <ol class="melhores" id="perfil-melhores"></ol>
     </div>
   </section>
 

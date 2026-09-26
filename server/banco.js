@@ -29,6 +29,13 @@ const TABELAS = `
     tempo_medio   integer NOT NULL,
     atualizado_em timestamptz NOT NULL DEFAULT now()
   );
+
+  CREATE TABLE IF NOT EXISTS jogadores (
+    cliente       text PRIMARY KEY,
+    nickname      text NOT NULL,
+    dados         jsonb NOT NULL,
+    atualizado_em timestamptz NOT NULL DEFAULT now()
+  );
 `;
 
 let pool = null;

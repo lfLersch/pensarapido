@@ -7,6 +7,7 @@ const { PALAVRAS } = require('./dicas');
 const { RANKINGS } = require('./rankings');
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
+const perfis = require('./perfis');
 
 /* ---------------------------- Regras do jogo ---------------------------- */
 
@@ -656,6 +657,8 @@ class Sala {
     for (const jogador of this.jogadores.values()) {
       jogador.pontos = 0;
       jogador.acertos = 0;
+      jogador.acertosAnotados = 0;
+      jogador.sequencia = 0;
     }
 
     this.rodada = 0;
@@ -2990,6 +2993,8 @@ class Sala {
 
     detalhes.sort((a, b) => (a.posicao ?? Infinity) - (b.posicao ?? Infinity));
 
+    this.anotarRodadaNosPerfis(pergunta, novaDificuldade);
+
     const vencedores = [...this.jogadores.values()].filter((j) => j.pontos >= this.config.metaPontos);
 
     // Como revelar depende do tipo: uma resposta só, um conjunto fechado
@@ -3099,7 +3104,51 @@ class Sala {
     }, msResultado);
   }
 
+  /**
+   * Leva a rodada para o perfil de cada um (conquistas, números de sempre).
+   *
+   * Quem acertou sai da diferença em `jogador.acertos`, e não de
+   * `this.acertos`: nos leilões o acerto é contado em outro lugar, e assim
+   * vale para todos os modos do mesmo jeito.
+   */
+  anotarRodadaNosPerfis(pergunta, valorDificuldade) {
+    for (const jogador of this.jogadores.values()) {
+      const acertou = jogador.acertos > (jogador.acertosAnotados || 0);
+      jogador.acertosAnotados = jogador.acertos;
+      jogador.sequencia = acertou ? (jogador.sequencia || 0) + 1 : 0;
+
+      const acerto = this.acertos.get(jogador.id);
+      const novas = perfis.anotarRodada(jogador.cliente, jogador.nickname, {
+        acertou,
+        ms: acerto ? acerto.ms : null,
+        primeiro: Boolean(acerto && acerto.posicao === 1),
+        dificuldade: valorDificuldade,
+        categoria: pergunta.categoria ? pergunta.categoria.id : null,
+        sequencia: jogador.sequencia
+      });
+      this.anunciarConquistas(jogador, novas);
+    }
+  }
+
+  /** Conquista nova: a pessoa recebe o aviso dela e a sala fica sabendo. */
+  anunciarConquistas(jogador, novas) {
+    if (!novas.length) return;
+    this.emitirPara(jogador.id, 'conquista:nova', { conquistas: novas });
+    for (const c of novas) this.avisar(`${jogador.nickname} desbloqueou ${c.icone} ${c.nome}`);
+  }
+
   terminar() {
+    const meta = this.config.metaPontos;
+    // Chamado duas vezes, a partida contaria dobrado no perfil.
+    const jaTerminou = this.estado === 'fim';
+    for (const jogador of jaTerminou ? [] : this.jogadores.values()) {
+      const novas = perfis.fimDePartida(jogador.cliente, jogador.nickname, {
+        venceu: Boolean(meta) && jogador.pontos >= meta,
+        pontos: jogador.pontos
+      });
+      this.anunciarConquistas(jogador, novas);
+    }
+
     this.estado = 'fim';
     this.limparTemporizador();
     this.perguntaAtual = null;

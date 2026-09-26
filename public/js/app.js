@@ -216,6 +216,60 @@ $('btn-voltar-lobby').addEventListener('click', () => mostrarTela('tela-lobby'))
 
 /* ---------------------------- Novidades ----------------------------- */
 
+/* ---------------------------- Perfil e conquistas ---------------------------- */
+
+$('btn-abrir-perfil').addEventListener('click', () => {
+  mostrarTela('tela-perfil');
+  socket.emit('perfil:ver', { cliente: carteirinha() }, (resposta) => {
+    if (resposta?.perfil) renderizarPerfil(resposta.perfil);
+  });
+  fetch('/api/melhores')
+    .then((r) => r.json())
+    .then((dados) => renderizarMelhores(dados.jogadores || []))
+    .catch(() => renderizarMelhores([]));
+});
+$('btn-voltar-perfil').addEventListener('click', () => mostrarTela('tela-lobby'));
+
+function renderizarPerfil(perfil) {
+  const numeros = [
+    ['Partidas', perfil.partidas],
+    ['Vitorias', perfil.vitorias],
+    ['Acertos', perfil.acertos],
+    ['Maior sequencia', perfil.maiorSequencia]
+  ];
+  $('perfil-numeros').innerHTML = numeros.map(([rotulo, valor]) => `
+    <div class="perfil-numero">
+      <span class="perfil-numero__valor">${valor}</span>
+      <span class="perfil-numero__rotulo">${rotulo}</span>
+    </div>`).join('');
+
+  const feitas = perfil.conquistas.filter((c) => c.quando).length;
+  $('perfil-contagem').textContent = `${feitas}/${perfil.conquistas.length}`;
+  $('perfil-conquistas').innerHTML = perfil.conquistas.map((c) => `
+    <li class="conquista${c.quando ? ' conquista--feita' : ''}"
+        title="${c.quando ? 'Desde ' + new Date(c.quando).toLocaleDateString('pt-BR') : 'Ainda nao'}">
+      <span class="conquista__icone">${c.quando ? c.icone : '🔒'}</span>
+      <span class="conquista__nome">${escapar(c.nome)}</span>
+      <span class="conquista__descricao">${escapar(c.descricao)}</span>
+    </li>`).join('');
+}
+
+function renderizarMelhores(jogadores) {
+  const lista = $('perfil-melhores');
+  lista.innerHTML = jogadores.length
+    ? jogadores.map((j) => `
+      <li class="melhor">
+        <span class="melhor__nome">${escapar(j.nickname)}</span>
+        <span class="melhor__numeros">${plural(j.vitorias, 'vitoria', 'vitorias')} · ${plural(j.partidas, 'partida', 'partidas')}</span>
+      </li>`).join('')
+    : '<li class="melhor melhor--vazio">Ninguem terminou uma partida ainda.</li>';
+}
+
+// Conquista nova no meio do jogo: aparece na hora, uma de cada vez.
+socket.on('conquista:nova', ({ conquistas } = {}) => {
+  for (const c of conquistas || []) brindar(`${c.icone} Conquista: ${c.nome}`);
+});
+
 $('btn-abrir-notas').addEventListener('click', () => {
   montarNotas();
   mostrarTela('tela-notas');
