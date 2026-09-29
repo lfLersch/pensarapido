@@ -17,6 +17,18 @@
 
 const NOTAS = [
   {
+    versao: '1.19',
+    data: '2026-09-29',
+    titulo: 'Mais 216 perguntas de series e desenhos',
+    itens: [
+      'Perguntas de dentro das series, no estilo dos quizzes de fa: qual e o nome do irmao do Chris, quem e o "Eu" de Eu, a Patroa e as Criancas, quantos meses de aluguel o Seu Madruga deve.',
+      'Entraram Chaves, Chapolin, Um Maluco no Pedaco, Kenan e Kel, Hannah Montana, Dois Homens e Meio, Malcolm, A Grande Familia, Castelo Ra-Tim-Bum, Stranger Things, Wandinha, Round 6 e mais.',
+      'Todo Mundo Odeia o Chris, Eu, a Patroa e as Criancas, Friends, Game of Thrones e La Casa de Papel ganharam perguntas novas.',
+      'Desenhos agora tem perguntas sobre Os Simpsons, Bob Esponja, Scooby-Doo, Turma da Monica, Os Flintstones, Hora de Aventura e outros, alem das imagens.',
+      'O banco foi de 3523 para 3739 perguntas, e Cinema & TV passou de 1136 para 1352.'
+    ]
+  },
+  {
     versao: '1.18',
     data: '2026-09-26',
     titulo: 'Filmes em emojis e 246 perguntas de cinema',
