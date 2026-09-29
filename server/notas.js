@@ -17,6 +17,18 @@
 
 const NOTAS = [
   {
+    versao: '1.20',
+    data: '2026-09-29',
+    titulo: 'Painel de desempenho, e a sua nota agora mexe na dificuldade',
+    itens: [
+      'O perfil ganhou um painel: sua nota geral e a de cada categoria, com a variacao da ultima partida, a evolucao partida a partida e o seu acerto em cada faixa de dificuldade ao lado do que a sua nota esperava.',
+      'Os chips em cima do painel trocam entre Geral e cada categoria. Clicar numa categoria da lista tambem abre ela no painel.',
+      'A lista por categoria marca o seu ponto forte e o que pede treino, e mostra quanto cada nota andou na ultima partida.',
+      'A dificuldade das perguntas agora olha quem jogou: quando a sala erra o que as notas dela prometiam acertar, a pergunta sobe; quando acerta o que era dado como perdido, desce. Errar entre craques pesa mais que errar entre novatos.',
+      'Quem ainda esta com nota provisoria pesa pouco nessa conta, e quem nunca jogou nao pesa nada.'
+    ]
+  },
+  {
     versao: '1.19',
     data: '2026-09-29',
     titulo: 'Mais 216 perguntas de series e desenhos',

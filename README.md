@@ -848,6 +848,31 @@ Com nota 50 e já com 10 rodadas jogadas:
   abrir.
 - Com menos de 5 rodadas na categoria, a nota aparece como provisória.
 - No login, notas de dois aparelhos viram a média pesada pelas rodadas.
+- A nota volta para a dificuldade: ver [Dificuldade adaptativa](#dificuldade-adaptativa).
+
+### Painel de desempenho
+
+A tela do perfil tem um painel com um recorte por vez: **Geral** (todas as
+perguntas) ou uma categoria, escolhidos nos chips de cima. Clicar numa
+categoria da lista abre o painel nela.
+
+- **A nota** em destaque, com a variação da última partida e a faixa em que
+  ela acerta meio a meio ("Meio a meio em perguntas de dificuldade 63").
+- **Aproveitamento**, rodadas medidas e dificuldade média das perguntas.
+- **Evolução da nota**: uma foto por partida, das últimas 30.
+- **Acerto por dificuldade**: em cada faixa (Fácil, Média, Difícil, Muito
+  difícil), o quanto a pessoa acertou contra o quanto a nota esperava. Barra
+  longe do traço quer dizer que a nota ainda está se ajustando.
+- Na lista por categoria, **ponto forte** e **para treinar** marcam a maior e
+  a menor nota entre as que já não são provisórias.
+- Os mesmos números ficam numa tabela, embaixo dos gráficos, para quem não
+  enxerga o gráfico.
+
+A nota **geral** é uma nota como a das categorias, andando a cada rodada
+medida de qualquer categoria. Perfil gravado antes dela existir ganha a geral
+somando as categorias (a média das notas pesada pelas rodadas); a divisão por
+faixa de dificuldade e a evolução começam do zero, porque não dá para
+refazê-las.
 
 ### Login com Google (opcional)
 
@@ -918,22 +943,59 @@ banco é pulada.
 ## Dificuldade adaptativa
 
 Toda pergunta tem um campo `dif` (0 a 100) em `questions.js`, que é só o **ponto
-de partida**. Depois de cada rodada o servidor recalcula:
+de partida**. Depois de cada rodada o servidor recalcula, em
+[`server/dificuldade.js`](server/dificuldade.js):
 
-- quanto **menos gente acerta**, mais a dificuldade **sobe** (peso 0,65);
-- quanto **mais demoram** para acertar, mais ela **sobe** (peso 0,35).
+```
+bruta     = 100 × (0,65 × parte que errou + 0,35 × parte do tempo gasta)
+surpresa  = média de  confiança × (chance esperada − acertou)
+observada = bruta + 50 × surpresa
+nova      = atual + peso × (observada − atual)
+```
 
-O valor novo entra por média móvel, e a base escrita no arquivo pesa como se já
-viesse de 4 rodadas — assim uma única partida não joga o número para o extremo.
+- **Acerto e tempo** — quanto menos gente acerta e quanto mais demora, mais
+  sobe. É a conta de sempre.
+- **A nota de quem jogou** — cada pessoa que viu a pergunta abrir tem uma
+  chance esperada de acertar, que sai da nota dela na categoria contra a
+  dificuldade atual (a mesma conta da [nota por categoria](#nota-por-categoria)).
+  Errar o que a nota prometia acertar empurra a pergunta para cima; acertar o
+  que ela dava como perdido, para baixo. **Errar entre craques pesa mais que
+  errar entre novatos.**
+- **Confiança** — nota provisória não vale inteira: cada nota pesa
+  `rodadas / (rodadas + 5)`. Quem nunca jogou nada entra com confiança 0 e
+  não mexe na pergunta; quem joga muito mas nunca jogou aquela categoria
+  entra com a nota geral.
+- **Peso** — a base escrita no arquivo pesa como se já viesse de 4 rodadas, e
+  nenhuma rodada nova pesa menos de 10%. Uma partida sozinha não leva o número
+  para o extremo.
+- **Onde a nota não entra** — só o Modo Tempo e as perguntas comuns da
+  Escalada comparam a sala com as notas, porque neles todo mundo responde a
+  mesma pergunta (as listas da Escalada não têm categoria). No Carrossel e no
+  1 é bom 2 ok 3 é demais fica só a conta bruta; leilões e Mais ou Menos
+  Pontos nem registram.
+
+É um círculo: a dificuldade mexe na nota, e a nota mexe na dificuldade. O
+`testes/circulo.test.js` simula 40 jogadores de força conhecida em 80
+perguntas de dificuldade conhecida e confere que ele não desanda:
+
+| | com a nota da sala | sem |
+| --- | --- | --- |
+| nível médio das perguntas depois de 10 mil e 20 mil rodadas | 43,7 → 44,1 | 44,4 → 44,8 |
+| correlação com a dificuldade de verdade | 0,974 | 0,976 |
+| difícil jogada só por craques − fácil jogada só por novatos | **13,8** | 5,3 |
+
+As duas últimas perguntas acertam uns 73% cada uma. Sem olhar quem jogou, elas
+parecem quase iguais. O peso 50 foi escolhido na mesma simulação: com 0 elas
+não se separam, e passando de 80 uma rodada sozinha pesa demais.
 
 Níveis: **Fácil** (<30) · **Média** (<55) · **Difícil** (<75) · **Muito difícil**.
 
-**A dificuldade não altera a pontuação.** Ela existe para separar perguntas por
-nível depois — montar salas "só fácil", equilibrar rodadas, ou eventualmente
-pontuar. O valor já está pronto em [`server/dificuldade.js`](server/dificuldade.js).
+**A dificuldade não altera a pontuação.** Ela ordena o sorteio (a [partida
+começa pelas fáceis](#dificuldade-crescente)) e pesa na nota do perfil.
 
-O que foi aprendido fica em `server/dados/estatisticas.json` e sobrevive a
-reinícios. Para inspecionar, com o servidor no ar:
+O que foi aprendido vai para a tabela `perguntas_stats` quando há
+`DATABASE_URL`, e para `server/dados/estatisticas.json` quando não há. Para
+inspecionar, com o servidor no ar:
 
 ```bash
 curl -s http://localhost:3000/api/dificuldades
@@ -1262,6 +1324,8 @@ alterna, as três fases em que vale e o que acontece quando quem votou sai),
 as **5 chances por pergunta** (o que gasta, o que não gasta, a resposta certa
 que não vale nem vaza depois da última, a rodada que fecha quando ninguém mais
 pode pontuar e a chance que não volta ao recarregar a página)
+o **círculo entre nota e dificuldade** (a simulação de uma população
+inteira, o que entra na conta da sala e o painel do perfil)
 e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim

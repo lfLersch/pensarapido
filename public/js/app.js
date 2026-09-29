@@ -351,7 +351,7 @@ function renderizarPerfil(perfil) {
       <span class="perfil-numero__rotulo">${rotulo}</span>
     </div>`).join('');
 
-  renderizarDesempenho(perfil.desempenho || []);
+  renderizarPainel(perfil);
 
   const feitas = perfil.conquistas.filter((c) => c.quando).length;
   $('perfil-contagem').textContent = `${feitas}/${perfil.conquistas.length}`;
@@ -364,30 +364,391 @@ function renderizarPerfil(perfil) {
     </li>`).join('');
 }
 
-/** Uma linha por categoria jogada: a nota, a barra e o quanto ja jogou. */
-function renderizarDesempenho(linhas) {
+/* ---------------------------- Painel de desempenho ---------------------------- *
+ *
+ * O painel mostra um recorte por vez: "Geral" (todas as perguntas) ou uma
+ * categoria. Os chips de cima escolhem o recorte, e tudo embaixo (nota,
+ * evolucao, acerto por dificuldade) se redesenha para ele. Os graficos sao
+ * SVG na mao, medidos na largura da tela, com o valor no hover e no teclado
+ * e uma tabela com os mesmos numeros para quem nao enxerga o grafico.
+ */
+
+const painelDesempenho = { perfil: null, recorte: 'geral' };
+const SVG = 'http://www.w3.org/2000/svg';
+
+function noSvg(tag, atributos = {}, pai = null) {
+  const no = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(atributos)) no.setAttribute(k, v);
+  if (pai) pai.appendChild(no);
+  return no;
+}
+
+function categoriaDe(id) {
+  return (estado.config?.categorias || []).find((c) => c.id === id)
+    || { id, nome: id, icone: '❓', cor: 'var(--primaria)' };
+}
+
+function renderizarPainel(perfil) {
+  painelDesempenho.perfil = perfil;
+  const existe = painelDesempenho.recorte === 'geral' || (perfil.desempenho || []).some((l) => l.id === painelDesempenho.recorte);
+  if (!existe) painelDesempenho.recorte = 'geral';
+  desenharFiltro();
+  desenharRecorte();
+  renderizarDesempenho(perfil.desempenho || [], perfil.destaques || {});
+}
+
+function escolherRecorte(id) {
+  painelDesempenho.recorte = id;
+  desenharFiltro();
+  desenharRecorte();
+}
+
+function desenharFiltro() {
+  const filtro = $('painel-filtro');
+  filtro.innerHTML = '';
+  const opcoes = [{ id: 'geral', rotulo: '🧠 Geral' },
+    ...(painelDesempenho.perfil.desempenho || []).map((l) => {
+      const c = categoriaDe(l.id);
+      return { id: l.id, rotulo: `${c.icone} ${c.nome}` };
+    })];
+  for (const opcao of opcoes) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'subchip' + (opcao.id === painelDesempenho.recorte ? ' marcada' : '');
+    chip.setAttribute('role', 'tab');
+    chip.setAttribute('aria-selected', String(opcao.id === painelDesempenho.recorte));
+    chip.textContent = opcao.rotulo;
+    chip.addEventListener('click', () => escolherRecorte(opcao.id));
+    filtro.appendChild(chip);
+  }
+}
+
+/** A ficha do recorte escolhido: a geral, ou a de uma categoria. */
+function fichaDoRecorte() {
+  const p = painelDesempenho.perfil;
+  if (painelDesempenho.recorte === 'geral') return { ...p.geral, titulo: 'Nota geral' };
+  const l = p.desempenho.find((d) => d.id === painelDesempenho.recorte);
+  return { ...l, titulo: `Nota em ${categoriaDe(l.id).nome}` };
+}
+
+function desenharRecorte() {
+  const alvo = $('painel');
+  const f = fichaDoRecorte();
+  alvo.innerHTML = '';
+
+  if (!f.rodadas) {
+    alvo.innerHTML = '<p class="painel__vazio">Jogue uma partida no Modo Tempo ou na Escalada: a partir da primeira rodada o painel ganha sua nota, e a cada partida um ponto na evolucao.</p>';
+    return;
+  }
+
+  // Cabecalho: a nota em destaque e tres numeros ao lado.
+  const topo = document.createElement('div');
+  topo.className = 'painel__topo';
+  const variacao = Number.isFinite(f.variacao) && f.variacao !== 0
+    ? `<span class="painel__variacao painel__variacao--${f.variacao > 0 ? 'sobe' : 'desce'}">${f.variacao > 0 ? '▲' : '▼'} ${Math.abs(Math.round(f.variacao))} na ultima partida</span>`
+    : '';
+  topo.innerHTML = `
+    <div class="painel__nota">
+      <span class="painel__rotulo"></span>
+      <span class="painel__valor">${f.nota}</span>
+      ${f.provisoria ? `<span class="painel__provisoria">provisoria · ${f.rodadas} de 5 rodadas</span>` : variacao}
+      <span class="painel__sub">Meio a meio em perguntas de dificuldade ${f.nota} (${f.nivel})</span>
+    </div>
+    <div class="painel__kpis">
+      <div class="kpi"><span class="kpi__valor">${f.aproveitamento}%</span><span class="kpi__texto"><span class="kpi__rotulo">Aproveitamento</span><span class="kpi__detalhe">${f.acertos} acertos em ${f.rodadas}</span></span></div>
+      <div class="kpi"><span class="kpi__valor">${f.rodadas}</span><span class="kpi__texto"><span class="kpi__rotulo">Rodadas medidas</span><span class="kpi__detalhe">no Modo Tempo e na Escalada</span></span></div>
+      <div class="kpi"><span class="kpi__valor">${f.dificuldadeMedia}</span><span class="kpi__texto"><span class="kpi__rotulo">Dificuldade media</span><span class="kpi__detalhe">das perguntas que voce pegou</span></span></div>
+    </div>`;
+  topo.querySelector('.painel__rotulo').textContent = f.titulo;
+  alvo.appendChild(topo);
+
+  const evolucao = cartaoDeGrafico(alvo, 'Evolucao da nota', 'Um ponto por partida, das ultimas 30.');
+  desenharEvolucao(evolucao, f.historico || []);
+
+  const niveis = cartaoDeGrafico(alvo, 'Acerto por dificuldade', 'A barra e quanto voce acertou em cada faixa; o traco, quanto a sua nota esperava.');
+  desenharNiveis(niveis, f.porNivel || []);
+
+  alvo.appendChild(tabelaDoRecorte(f));
+}
+
+function cartaoDeGrafico(alvo, titulo, descricao) {
+  const cartao = document.createElement('div');
+  cartao.className = 'painel__grafico';
+  const h = document.createElement('h4');
+  h.className = 'painel__titulo';
+  h.textContent = titulo;
+  const p = document.createElement('p');
+  p.className = 'painel__descricao';
+  p.textContent = descricao;
+  const area = document.createElement('div');
+  area.className = 'grafico';
+  cartao.append(h, p, area);
+  alvo.appendChild(cartao);
+  return area;
+}
+
+/** A dica que segue o mouse (ou o foco): valor forte em cima, o rotulo embaixo. */
+function dicaDo(area) {
+  let dica = area.querySelector('.grafico__dica');
+  if (!dica) {
+    dica = document.createElement('div');
+    dica.className = 'grafico__dica';
+    dica.hidden = true;
+    area.appendChild(dica);
+  }
+  return {
+    mostrar(x, y, linhas) {
+      dica.innerHTML = '';
+      linhas.forEach(([valor, rotulo]) => {
+        const linha = document.createElement('div');
+        const forte = document.createElement('strong');
+        forte.textContent = valor;
+        const fraco = document.createElement('span');
+        fraco.textContent = rotulo;
+        linha.append(forte, fraco);
+        dica.appendChild(linha);
+      });
+      dica.hidden = false;
+      const largura = area.clientWidth;
+      const w = dica.offsetWidth;
+      dica.style.left = `${Math.min(Math.max(0, x - w / 2), Math.max(0, largura - w))}px`;
+      dica.style.top = `${Math.max(0, y - dica.offsetHeight - 10)}px`;
+    },
+    esconder() { dica.hidden = true; }
+  };
+}
+
+const dataCurta = (ms) => new Date(ms).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+/** Linha da nota, partida a partida, com a mira que acha o ponto mais perto. */
+function desenharEvolucao(area, pontos) {
+  if (pontos.length < 2) {
+    area.innerHTML = `<p class="painel__vazio">${pontos.length
+      ? `Uma partida ate aqui, com nota ${pontos[0].nota}. A linha aparece a partir da segunda.`
+      : 'A evolucao aparece quando voce terminar uma partida.'}</p>`;
+    return;
+  }
+  const largura = Math.max(260, area.clientWidth || 320);
+  const altura = 190;
+  const m = { cima: 14, baixo: 24, esq: 30, dir: 34 };
+  const x = (i) => m.esq + (i * (largura - m.esq - m.dir)) / (pontos.length - 1);
+  const y = (v) => m.cima + ((100 - v) * (altura - m.cima - m.baixo)) / 100;
+
+  const svg = noSvg('svg', {
+    width: largura, height: altura, viewBox: `0 0 ${largura} ${altura}`, class: 'grafico__svg',
+    tabindex: 0, role: 'img',
+    'aria-label': `Evolucao da nota: de ${pontos[0].nota} para ${pontos[pontos.length - 1].nota} em ${pontos.length} partidas. Use as setas para ver cada partida.`
+  });
+
+  for (const v of [0, 25, 50, 75, 100]) {
+    noSvg('line', { x1: m.esq, x2: largura - m.dir, y1: y(v), y2: y(v), class: v === 0 ? 'grafico__base' : 'grafico__grade' }, svg);
+    noSvg('text', { x: m.esq - 8, y: y(v) + 4, class: 'grafico__eixo', 'text-anchor': 'end' }, svg).textContent = v;
+  }
+  noSvg('text', { x: m.esq, y: altura - 6, class: 'grafico__eixo' }, svg).textContent = dataCurta(pontos[0].quando);
+  noSvg('text', { x: largura - m.dir, y: altura - 6, class: 'grafico__eixo', 'text-anchor': 'end' }, svg)
+    .textContent = dataCurta(pontos[pontos.length - 1].quando);
+
+  const caminho = pontos.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.nota).toFixed(1)}`).join(' ');
+  noSvg('path', { d: `${caminho} L${x(pontos.length - 1)},${y(0)} L${x(0)},${y(0)} Z`, class: 'grafico__area' }, svg);
+  noSvg('path', { d: caminho, class: 'grafico__linha' }, svg);
+
+  const ultimo = pontos.length - 1;
+  noSvg('circle', { cx: x(ultimo), cy: y(pontos[ultimo].nota), r: 4, class: 'grafico__ponto' }, svg);
+  noSvg('text', { x: x(ultimo) + 9, y: y(pontos[ultimo].nota) + 4, class: 'grafico__valor' }, svg).textContent = pontos[ultimo].nota;
+
+  const mira = noSvg('line', { y1: m.cima, y2: y(0), class: 'grafico__mira', visibility: 'hidden' }, svg);
+  const foco = noSvg('circle', { r: 4, class: 'grafico__ponto', visibility: 'hidden' }, svg);
+  area.appendChild(svg);
+  const dica = dicaDo(area);
+
+  let atual = null;
+  const marcar = (i) => {
+    atual = i;
+    const p = pontos[i];
+    mira.setAttribute('x1', x(i));
+    mira.setAttribute('x2', x(i));
+    foco.setAttribute('cx', x(i));
+    foco.setAttribute('cy', y(p.nota));
+    mira.setAttribute('visibility', 'visible');
+    foco.setAttribute('visibility', 'visible');
+    const anterior = i ? p.nota - pontos[i - 1].nota : null;
+    const mudou = anterior === null ? 'primeira partida do grafico'
+      : `${anterior > 0 ? '+' : ''}${anterior} desde a partida anterior`;
+    dica.mostrar(x(i), y(p.nota), [[`Nota ${p.nota}`, `${dataCurta(p.quando)} · ${mudou}`]]);
+  };
+  const soltar = () => {
+    atual = null;
+    mira.setAttribute('visibility', 'hidden');
+    foco.setAttribute('visibility', 'hidden');
+    dica.esconder();
+  };
+  svg.addEventListener('pointermove', (e) => {
+    const caixa = svg.getBoundingClientRect();
+    const px = e.clientX - caixa.left;
+    const passo = (largura - m.esq - m.dir) / (pontos.length - 1);
+    marcar(Math.min(ultimo, Math.max(0, Math.round((px - m.esq) / passo))));
+  });
+  svg.addEventListener('pointerleave', soltar);
+  svg.addEventListener('blur', soltar);
+  svg.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const i = atual === null ? ultimo : atual + (e.key === 'ArrowRight' ? 1 : -1);
+    marcar(Math.min(ultimo, Math.max(0, i)));
+  });
+}
+
+/** Uma coluna por faixa de dificuldade: a barra e o acerto, o traco e o esperado. */
+function desenharNiveis(area, faixas) {
+  const legenda = document.createElement('div');
+  legenda.className = 'grafico__legenda';
+  legenda.innerHTML = '<span><i class="chave chave--barra"></i>Seu acerto</span><span><i class="chave chave--traco"></i>Esperado pela sua nota</span>';
+  area.appendChild(legenda);
+
+  const largura = Math.max(260, area.clientWidth || 320);
+  const altura = 200;
+  const m = { cima: 22, baixo: 40, esq: 30, dir: 8 };
+  const faixa = (largura - m.esq - m.dir) / faixas.length;
+  const y = (v) => m.cima + ((100 - v) * (altura - m.cima - m.baixo)) / 100;
+  const BARRA = 24;
+
+  const svg = noSvg('svg', {
+    width: largura, height: altura, viewBox: `0 0 ${largura} ${altura}`, class: 'grafico__svg', role: 'img',
+    'aria-label': 'Acerto por faixa de dificuldade: ' + faixas.map((f) => f.rodadas
+      ? `${f.nivel} ${f.aproveitamento}% (esperado ${f.esperado}%)` : `${f.nivel} sem rodadas`).join(', ')
+  });
+  for (const v of [0, 25, 50, 75, 100]) {
+    noSvg('line', { x1: m.esq, x2: largura - m.dir, y1: y(v), y2: y(v), class: v === 0 ? 'grafico__base' : 'grafico__grade' }, svg);
+    noSvg('text', { x: m.esq - 8, y: y(v) + 4, class: 'grafico__eixo', 'text-anchor': 'end' }, svg).textContent = `${v}%`;
+  }
+  area.appendChild(svg);
+  const dica = dicaDo(area);
+
+  faixas.forEach((f, i) => {
+    const centro = m.esq + faixa * i + faixa / 2;
+    noSvg('text', { x: centro, y: altura - 22, class: 'grafico__rotulo', 'text-anchor': 'middle' }, svg).textContent = f.nivel;
+    // Na tela estreita a faixa nao tem lugar para "rodadas" escrito: fica o numero.
+    const cabe = faixa >= 84;
+    noSvg('text', { x: centro, y: altura - 8, class: 'grafico__eixo', 'text-anchor': 'middle' }, svg)
+      .textContent = cabe ? (f.rodadas ? plural(f.rodadas, 'rodada', 'rodadas') : 'nenhuma') : String(f.rodadas);
+    if (!f.rodadas) return;
+
+    // Barra com a ponta de cima arredondada e a base reta, no chao do grafico.
+    const topo = y(f.aproveitamento);
+    const base = y(0);
+    const r = Math.min(4, (base - topo) / 2);
+    const esq = centro - BARRA / 2;
+    const dir = centro + BARRA / 2;
+    const grupo = noSvg('g', { class: 'grafico__coluna', tabindex: 0 }, svg);
+    noSvg('rect', { x: m.esq + faixa * i, y: m.cima, width: faixa, height: base - m.cima, class: 'grafico__alvo' }, grupo);
+    if (base - topo > 0.5) {
+      noSvg('path', {
+        d: `M${esq},${base} L${esq},${topo + r} Q${esq},${topo} ${esq + r},${topo} L${dir - r},${topo} Q${dir},${topo} ${dir},${topo + r} L${dir},${base} Z`,
+        class: 'grafico__barra'
+      }, grupo);
+    }
+    // O valor vai acima da barra e do traco, o que estiver mais alto: assim o traco nunca corta o numero.
+    const acima = Number.isFinite(f.esperado) ? Math.min(topo, y(f.esperado)) : topo;
+    noSvg('text', { x: centro, y: acima - 7, class: 'grafico__valor', 'text-anchor': 'middle' }, grupo).textContent = `${f.aproveitamento}%`;
+    if (Number.isFinite(f.esperado)) {
+      noSvg('line', { x1: centro - 18, x2: centro + 18, y1: y(f.esperado), y2: y(f.esperado), class: 'grafico__esperado' }, grupo);
+    }
+
+    const mostrar = () => {
+      const diferenca = f.aproveitamento - f.esperado;
+      const leitura = Math.abs(diferenca) < 5 ? 'dentro do esperado'
+        : diferenca > 0 ? `${diferenca} pontos acima do esperado` : `${-diferenca} pontos abaixo do esperado`;
+      dica.mostrar(centro, topo, [
+        [`${f.aproveitamento}% de acerto`, `${f.nivel} · ${f.acertos} de ${f.rodadas}`],
+        [`${f.esperado}% esperado`, leitura]
+      ]);
+    };
+    grupo.addEventListener('pointerenter', mostrar);
+    grupo.addEventListener('focus', mostrar);
+    grupo.addEventListener('pointerleave', () => dica.esconder());
+    grupo.addEventListener('blur', () => dica.esconder());
+  });
+}
+
+/** Os mesmos numeros dos graficos, em tabela, para ler sem o grafico. */
+function tabelaDoRecorte(f) {
+  const detalhes = document.createElement('details');
+  detalhes.className = 'painel__tabela';
+  const resumo = document.createElement('summary');
+  resumo.textContent = 'Ver os numeros em tabela';
+  detalhes.appendChild(resumo);
+
+  const tabela = (cabecalho, linhas) => {
+    const t = document.createElement('table');
+    const tr = t.createTHead().insertRow();
+    for (const c of cabecalho) {
+      const th = document.createElement('th');
+      th.textContent = c;
+      tr.appendChild(th);
+    }
+    const corpo = t.createTBody();
+    for (const linha of linhas) {
+      const r = corpo.insertRow();
+      for (const c of linha) r.insertCell().textContent = c;
+    }
+    return t;
+  };
+  detalhes.appendChild(tabela(['Faixa', 'Rodadas', 'Acerto', 'Esperado'],
+    (f.porNivel || []).map((n) => [n.nivel, n.rodadas, n.rodadas ? `${n.aproveitamento}%` : '—', n.rodadas ? `${n.esperado}%` : '—'])));
+  if ((f.historico || []).length) {
+    detalhes.appendChild(tabela(['Partida', 'Nota'],
+      f.historico.map((h) => [new Date(h.quando).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }), h.nota])));
+  }
+  return detalhes;
+}
+
+// A largura dos graficos e medida na hora: girou o celular, redesenha.
+let esperaRedesenho = null;
+window.addEventListener('resize', () => {
+  if (!painelDesempenho.perfil || $('tela-perfil').classList.contains('ativa') === false) return;
+  clearTimeout(esperaRedesenho);
+  esperaRedesenho = setTimeout(desenharRecorte, 150);
+});
+
+/** Uma linha por categoria jogada: a nota, a barra, e um clique abre ela no painel. */
+function renderizarDesempenho(linhas, destaques) {
   const lista = $('perfil-desempenho');
   if (!linhas.length) {
     lista.innerHTML = '<li class="desempenho__vazio">Jogue uma partida no Modo Tempo ou na Escalada para aparecer sua nota em cada categoria.</li>';
     return;
   }
-  const categorias = new Map((estado.config?.categorias || []).map((c) => [c.id, c]));
   lista.innerHTML = linhas.map((l) => {
-    const c = categorias.get(l.id) || { nome: l.id, icone: '❓', cor: 'var(--primaria)' };
+    const c = categoriaDe(l.id);
     const detalhe = l.provisoria
       ? `provisoria · ${plural(l.rodadas, 'rodada', 'rodadas')}`
-      : `${l.acertos}/${l.rodadas} acertos · dificuldade media ${l.dificuldadeMedia}`;
+      : `${l.aproveitamento}% de acerto em ${plural(l.rodadas, 'rodada', 'rodadas')} · dificuldade media ${l.dificuldadeMedia}`;
+    const selo = l.id === destaques.forte ? '<span class="selo selo--forte">💪 ponto forte</span>'
+      : l.id === destaques.fraco ? '<span class="selo selo--fraco">🎯 para treinar</span>' : '';
+    const variacao = !l.provisoria && Number.isFinite(l.variacao) && Math.round(l.variacao) !== 0
+      ? `<span class="desempenho__variacao desempenho__variacao--${l.variacao > 0 ? 'sobe' : 'desce'}">${l.variacao > 0 ? '▲' : '▼'} ${Math.abs(Math.round(l.variacao))}</span>`
+      : '';
     return `
-      <li class="desempenho__linha${l.provisoria ? ' desempenho__linha--provisoria' : ''}">
-        <span class="desempenho__icone">${c.icone}</span>
-        <span class="desempenho__meio">
-          <span class="desempenho__nome">${escapar(c.nome)}</span>
-          <span class="desempenho__barra"><span style="width:${l.nota}%;background:${c.cor}"></span></span>
-          <span class="desempenho__detalhe">${detalhe}</span>
-        </span>
-        <span class="desempenho__nota">${l.nota}</span>
+      <li>
+        <button type="button" class="desempenho__linha${l.provisoria ? ' desempenho__linha--provisoria' : ''}" data-categoria="${escapar(l.id)}">
+          <span class="desempenho__icone">${c.icone}</span>
+          <span class="desempenho__meio">
+            <span class="desempenho__nome">${escapar(c.nome)} ${selo}</span>
+            <span class="desempenho__barra"><span style="width:${l.nota}%;background:${c.cor}"></span></span>
+            <span class="desempenho__detalhe">${detalhe}</span>
+          </span>
+          <span class="desempenho__fim">
+            <span class="desempenho__nota">${l.nota}</span>
+            ${variacao}
+          </span>
+        </button>
       </li>`;
   }).join('');
+  for (const botao of lista.querySelectorAll('[data-categoria]')) {
+    botao.addEventListener('click', () => {
+      escolherRecorte(botao.dataset.categoria);
+      $('painel-filtro').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 }
 
 function renderizarMelhores(jogadores) {
