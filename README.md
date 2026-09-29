@@ -1052,7 +1052,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3523 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3739 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -1214,6 +1214,28 @@ mais novos (🪨, 🪄, 🫏…) como um quadradinho. Bandeira de país vira dua
 no Windows (🇺🇸 aparece como "US"), então só entra onde as letras também
 servem de pista. `testes/perguntas.test.js` reprova charada com emoji novo
 demais, emoji fora do fim do enunciado e filme repetido.
+
+### Cinema — perguntas de dentro da série
+
+A resposta é algo **da própria obra** (personagem, lugar, bordão, número), e o
+enunciado abre com o título entre aspas. Os padrões vêm dos quizzes de série
+que mais circulam (Racha Cuca, Quizur): parentesco, *quem é o X do título*,
+bordão pela metade, número famoso e cidade onde se passa.
+
+```js
+{ pergunta: 'Em "Todo Mundo Odeia o Chris", qual e o nome do irmao mais novo de Chris, mais alto e mais popular que ele?',
+  sub: 'series', resposta: 'Drew', dif: 25 }
+{ pergunta: 'Em "Eu, a Patroa e as Criancas", quem e o "Eu" do titulo, o pai vivido por Damon Wayans?',
+  sub: 'series', resposta: 'Michael Kyle', aceita: ['Michael', 'Kyle'], dif: 35 }
+{ pergunta: 'Em "Chaves", como termina a desculpa do garoto "Foi sem querer..."?',
+  sub: 'series', resposta: 'Querendo', dif: 20 }
+```
+
+Enunciado que começa por *Em* não ganha o atalho de sobrenome automático, então
+o primeiro nome e o sobrenome do personagem vão escritos no `aceita`. Cuidado
+com sobrenome solto ali: ele **tira o atalho de outra pergunta** que tenha o
+mesmo sobrenome — *"Cooper"* para Winnie Cooper fazia *"Cooper"* parar de valer
+para Sheldon Cooper. Na dúvida, deixe só o primeiro nome.
 
 ### Criar uma categoria nova
 

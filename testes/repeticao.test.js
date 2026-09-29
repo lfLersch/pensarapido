@@ -11,6 +11,7 @@
 
 const { Sala } = require('../server/sala.js');
 const { normalizar } = require('../server/comparar.js');
+const { QUESTOES } = require('../server/questions.js');
 
 let falhas = 0;
 const conferir = (nome, obtido, esperado) => {
@@ -65,11 +66,14 @@ function sala(config) {
 /* ------------- Baralho pequeno nao trava nem vem vazio ------------- */
 {
   // So os desenhos: o baralho acaba antes da partida. Depois de esgotar, uma
-  // passagem nova comeca — repetir e melhor do que ficar sem pergunta.
+  // passagem nova comeca — repetir e melhor do que ficar sem pergunta. O
+  // tamanho sai do banco: com 90 sorteios fixos, o baralho cresceu e o teste
+  // parou de chegar ao fim dele.
+  const baralho = QUESTOES.cinema.filter((q) => q.sub === 'desenhos').length;
   const s = sala({ categorias: [], subs: ['cinema:desenhos'] });
   const vistas = [];
   let vazia = false;
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < baralho + 30; i++) {
     const q = s.perguntaSimples();
     if (!q || !q.resposta) { vazia = true; break; }
     vistas.push(normalizar(q.resposta));
