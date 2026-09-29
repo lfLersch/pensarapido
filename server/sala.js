@@ -3022,7 +3022,8 @@ class Sala {
     const tempos = [...this.acertos.values()].map((a) => a.ms);
     const participantes = Math.max(this.jogadoresNaRodada, this.acertos.size, 1);
 
-    // A dificuldade sobe quando pouca gente acerta ou quando demoram muito.
+    // A dificuldade sobe quando pouca gente acerta, quando demoram muito e
+    // quando a sala acerta menos do que as notas dela na categoria prometiam.
     // No Presente Grego a rodada não mede a pergunta: responde uma pessoa só,
     // contra um alvo que ela nem escolheu. Registrar isso sujaria a
     // estatística da lista, então aqui a dificuldade é só lida.
@@ -3031,7 +3032,8 @@ class Sala {
       : dificuldade.registrar(this.perguntaAtual.id, this.perguntaAtual.difBase, {
           jogadores: participantes,
           tempos,
-          duracaoMs: this.config.segundosPorPergunta * 1000
+          duracaoMs: this.config.segundosPorPergunta * 1000,
+          sala: this.salaDaRodada(this.perguntaAtual)
         });
 
     const pergunta = this.perguntaAtual;
@@ -3183,9 +3185,7 @@ class Sala {
   anotarRodadaNosPerfis(pergunta, valorDificuldade) {
     // A dificuldade de ANTES desta rodada: a de depois ja carrega o resultado dela.
     const difAntes = Number.isFinite(pergunta.dificuldade) ? pergunta.dificuldade : valorDificuldade;
-    const categoria = pergunta.categoria && CATEGORIAS.some((c) => c.id === pergunta.categoria.id)
-      ? pergunta.categoria.id
-      : null;
+    const categoria = this.categoriaMedida(pergunta);
     const medeCategoria = Boolean(categoria) && this.rodadaMedeTodos();
 
     for (const jogador of this.jogadores.values()) {
@@ -3205,6 +3205,35 @@ class Sala {
       });
       this.anunciarConquistas(jogador, novas);
     }
+  }
+
+  /** A categoria de verdade da pergunta (a Escalada tem uma de mentira, so para a tela). */
+  categoriaMedida(pergunta) {
+    return pergunta && pergunta.categoria && CATEGORIAS.some((c) => c.id === pergunta.categoria.id)
+      ? pergunta.categoria.id
+      : null;
+  }
+
+  /**
+   * Quem viu a pergunta abrir, com a nota na categoria e se acertou, para a
+   * dificuldade comparar o que a sala fez com o que as notas prometiam. So
+   * nas rodadas que medem todo mundo: nas outras quem nao acertou nem sempre
+   * errou, e ai nao ha surpresa nenhuma.
+   *
+   * Sai ANTES de a rodada entrar no perfil, porque a nota de depois ja traz
+   * o resultado dela — o mesmo cuidado que a nota tem com a dificuldade. O
+   * acerto e contado igual ao de anotarRodadaNosPerfis.
+   */
+  salaDaRodada(pergunta) {
+    const categoria = this.categoriaMedida(pergunta);
+    if (!categoria || !this.rodadaMedeTodos()) return null;
+    return [...this.naRodada]
+      .map((id) => this.jogadores.get(id))
+      .filter(Boolean)
+      .map((j) => ({
+        ...perfis.notaEfetiva(j.cliente, categoria),
+        acertou: j.acertos > (j.acertosAnotados || 0)
+      }));
   }
 
   /**
