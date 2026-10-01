@@ -17,6 +17,15 @@
 
 const NOTAS = [
   {
+    versao: '1.22',
+    data: '2026-10-01',
+    titulo: 'Enter envia no celular',
+    itens: [
+      'No celular, o Enter do teclado agora envia a resposta num toque so, mesmo com o texto preditivo ligado. O teclado mostra a tecla Enviar.',
+      'Tocar no botao de enviar nao fecha mais o teclado: ele fica aberto para a proxima resposta.'
+    ]
+  },
+  {
     versao: '1.21',
     data: '2026-10-01',
     titulo: 'A imagem aparece antes do relogio comecar',

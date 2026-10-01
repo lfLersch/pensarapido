@@ -149,6 +149,15 @@ Duas proteções extras, ambas fora do chat global:
 Os limites ficam no topo de [`server/comparar.js`](server/comparar.js)
 (`LIMITE_CERTO`, `LIMITE_QUASE`), caso queira afrouxar ou apertar.
 
+**Enter envia, também no celular.** No computador o próprio formulário cuida
+disso. No Android, com texto preditivo ligado, o teclado trata o Enter como
+"confirmar a palavra" (tecla 229, sem a ação de enviar), e alguns teclados
+mandam uma quebra de linha no lugar da tecla — era preciso tocar duas vezes.
+Agora o campo tem `enterkeyhint="send"` (o teclado mostra **Enviar**, que
+confirma a palavra e envia num toque só), e o Enter e a quebra de linha são
+tratados direto no campo. Enter no meio de uma composição de verdade
+(japonês, chinês) continua só confirmando. Tocar no ➤ não fecha o teclado.
+
 > **Onde fica a fronteira:** *menos* de 10% é acerto, então 10% exatos já contam
 > como "quase". Numa resposta de 10 letras, 1 letra errada dá exatamente 10% e
 > cai no "quase". Para aceitar esse caso, troque `<` por `<=` em `LIMITE_CERTO`.
