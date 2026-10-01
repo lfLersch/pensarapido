@@ -24,6 +24,10 @@ const PONTOS_POR_ITEM = 2;
 const BONUS_ESCALADA = 5;
 
 const MS_REVELACAO = 2800;   // tela "categoria" antes da pergunta
+// Pergunta com imagem: a imagem baixa durante a tela da categoria, e o relogio
+// so comeca quando ela ja esta na tela de todo mundo. Quem estiver com a
+// internet arrastada segura a sala no maximo isto, alem da tela da categoria.
+const MS_ESPERA_IMAGEM = 4000;
 const MS_RESULTADO = 5000;       // tela de resultado quando o tempo acaba
 const MS_RESULTADO_TODOS = 3000; // ... e quando todo mundo acertou antes
 const MS_APOS_ULTIMO = 0;        // acertou geral, fecha na hora: a contagem é na tela
@@ -371,6 +375,11 @@ class Sala {
     this.ultimoTema = null;     // tema da rodada anterior, para não repetir
     this.jogadoresNaRodada = 0;
     this.naRodada = new Set();
+    // Pergunta com imagem: de quem a sala espera o "imagem pronta", quem ja
+    // mandou, e se a tela da categoria ja acabou e so falta a imagem.
+    this.esperaImagemDe = new Set();
+    this.imagemPronta = new Set();
+    this.esperandoImagem = false;
 
     this.filas = new Map();     // categoria -> perguntas embaralhadas ainda não usadas
     this.ultimasCategorias = []; // de onde vieram as últimas perguntas, para variar
@@ -583,6 +592,11 @@ class Sala {
           quem: [...this.pulos]
         });
       }
+    }
+
+    // So faltava a imagem de quem saiu: a pergunta abre para quem ficou.
+    if (this.estado === 'categoria' && this.esperandoImagem && this.jogadores.size > 0 && this.todosComImagem()) {
+      this.liberarPerguntaComImagem();
     }
 
     // Só faltava quem saiu para fechar a rodada.
@@ -1569,15 +1583,79 @@ class Sala {
     this.palpitesVeni = new Map();
     this.primeiroAcertoEm = null;
     this.estado = 'categoria';
+    this.esperaImagemDe = new Set(this.jogadores.keys());
+    this.imagemPronta = new Set();
+    this.esperandoImagem = false;
 
     this.emitir('rodada:categoria', {
       rodada: this.rodada,
       categoria,
       duracaoMs: MS_REVELACAO,
+      // A imagem da pergunta ja vai aqui, para baixar enquanto a categoria
+      // esta na tela. O navegador nao mostra: so carrega e avisa.
+      imagem: this.imagemParaCarregar(),
       placar: this.placar()
     });
 
-    this.agendar(() => this.mostrarPergunta(), MS_REVELACAO);
+    this.agendar(() => this.abrirPergunta(), MS_REVELACAO);
+  }
+
+  /** A imagem que a rodada vai mostrar, se a sala precisa esperar por ela. */
+  imagemParaCarregar() {
+    // Nos leiloes a pergunta so abre depois do leilao, e o leilao da tempo de sobra.
+    if (this.ehLeilao() || !this.perguntaAtual) return null;
+    return this.perguntaAtual.imagem || null;
+  }
+
+  /** Todos que viram a categoria abrir (e continuam na sala) ja carregaram a imagem? */
+  todosComImagem() {
+    return [...this.esperaImagemDe]
+      .filter((id) => this.jogadores.has(id))
+      .every((id) => this.imagemPronta.has(id));
+  }
+
+  /**
+   * Fim da tela da categoria. Sem imagem, ou com ela ja carregada em todo
+   * mundo, a pergunta abre na hora. Senao a sala espera os avisos de "imagem
+   * pronta" — no maximo MS_ESPERA_IMAGEM — para o relogio nao comecar a
+   * correr com alguem olhando um quadro vazio.
+   */
+  abrirPergunta() {
+    if (this.estado !== 'categoria') return;
+    if (!this.imagemParaCarregar() || this.todosComImagem()) return this.mostrarPergunta();
+
+    this.esperandoImagem = true;
+    this.avisarEsperaDaImagem();
+    this.agendar(() => {
+      this.esperandoImagem = false;
+      this.mostrarPergunta();
+    }, MS_ESPERA_IMAGEM);
+  }
+
+  avisarEsperaDaImagem() {
+    const quem = [...this.esperaImagemDe].filter((id) => this.jogadores.has(id));
+    this.emitir('rodada:aguardando', {
+      rodada: this.rodada,
+      prontos: quem.filter((id) => this.imagemPronta.has(id)).length,
+      total: quem.length,
+      duracaoMs: MS_ESPERA_IMAGEM
+    });
+  }
+
+  /** O navegador avisou que a imagem desta rodada ja esta carregada. */
+  imagemCarregada(socketId, rodada) {
+    if (rodada !== this.rodada || this.estado !== 'categoria' || !this.jogadores.has(socketId)) return;
+    this.imagemPronta.add(socketId);
+    if (!this.esperandoImagem) return;
+    if (this.todosComImagem()) return this.liberarPerguntaComImagem();
+    this.avisarEsperaDaImagem();
+  }
+
+  /** Chegou o ultimo aviso (ou saiu quem faltava): a pergunta abre sem esperar o teto. */
+  liberarPerguntaComImagem() {
+    this.esperandoImagem = false;
+    this.limparTemporizador();
+    this.mostrarPergunta();
   }
 
   /** Quanto tempo a rodada atual fica no ar. */
