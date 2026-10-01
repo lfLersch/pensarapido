@@ -657,6 +657,31 @@ Duas decisões que valem registrar:
 Rodada pulada **não alimenta a dificuldade adaptativa**: quase ninguém tentou
 responder, então ela não mede nada sobre a pergunta.
 
+### Pausar o jogo
+
+O **líder** tem um botão **⏸ Pausar** no topo da pergunta (e na tela da
+categoria). No celular fica só o ícone.
+
+- **Tudo para onde estava:** o relógio da rodada, o da vez no Carrossel, o do
+  lance no leilão, a contagem da tela de resultado e a espera da imagem. Cada
+  um guarda quanto faltava (`pausar`, em [`server/sala.js`](server/sala.js)).
+- **A pergunta some:** a tela *"Jogo pausado"* cobre o jogo inteiro. Com o
+  relógio parado, ninguém fica olhando a imagem ou o enunciado com todo o
+  tempo do mundo.
+- **Ninguém responde, vota ou dá lance.** O servidor recusa enquanto a pausa
+  durar, e o chat fecha, como no leilão: senão daria para combinar a resposta.
+  Se a música de *Ouvir músicas* estava tocando, para junto.
+- **Só o líder continua.** Na volta, cada relógio segue com o que faltava, e o
+  início da pergunta anda o tempo que ficou parado: a pontuação por tempo não
+  conta a pausa. O chat registra quem pausou e quem continuou.
+- **Se o líder sai pausado,** a coroa passa como sempre e quem herdou continua.
+  Quem entra durante a pausa já abre a tela de pausa.
+- Se a partida acaba, ou a sala esvazia e alguém volta, a pausa some.
+
+Tudo o que seria agendado durante a pausa (alguém sai e a rodada fecharia, por
+exemplo) espera a volta: `agendar` e `agendarVez` guardam o que chega em vez de
+disparar. `testes/pausa.test.js` cobre.
+
 ### Categorias variadas (Modo Tempo)
 
 O sorteio escolhe primeiro a **categoria** e só depois a pergunta. Numa janela

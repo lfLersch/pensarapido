@@ -422,6 +422,12 @@ class Sala {
 
     this.temporizador = null;
     this.temporizadorVez = null; // o relógio dos 7s corre à parte do da rodada
+    // O que cada relogio vai fazer e quando: a pausa precisa saber quanto faltava.
+    this.agendado = null;
+    this.agendadoVez = null;
+    // Jogo pausado pelo lider: { desde, por, rodada, vez } com o que faltava
+    // em cada relogio. Enquanto existe, nada corre e ninguem responde.
+    this.pausa = null;
   }
 
   /* --------------------------- Jogadores ---------------------------- */
@@ -542,6 +548,8 @@ class Sala {
   descongelar() {
     if (!this.congelada) return;
     this.congelada = false;
+    // A sala esvaziou pausada: quem voltou recomeca da proxima rodada, sem pausa.
+    this.esquecerPausa();
     this.avisar('A sala voltou. Proxima rodada ja vem.', true);
     this.agendar(() => this.proximaRodada(), MS_VOLTA_DA_SALA);
   }
@@ -595,7 +603,7 @@ class Sala {
     }
 
     // So faltava a imagem de quem saiu: a pergunta abre para quem ficou.
-    if (this.estado === 'categoria' && this.esperandoImagem && this.jogadores.size > 0 && this.todosComImagem()) {
+    if (this.estado === 'categoria' && this.esperandoImagem && !this.pausa && this.jogadores.size > 0 && this.todosComImagem()) {
       this.liberarPerguntaComImagem();
     }
 
@@ -1646,7 +1654,8 @@ class Sala {
   imagemCarregada(socketId, rodada) {
     if (rodada !== this.rodada || this.estado !== 'categoria' || !this.jogadores.has(socketId)) return;
     this.imagemPronta.add(socketId);
-    if (!this.esperandoImagem) return;
+    // Pausado, so anota: a pergunta abre quando o jogo continuar.
+    if (!this.esperandoImagem || this.pausa) return;
     if (this.todosComImagem()) return this.liberarPerguntaComImagem();
     this.avisarEsperaDaImagem();
   }
@@ -1907,8 +1916,7 @@ class Sala {
       msPorLance: this.tempoDoLance()
     });
 
-    clearTimeout(this.temporizadorVez);
-    this.temporizadorVez = setTimeout(() => this.lanceNoTempo(equipe.id), this.tempoDoLance());
+    this.agendarVez(() => this.lanceNoTempo(equipe.id), this.tempoDoLance());
   }
 
   /** O relógio do lance zerou sem ninguém dizer nada. */
@@ -1942,6 +1950,7 @@ class Sala {
    * Vale qualquer número, desde que maior que o lance que estava na mesa.
    */
   apostar(socketId, valor) {
+    if (this.pausa) return { erro: 'O jogo esta pausado.' };
     if (!this.leilaoAberto()) return { erro: 'O leilao nao esta aberto.' };
 
     const equipe = this.equipePorId(this.leilao.equipes[this.leilao.vez]);
@@ -1969,7 +1978,7 @@ class Sala {
   }
 
   registrarLance(socketId, equipeId, aposta) {
-    clearTimeout(this.temporizadorVez);
+    this.pararVez();
 
     this.leilao.aposta = aposta;
     this.leilao.equipeAposta = equipeId;
@@ -2000,6 +2009,7 @@ class Sala {
 
   /** "Duvido": encerra o leilão e cobra o último lance. */
   duvidar(socketId) {
+    if (this.pausa) return { erro: 'O jogo esta pausado.' };
     if (this.ehLeilaoGeral() || this.ehLeilaoReverso()) {
       return { erro: 'Neste modo nao ha duvido: ou cobre, ou passa.' };
     }
@@ -2019,6 +2029,7 @@ class Sala {
    * ha parceiro para desafiar — quem nao cobre simplesmente desiste.
    */
   passar(socketId) {
+    if (this.pausa) return { erro: 'O jogo esta pausado.' };
     if (!this.ehLeilaoGeral() && !this.ehLeilaoReverso()) {
       return { erro: 'Neste modo nao da para passar: ou cobre, ou duvida.' };
     }
@@ -2035,7 +2046,7 @@ class Sala {
 
   /** Tira do leilao quem passou; sobrando um, o leilao fecha nele. */
   registrarPasso(postoId, socketId) {
-    clearTimeout(this.temporizadorVez);
+    this.pararVez();
     if (!this.leilao.fora.includes(postoId)) this.leilao.fora.push(postoId);
 
     const jogador = this.jogadores.get(socketId);
@@ -2055,7 +2066,7 @@ class Sala {
 
   /** Passa a palavra para a próxima equipe que ainda esteja no leilão. */
   avancarLance() {
-    clearTimeout(this.temporizadorVez);
+    this.pararVez();
     if (!this.leilaoAberto()) return;
 
     for (let passo = 0; passo < this.leilao.equipes.length; passo++) {
@@ -2153,8 +2164,7 @@ class Sala {
         : null
     });
 
-    clearTimeout(this.temporizadorVez);
-    this.temporizadorVez = setTimeout(() => {
+    this.agendarVez(() => {
       // O tempo dessa pessoa acabou sem resposta.
       this.eliminar(jogadorId, 'tempo');
     }, MS_POR_VEZ);
@@ -2166,7 +2176,7 @@ class Sala {
    */
   eliminar(jogadorId, motivo) {
     if (this.estado !== 'pergunta' || !this.vivos.has(jogadorId)) return;
-    clearTimeout(this.temporizadorVez);
+    this.pararVez();
 
     this.vivos.delete(jogadorId);
     const jogador = this.jogadores.get(jogadorId);
@@ -2192,7 +2202,7 @@ class Sala {
    * quando as voltas terminam ou quando sobra no máximo uma pessoa.
    */
   avancarVez() {
-    clearTimeout(this.temporizadorVez);
+    this.pararVez();
     if (this.estado !== 'pergunta') return;
 
     if (this.vivos.size <= 1) {
@@ -2227,6 +2237,7 @@ class Sala {
   palpitar(socketId, texto) {
     const jogador = this.jogadores.get(socketId);
     if (!jogador) return { erro: 'Voce nao esta nesta sala.' };
+    if (this.pausa) return { erro: 'O jogo esta pausado. O chat volta quando ele continuar.' };
 
     const limpo = String(texto || '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEXTO);
     if (!limpo) return { erro: 'Escreva alguma coisa.' };
@@ -2966,6 +2977,7 @@ class Sala {
    * mudar de ideia enquanto a votação não fecha.
    */
   votarPular(socketId) {
+    if (this.pausa) return { erro: 'O jogo esta pausado.' };
     if (!this.jogadores.has(socketId)) return { erro: 'Voce nao esta nesta sala.' };
     if (!this.rodadaNoAr()) return { erro: 'Nao ha rodada para pular agora.' };
 
@@ -3335,6 +3347,7 @@ class Sala {
   }
 
   terminar() {
+    this.esquecerPausa();
     const meta = this.config.metaPontos;
     // Chamado duas vezes, a partida contaria dobrado no perfil.
     const jaTerminou = this.estado === 'fim';
@@ -3358,6 +3371,7 @@ class Sala {
 
   /** Volta ao saguão mantendo os jogadores, para uma nova partida. */
   voltarAoLobby() {
+    this.esquecerPausa();
     this.limparTemporizador();
     this.estado = 'lobby';
     this.rodada = 0;
@@ -3428,13 +3442,47 @@ class Sala {
             falta: this.oQueFaltaNasEquipes()
           }
         : null,
-      avataresLivres: this.avataresLivres()
+      avataresLivres: this.avataresLivres(),
+      // Quem entra com o jogo pausado ja abre a tela de pausa.
+      pausa: this.pausa ? { por: this.pausa.por } : null
     };
   }
 
   agendar(fn, ms) {
+    // Pausado: o que for agendado espera a volta, com o tempo inteiro. Igual
+    // ao caminho normal, agendar a rodada derruba o relogio da vez.
+    if (this.pausa) {
+      this.pausa.rodada = { fn, restante: ms };
+      this.pausa.vez = null;
+      return;
+    }
     this.limparTemporizador();
-    this.temporizador = setTimeout(fn, ms);
+    this.agendado = { fn, fim: Date.now() + ms };
+    this.temporizador = setTimeout(() => {
+      this.agendado = null;
+      fn();
+    }, ms);
+  }
+
+  /** O relogio que corre a parte do da rodada: a vez no carrossel, o lance no leilao. */
+  agendarVez(fn, ms) {
+    if (this.pausa) {
+      this.pausa.vez = { fn, restante: ms };
+      return;
+    }
+    this.pararVez();
+    this.agendadoVez = { fn, fim: Date.now() + ms };
+    this.temporizadorVez = setTimeout(() => {
+      this.agendadoVez = null;
+      fn();
+    }, ms);
+  }
+
+  pararVez() {
+    clearTimeout(this.temporizadorVez);
+    this.temporizadorVez = null;
+    this.agendadoVez = null;
+    if (this.pausa) this.pausa.vez = null;
   }
 
   limparTemporizador() {
@@ -3442,10 +3490,77 @@ class Sala {
       clearTimeout(this.temporizador);
       this.temporizador = null;
     }
+    this.agendado = null;
     if (this.temporizadorVez) {
       clearTimeout(this.temporizadorVez);
       this.temporizadorVez = null;
     }
+    this.agendadoVez = null;
+  }
+
+  /* ------------------------------ Pausa ------------------------------ */
+
+  /**
+   * O lider para o jogo.
+   *
+   * Os dois relogios param onde estavam e guardam quanto faltava. Ninguem
+   * responde, vota ou da lance ate continuar: com o relogio parado, daria
+   * para pensar (ou combinar no chat) com todo o tempo do mundo.
+   */
+  pausar(socketId) {
+    const jogador = this.jogadores.get(socketId);
+    if (!this.ehLider(socketId)) return { erro: 'So o lider pode pausar o jogo.' };
+    if (!this.emPartida()) return { erro: 'Nao tem partida rolando.' };
+    if (this.pausa) return { ok: true };
+
+    const agora = Date.now();
+    const resto = (a) => (a ? { fn: a.fn, restante: Math.max(0, a.fim - agora) } : null);
+    const rodada = resto(this.agendado);
+    const vez = resto(this.agendadoVez);
+    this.limparTemporizador();
+    this.pausa = { desde: agora, por: jogador.nickname, rodada, vez };
+
+    this.emitir('sala:pausa', { pausado: true, por: jogador.nickname });
+    this.avisar(`${jogador.nickname} pausou o jogo.`, true);
+    return { ok: true };
+  }
+
+  /**
+   * O lider continua. Cada relogio volta com o que faltava, e os horarios de
+   * inicio andam o tempo que ficou parado: a pontuacao por tempo nao conta a
+   * pausa.
+   */
+  continuar(socketId) {
+    const jogador = this.jogadores.get(socketId);
+    if (!this.ehLider(socketId)) return { erro: 'So o lider pode continuar o jogo.' };
+    if (!this.pausa) return { ok: true };
+
+    const { desde, rodada, vez } = this.pausa;
+    const parado = Date.now() - desde;
+    this.pausa = null;
+    if (this.inicioPergunta) this.inicioPergunta += parado;
+    if (this.inicioVez) this.inicioVez += parado;
+    if (this.primeiroAcertoEm) this.primeiroAcertoEm += parado;
+
+    // A rodada antes da vez: agendar a rodada derruba o relogio da vez.
+    if (rodada) this.agendar(rodada.fn, rodada.restante);
+    if (vez) this.agendarVez(vez.fn, vez.restante);
+
+    this.emitir('sala:pausa', { pausado: false, por: jogador.nickname });
+    this.avisar(`${jogador.nickname} continuou o jogo.`, true);
+
+    // A imagem que faltava chegou durante a pausa: a pergunta abre agora.
+    if (this.estado === 'categoria' && this.esperandoImagem && this.todosComImagem()) {
+      this.liberarPerguntaComImagem();
+    }
+    return { ok: true };
+  }
+
+  /** Tira a pausa sem retomar os relogios: a partida recomecou ou acabou. */
+  esquecerPausa() {
+    if (!this.pausa) return;
+    this.pausa = null;
+    this.emitir('sala:pausa', { pausado: false, por: null });
   }
 
   destruir() {

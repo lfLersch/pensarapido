@@ -17,6 +17,16 @@
 
 const NOTAS = [
   {
+    versao: '1.25',
+    data: '2026-10-01',
+    titulo: 'Pausar o jogo',
+    itens: [
+      'O lider da sala agora tem um botao para pausar o jogo, no topo da pergunta e na tela da categoria.',
+      'Pausado, os relogios param onde estavam e a tela "Jogo pausado" cobre a pergunta. Ninguem responde nem vota ate continuar.',
+      'Quando o lider continua, o relogio segue de onde parou, e o tempo parado nao conta na pontuacao.'
+    ]
+  },
+  {
     versao: '1.24',
     data: '2026-10-01',
     titulo: 'Quem da nome: leis, efeitos e sindromes',

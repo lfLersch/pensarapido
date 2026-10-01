@@ -2162,6 +2162,62 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   .btn--pular { padding: 8px 11px; font-size: 12.5px; }
 }
 
+/* ------------------------------- Pausa ------------------------------- */
+
+/* So o lider ve o botao. No celular fica so o icone, para caber ao lado do
+   Pular, do relogio e do Sair. */
+.btn--pausar {
+  padding: 9px 13px;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+.revelacao .btn--pausar {
+  margin-top: 6px;
+  opacity: 0.75;
+}
+.revelacao .btn--pausar:hover { opacity: 1; }
+
+@media (max-width: 560px) {
+  .btn--pausar { padding: 8px 11px; font-size: 12.5px; }
+  .jogo__canto .btn--pausar__rotulo { display: none; }
+}
+
+/* A tela de pausa cobre a pergunta inteira: com o relogio parado, ninguem
+   fica olhando a imagem ou o enunciado com todo o tempo do mundo. Fica abaixo
+   dos avisos (brindes), que continuam aparecendo por cima. */
+.pausa {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(13, 10, 31, 0.86);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  animation: entrarZoom 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pausa[hidden] { display: none; }
+.pausa__caixa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 360px;
+  padding: 28px 26px;
+  text-align: center;
+  background: var(--vidro);
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+}
+.pausa__icone { font-size: 52px; line-height: 1; }
+.pausa__titulo { margin: 0; font-size: 26px; font-weight: 800; color: var(--texto); }
+.pausa__quem { margin: 0; font-size: 14px; color: var(--texto-suave); }
+.pausa__quem:empty { display: none; }
+.pausa__espera { margin: 4px 0 0; font-size: 13px; color: var(--texto-fraco); }
+.pausa .btn--primario { margin-top: 6px; }
+
 /* ----------------------------- Salas abertas ----------------------------- */
 
 .salas {

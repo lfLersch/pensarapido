@@ -261,10 +261,24 @@
       <div class="revelacao__barra"><i id="revelacao-barra"></i></div>
       <span class="conta-regressiva" id="revelacao-num"></span>
       <p class="revelacao__espera" id="revelacao-espera" hidden></p>
+      <button class="btn btn--fantasma btn--pausar" id="btn-pausar-rev" type="button" title="Pausar o jogo" hidden>
+        <span class="btn__icone">⏸</span> Pausar
+      </button>
       <button class="btn btn--fantasma btn--pular" id="btn-pular-rev" type="button">
         <span class="btn__icone">⏭</span> Pular categoria
         <b class="pular__votos" id="pular-votos-rev"></b>
       </button>
+    </div>
+
+    <!-- Jogo pausado: cobre a pergunta para ninguem pensar com o relogio parado. -->
+    <div class="pausa" id="pausa" hidden role="dialog" aria-modal="true" aria-labelledby="pausa-titulo">
+      <div class="pausa__caixa">
+        <div class="pausa__icone" aria-hidden="true">⏸</div>
+        <h2 class="pausa__titulo" id="pausa-titulo">Jogo pausado</h2>
+        <p class="pausa__quem" id="pausa-quem"></p>
+        <button class="btn btn--primario" id="btn-continuar" type="button">▶ Continuar</button>
+        <p class="pausa__espera" id="pausa-espera">Esperando o lider continuar…</p>
+      </div>
     </div>
 
     <!-- 4b. Pergunta -->
@@ -276,6 +290,9 @@
           <span class="etiqueta">Meta <b id="jogo-meta">120</b></span>
         </div>
         <div class="jogo__canto">
+          <button class="btn btn--fantasma btn--pausar" id="btn-pausar" type="button" title="Pausar o jogo" hidden>
+            <span class="btn__icone">⏸</span><span class="btn--pausar__rotulo"> Pausar</span>
+          </button>
           <button class="btn btn--fantasma btn--pular" id="btn-pular" type="button"
                   title="Votar para pular esta rodada">
             <span class="btn__icone">⏭</span> Pular
