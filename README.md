@@ -91,7 +91,7 @@ e que a versão do topo seja a do jogo.
 
 | Ajuste | Opções |
 | --- | --- |
-| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História, **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
+| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
 | Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral** ou **Dando dicas** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
@@ -1147,7 +1147,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3854 perguntas em 18 categorias**, mais 608 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3948 perguntas em 18 categorias**, mais 608 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato

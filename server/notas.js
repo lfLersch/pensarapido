@@ -17,6 +17,17 @@
 
 const NOTAS = [
   {
+    versao: '1.24',
+    data: '2026-10-01',
+    titulo: 'Quem da nome: leis, efeitos e sindromes',
+    itens: [
+      'Historia e Cultura ganhou a parte Quem da nome, com 94 perguntas sobre o nome por tras de leis, efeitos, paradoxos, sindromes e palavras.',
+      'Leis de Murphy, de Gerson e de Parkinson, Lei Maria da Penha e Lei Rouanet. Efeitos Mandela, Streisand, Dunning-Kruger, Doppler e Tostines.',
+      'Navalha de Ockham, gato de Schrodinger e problema de Monty Hall. Sindromes de Estocolmo e de Gabriela. E de onde vem o nome do sanduiche, da guilhotina e do boicote.',
+      'O banco foi de 3854 para 3948 perguntas.'
+    ]
+  },
+  {
     versao: '1.23',
     data: '2026-10-01',
     titulo: 'Ciencia ganha Botanica, Biologia e Quimica',
