@@ -46,6 +46,18 @@ const LISTAS = [
     respostas: ['Primavera', 'Verao', 'Outono', 'Inverno']
   },
   {
+    // A classificacao de cinco reinos (Whittaker), a que a escola ensina.
+    pergunta: 'Quais sao os cinco reinos dos seres vivos?',
+    fixo: true, tema: 'ciencia', dif: 45,
+    respostas: [
+      ['Monera', 'Moneras', 'Bacterias'],
+      ['Protista', 'Protistas', 'Protoctista'],
+      ['Fungi', 'Fungos', 'Fungo'],
+      ['Plantae', 'Plantas', 'Planta', 'Vegetal', 'Vegetais'],
+      ['Animalia', 'Animais', 'Animal']
+    ]
+  },
+  {
     pergunta: 'Quem foram os quatro integrantes dos Beatles?',
     fixo: true, tema: 'musica', dif: 55,
     respostas: [
@@ -477,6 +489,42 @@ const LISTAS = [
       'Livermorio',
       'Tenesso',
       'Oganessono'
+    ]
+  },
+  {
+    pergunta: 'Cite {n} gases nobres',
+    minimo: 2, tema: 'ciencia', dif: 50,
+    respostas: [
+      'Helio', ['Neonio', 'Neon'], ['Argonio', 'Argon'], ['Criptonio', 'Kriptonio', 'Kripton', 'Cripton'],
+      ['Xenonio', 'Xenon'], ['Radonio', 'Radon'], ['Oganessono', 'Oganessonio', 'Oganesson']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} halogenios',
+    minimo: 2, tema: 'ciencia', dif: 55,
+    respostas: ['Fluor', 'Cloro', 'Bromo', 'Iodo', ['Astato', 'Astatinio', 'Astatino'], ['Tenesso', 'Tenessino', 'Tennessine']]
+  },
+  {
+    pergunta: 'Cite {n} metais alcalinos',
+    minimo: 2, tema: 'ciencia', dif: 55,
+    respostas: ['Litio', 'Sodio', 'Potassio', 'Rubidio', 'Cesio', 'Francio']
+  },
+  {
+    pergunta: 'Cite {n} frutas citricas',
+    minimo: 2, tema: 'comidas', dif: 35,
+    respostas: [
+      'Laranja', 'Limao', ['Tangerina', 'Mexerica', 'Bergamota', 'Ponca', 'Mandarina'],
+      ['Lima', 'Lima-da-persia'], ['Toranja', 'Grapefruit', 'Pomelo'], 'Cidra', ['Kumquat', 'Kinkan']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} primatas',
+    minimo: 2, tema: 'animais', dif: 40,
+    respostas: [
+      'Gorila', ['Chimpanze', 'Chimpanzes'], 'Orangotango', 'Bonobo', 'Gibao', 'Babuino', 'Mandril',
+      ['Mico-leao-dourado', 'Mico leao dourado', 'Mico-leao'], ['Sagui', 'Mico'], 'Macaco-prego',
+      ['Bugio', 'Guariba', 'Macaco-uivador'], ['Macaco-aranha', 'Coata'], 'Lemure', 'Tarsio',
+      ['Ser humano', 'Humano', 'Homem', 'Homo sapiens']
     ]
   },
   {
@@ -12566,6 +12614,7 @@ const INCLUSOES = {
     'Cite {n} instrumentos de corda', 'Cite {n} instrumentos de sopro', 'Cite {n} instrumentos de percussao'
   ],
   'Cite {n} profissoes': ['Cite {n} profissoes da area da saude'],
+  'Cite {n} elementos quimicos': ['Cite {n} gases nobres', 'Cite {n} halogenios', 'Cite {n} metais alcalinos'],
   'Cite {n} animais selvagens': ['Cite {n} animais da savana africana'],
   'Cite {n} cores': ['Cite {n} cores do arco-iris'],
   'Cite {n} pontos turisticos do mundo': ['Cite {n} das sete maravilhas do mundo moderno'],
