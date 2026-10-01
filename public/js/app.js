@@ -2433,9 +2433,44 @@ socket.on('chat:mensagem', (msg) => {
 
 formChat.addEventListener('submit', (evento) => {
   evento.preventDefault();
+  enviarDoChat();
+});
 
+/*
+ * O Enter do celular.
+ *
+ * No computador o Enter envia pelo proprio formulario. No celular nem sempre:
+ * com texto preditivo, o teclado do Android trata o Enter como "confirmar a
+ * palavra" (chega como tecla 229, sem a acao padrao de enviar), e alguns
+ * teclados mandam uma quebra de linha no lugar da tecla. Era preciso tocar
+ * duas vezes, ou no botao.
+ *
+ * Entao o Enter e tratado aqui, nos dois formatos, e o teclado mostra
+ * "Enviar" (enterkeyhint="send"), que o navegador trata como acao: confirma a
+ * palavra e envia num toque so. Quem esta compondo de verdade (japones,
+ * chines) continua confirmando com o Enter sem enviar no meio.
+ */
+inputChat.addEventListener('keydown', (evento) => {
+  if (evento.key !== 'Enter' || evento.isComposing || evento.keyCode === 229) return;
+  evento.preventDefault();
+  enviarDoChat();
+});
+inputChat.addEventListener('beforeinput', (evento) => {
+  if (evento.inputType !== 'insertLineBreak' && evento.inputType !== 'insertParagraph') return;
+  evento.preventDefault();
+  enviarDoChat();
+});
+// Tocar no botao de enviar nao tira o foco do campo: o teclado do celular
+// fica aberto para a proxima resposta.
+formChat.querySelector('.chat__enviar').addEventListener('mousedown', (evento) => evento.preventDefault());
+formChat.querySelector('.chat__enviar').addEventListener('touchstart', (evento) => {
+  evento.preventDefault();
+  enviarDoChat();
+}, { passive: false });
+
+function enviarDoChat() {
   const texto = inputChat.value.trim();
-  if (!texto) return;
+  if (!texto || inputChat.disabled) return;
   inputChat.value = '';
 
   socket.emit('sala:palpite', { texto }, (resposta) => {
@@ -2500,7 +2535,7 @@ formChat.addEventListener('submit', (evento) => {
     // Modo Tempo e Escalada: o palpite errado (ou o "quase") gastou uma chance.
     if (typeof resposta.chances === 'number') mostrarChances(resposta.chances);
   });
-});
+}
 
 /** Quantos palpites errados ainda cabem nesta pergunta, no proprio campo. */
 function mostrarChances(restam) {
