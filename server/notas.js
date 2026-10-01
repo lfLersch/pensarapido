@@ -17,6 +17,19 @@
 
 const NOTAS = [
   {
+    versao: '1.23',
+    data: '2026-10-01',
+    titulo: 'Ciencia ganha Botanica, Biologia e Quimica',
+    itens: [
+      'Mais 115 perguntas de ciencia, e a categoria agora tem tres partes para escolher na sala: Botanica, Biologia e Quimica.',
+      'Botanica: como se classificam o morango (pseudofruto) e o abacaxi (infrutescencia), os tipos de fruto, a familia da laranjeira, a das orquideas, e as partes da flor e da planta.',
+      'Biologia: reino, filo, classe, ordem, familia, genero e especie. Do cachorro aos primatas e aos bovinos, mais os filos dos animais e os reinos.',
+      'Quimica: as familias da tabela periodica (o oxigenio e um calcogenio; os gases nobres sao outra familia), metais e ametais, misturas e pH.',
+      'Na Escalada entram as listas de gases nobres, halogenios, metais alcalinos, frutas citricas, primatas e os cinco reinos.',
+      'O banco foi de 3739 para 3854 perguntas, e Ciencia de 109 para 224.'
+    ]
+  },
+  {
     versao: '1.22',
     data: '2026-10-01',
     titulo: 'Enter envia no celular',
