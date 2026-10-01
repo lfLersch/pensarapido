@@ -30,6 +30,7 @@ const estado = {
   votei: false,     // votei para pular a rodada atual
   contagem: null,
   urgencia: null,
+  pausado: false,   // o lider pausou o jogo
 };
 
 /* ----------------------------- Atalhos ----------------------------- */
@@ -1362,10 +1363,20 @@ function escapar(texto) {
  * Quem anima é o próprio navegador, por transition — assim a barra não depende
  * de a aba estar pintando quadros.
  */
+/*
+ * Os relogios que estao na tela agora: a barra, o numero e o aviso de
+ * "acabando". A pausa congela os tres onde estiverem e, na volta, cada um
+ * segue com o que faltava. Relogio que comeca com o jogo pausado (a vez do
+ * carrossel quando alguem sai, por exemplo) ja nasce parado.
+ */
+const relogio = { barra: null, numero: null, urgencia: null };
+
 function animarBarra(barra, duracaoMs) {
+  relogio.barra = { el: barra, fim: Date.now() + duracaoMs, restante: duracaoMs, parada: estado.pausado };
   barra.style.transition = 'none';
   barra.style.transform = 'scaleX(1)';
   void barra.offsetWidth; // força o navegador a aplicar o estado inicial
+  if (estado.pausado) return;
   barra.style.transition = `transform ${duracaoMs}ms linear`;
   barra.style.transform = 'scaleX(0)';
 }
@@ -1380,6 +1391,11 @@ function animarBarra(barra, duracaoMs) {
 function contarSegundos(elemento, duracaoMs, aoZerar) {
   pararContagem();
   const fim = Date.now() + duracaoMs;
+  relogio.numero = { el: elemento, fim, aoZerar, restante: duracaoMs, parado: estado.pausado };
+  if (estado.pausado) {
+    if (elemento) elemento.textContent = Math.ceil(duracaoMs / 1000);
+    return;
+  }
 
   const escrever = () => {
     const restante = Math.max(0, fim - Date.now());
@@ -1412,15 +1428,66 @@ function contarTempo(barra, duracaoMs, mostrarSegundos) {
 
   cronometro.classList.remove('urgente');
   contarSegundos($('cronometro-num'), duracaoMs);
+  vigiarUrgencia(duracaoMs);
+}
 
-  // O "urgente" acompanha o mesmo intervalo do número.
+/** O "urgente" acompanha o mesmo intervalo do número. */
+function vigiarUrgencia(duracaoMs) {
   const fim = Date.now() + duracaoMs;
   pararUrgencia();
+  relogio.urgencia = { fim, restante: duracaoMs, parada: estado.pausado };
+  if (estado.pausado) return;
   estado.urgencia = setInterval(() => {
     const segundos = Math.ceil(Math.max(0, fim - Date.now()) / 1000);
     cronometro.classList.toggle('urgente', segundos <= 5 && segundos > 0);
     if (segundos <= 0) pararUrgencia();
   }, 200);
+}
+
+/** Congela a barra, o numero e o "acabando" onde estiverem. */
+function pausarRelogios() {
+  const agora = Date.now();
+  const barra = relogio.barra;
+  if (barra && !barra.parada) {
+    barra.restante = Math.max(0, barra.fim - agora);
+    // A barra anda por transition: para parar, fixa a escala de agora.
+    const matriz = getComputedStyle(barra.el).transform;
+    const escala = matriz && matriz.startsWith('matrix(') ? parseFloat(matriz.slice(7)) : 0;
+    barra.el.style.transition = 'none';
+    barra.el.style.transform = `scaleX(${escala})`;
+    barra.parada = true;
+  }
+  const numero = relogio.numero;
+  if (numero && !numero.parado && estado.contagem) {
+    numero.restante = Math.max(0, numero.fim - agora);
+    numero.parado = true;
+    pararContagem();
+  }
+  const urgencia = relogio.urgencia;
+  if (urgencia && !urgencia.parada && estado.urgencia) {
+    urgencia.restante = Math.max(0, urgencia.fim - agora);
+    urgencia.parada = true;
+    pararUrgencia();
+  }
+}
+
+/** Cada relogio segue com o que faltava quando a pausa comecou. */
+function retomarRelogios() {
+  const barra = relogio.barra;
+  if (barra && barra.parada) {
+    barra.parada = false;
+    barra.fim = Date.now() + barra.restante;
+    void barra.el.offsetWidth;
+    barra.el.style.transition = `transform ${barra.restante}ms linear`;
+    barra.el.style.transform = 'scaleX(0)';
+  }
+  const numero = relogio.numero;
+  if (numero && numero.parado) {
+    numero.parado = false;
+    contarSegundos(numero.el, numero.restante, numero.aoZerar);
+  }
+  const urgencia = relogio.urgencia;
+  if (urgencia && urgencia.parada) vigiarUrgencia(urgencia.restante);
 }
 
 function pararUrgencia() {
@@ -1447,6 +1514,7 @@ socket.on('rodada:categoria', (dados) => {
   jogo.hidden = true;
   revelacao.hidden = false;
 
+  atualizarBotoesDePausa();
   $('revelacao-rodada').textContent = `Rodada ${dados.rodada}`;
   $('revelacao-icone').textContent = dados.categoria.icone;
   $('revelacao-nome').textContent = dados.categoria.nome;
@@ -1518,6 +1586,7 @@ function escreverPergunta(texto) {
 }
 
 socket.on('rodada:pergunta', (dados) => {
+  atualizarBotoesDePausa();
   revelacao.hidden = true;
   jogo.hidden = false;
   mostrarTela('tela-jogo');
@@ -1639,12 +1708,21 @@ socket.on('rodada:pergunta', (dados) => {
 
 /** Deixa o campo de resposta indisponível com um aviso no lugar. */
 function trancarChat(aviso) {
+  // Pausado, o campo fica trancado: a mudanca vale para quando o jogo voltar.
+  if (estado.pausado) {
+    estado.chatDaPausa = { disabled: true, placeholder: aviso };
+    return;
+  }
   inputChat.disabled = true;
   inputChat.value = '';
   inputChat.placeholder = aviso;
 }
 
 function destrancarChat(aviso) {
+  if (estado.pausado) {
+    estado.chatDaPausa = { disabled: false, placeholder: aviso };
+    return;
+  }
   inputChat.disabled = false;
   inputChat.placeholder = aviso;
   if (!('ontouchstart' in window)) inputChat.focus();
@@ -2744,6 +2822,69 @@ $('btn-novo-jogo').addEventListener('click', () => {
 });
 
 /* =====================================================================
+   Pausa
+   ===================================================================== */
+
+/*
+ * So o lider pausa e continua. Pausado, a tela "Jogo pausado" cobre a
+ * pergunta, os relogios congelam onde estavam, a musica para e o campo de
+ * resposta tranca. O servidor e quem manda: ele recusa palpite, voto e lance
+ * enquanto a pausa durar, e avisa todo mundo com 'sala:pausa'.
+ */
+
+const souLider = () => Boolean(estado.eu?.lider);
+
+function atualizarBotoesDePausa() {
+  const mostra = souLider() && !estado.pausado;
+  $('btn-pausar').hidden = !mostra;
+  $('btn-pausar-rev').hidden = !mostra;
+  $('btn-continuar').hidden = !souLider();
+  $('pausa-espera').hidden = souLider();
+}
+
+function aplicarPausa(pausado, por) {
+  if (pausado && !estado.pausado) {
+    pausarRelogios();
+    estado.pausado = true;
+    estado.chatDaPausa = { disabled: inputChat.disabled, placeholder: inputChat.placeholder };
+    inputChat.disabled = true;
+    inputChat.placeholder = 'Jogo pausado…';
+    const player = $('tocador-audio');
+    estado.musicaDaPausa = Boolean(player.src) && !player.paused;
+    if (estado.musicaDaPausa) pararAudio();
+    $('pausa').hidden = false;
+  } else if (!pausado && estado.pausado) {
+    estado.pausado = false;
+    $('pausa').hidden = true;
+    const chat = estado.chatDaPausa || { disabled: false, placeholder: 'Escreva sua resposta…' };
+    inputChat.disabled = chat.disabled;
+    inputChat.placeholder = chat.placeholder;
+    if (!chat.disabled && !('ontouchstart' in window)) inputChat.focus();
+    retomarRelogios();
+    if (estado.musicaDaPausa) {
+      $('tocador-audio').play().then(() => marcarTocando(true)).catch(() => {});
+    }
+  }
+  if (pausado) $('pausa-quem').textContent = por ? `${por} pausou o jogo.` : '';
+  atualizarBotoesDePausa();
+}
+
+function pedirPausa() {
+  socket.emit('sala:pausar', {}, (resposta) => {
+    if (resposta?.erro) brindar(resposta.erro);
+  });
+}
+$('btn-pausar').addEventListener('click', pedirPausa);
+$('btn-pausar-rev').addEventListener('click', pedirPausa);
+$('btn-continuar').addEventListener('click', () => {
+  socket.emit('sala:continuar', {}, (resposta) => {
+    if (resposta?.erro) brindar(resposta.erro);
+  });
+});
+
+socket.on('sala:pausa', ({ pausado, por } = {}) => aplicarPausa(Boolean(pausado), por));
+
+/* =====================================================================
    Eventos gerais da sala
    ===================================================================== */
 
@@ -2787,6 +2928,11 @@ socket.on('sala:estado', (sala) => {
   // Mantém o "sou eu" em dia (o líder pode ter mudado).
   const eu = sala.jogadores.find((j) => j.id === estado.eu?.id);
   if (eu) estado.eu = { ...estado.eu, ...eu };
+
+  // Quem entra (ou volta) com o jogo pausado ja abre a tela de pausa; e a
+  // partida que acaba ou volta ao saguao leva a pausa junto.
+  const emJogo = sala.estado !== 'lobby' && sala.estado !== 'fim';
+  aplicarPausa(Boolean(emJogo && sala.pausa), sala.pausa?.por);
 
   if (sala.estado === 'lobby') {
     renderizarSala();

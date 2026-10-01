@@ -296,6 +296,19 @@ io.on('connection', (socket) => {
     if (sala && Number.isInteger(rodada)) sala.imagemCarregada(socket.id, rodada);
   });
 
+  // O lider pausa e continua o jogo.
+  socket.on('sala:pausar', (_dados, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+    responder(callback, sala.pausar(socket.id));
+  });
+
+  socket.on('sala:continuar', (_dados, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+    responder(callback, sala.continuar(socket.id));
+  });
+
   // Voto para pular a rodada. Metade mais um fecha a conta.
   socket.on('sala:pular', (_dados, callback) => {
     const sala = salaDoSocket();
