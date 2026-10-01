@@ -729,6 +729,13 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   transform-origin: left;
 }
 
+/* A sala esperando a imagem da pergunta chegar em todo mundo. */
+.revelacao__espera {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--texto-suave);
+}
+
 /* Estrutura da tela de jogo */
 
 .jogo {

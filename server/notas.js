@@ -17,6 +17,16 @@
 
 const NOTAS = [
   {
+    versao: '1.21',
+    data: '2026-10-01',
+    titulo: 'A imagem aparece antes do relogio comecar',
+    itens: [
+      'Pergunta com imagem (bandeira, foto, logo) agora baixa a imagem enquanto a categoria esta na tela.',
+      'O relogio so comeca quando a imagem ja esta aparecendo para todo mundo: ninguem mais perde segundos olhando um quadro vazio.',
+      'Se alguem ainda estiver baixando, a tela da categoria avisa quantos ja estao prontos. A sala espera no maximo 4 segundos a mais.'
+    ]
+  },
+  {
     versao: '1.20',
     data: '2026-09-29',
     titulo: 'Painel de desempenho, e a sua nota agora mexe na dificuldade',

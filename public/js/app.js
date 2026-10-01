@@ -1454,8 +1454,47 @@ socket.on('rodada:categoria', (dados) => {
 
   contarTempo($('revelacao-barra'), dados.duracaoMs, false);
   contarSegundos($('revelacao-num'), dados.duracaoMs);
+  $('revelacao-espera').hidden = true;
+
+  if (dados.imagem) preCarregarImagem(dados.imagem, dados.rodada);
 
   if (dados.placar) renderizarPlacar(dados.placar);
+});
+
+/**
+ * Baixa a imagem da pergunta enquanto a categoria esta na tela, e avisa o
+ * servidor quando ela esta pronta para aparecer. O relogio da pergunta so
+ * comeca depois do aviso de todo mundo: assim ninguem perde segundos olhando
+ * um quadro vazio. A imagem vai direto no <img> da pergunta, que ainda esta
+ * escondido — quando a pergunta abrir, ela ja esta la.
+ */
+function preCarregarImagem(url, rodada) {
+  const img = $('pergunta-imagem');
+  if (img.getAttribute('src') !== url) img.src = url;
+  const avisar = () => socket.emit('rodada:imagemPronta', { rodada });
+  // decode() espera baixar E decodificar: so o "load" ainda deixaria a
+  // imagem grande pintando aos pedacos no primeiro segundo.
+  const pronta = img.decode
+    ? img.decode()
+    : new Promise((ok, falhou) => {
+      if (img.complete) return ok();
+      img.addEventListener('load', ok, { once: true });
+      img.addEventListener('error', falhou, { once: true });
+    });
+  // Imagem quebrada avisa igual: esperar por ela so atrasaria a sala.
+  pronta.then(avisar, avisar);
+}
+
+// A tela da categoria acabou, mas ainda tem gente baixando a imagem.
+socket.on('rodada:aguardando', ({ prontos, total, duracaoMs } = {}) => {
+  const aviso = $('revelacao-espera');
+  aviso.textContent = `Carregando a imagem para todo mundo… ${prontos} de ${total} prontos`;
+  if (aviso.hidden) {
+    aviso.hidden = false;
+    // A barra recomeça: e o tempo maximo que a sala espera.
+    contarTempo($('revelacao-barra'), duracaoMs, false);
+    $('revelacao-num').textContent = '';
+  }
 });
 
 /* --------------------------- 4b. Pergunta --------------------------- */
@@ -1544,7 +1583,9 @@ socket.on('rodada:pergunta', (dados) => {
 
   const figura = $('pergunta-figura');
   if (dados.imagem) {
-    $('pergunta-imagem').src = dados.imagem;
+    // Ja veio carregada na tela da categoria: trocar o src de novo faria
+    // o navegador recomecar.
+    if ($('pergunta-imagem').getAttribute('src') !== dados.imagem) $('pergunta-imagem').src = dados.imagem;
     $('pergunta-imagem').alt = dados.pergunta;
     figura.hidden = false;
   } else {

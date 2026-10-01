@@ -733,8 +733,9 @@ descola quando alguém edita só uma das listas.
 1. A **categoria aparece sozinha em tela cheia** por ~2,8s.
 2. Vem a pergunta, com a **categoria pequena logo acima dela**.
 3. Abaixo aparece o **formato da resposta**: `Johnny Depp` vira `•••••• ••••`.
-4. Perguntas de bandeira e de futebol mostram a imagem; as de música mostram um
-   trecho da letra em destaque.
+4. Perguntas de bandeira e de futebol mostram a imagem, que já vem carregada
+   da tela da categoria ([a imagem chega antes do relógio](#a-imagem-chega-antes-do-relógio));
+   as de música mostram um trecho da letra em destaque.
 5. O placar e o chat ficam ao lado (no celular, acima e abaixo da pergunta).
 6. No fim da rodada aparecem a resposta certa, as outras formas aceitas, a
    dificuldade da pergunta e quem pontuou.
@@ -1039,8 +1040,31 @@ O líder volta ao saguão pelo botão *Jogar de novo*, mantendo os jogadores.
 ## Ritmo de uma rodada
 
 ```
-categoria (2,8s)  ->  pergunta (30s)  ->  resultado  ->  próxima
+categoria (2,8s)  ->  [esperando a imagem, até 4s]  ->  pergunta (30s)  ->  resultado  ->  próxima
 ```
+
+### A imagem chega antes do relógio
+
+Pergunta com imagem (bandeira, foto, logo) manda a imagem **já na tela da
+categoria**. O navegador baixa e decodifica escondido, e avisa o servidor
+(`rodada:imagemPronta`) quando ela está pronta para aparecer. A pergunta — e o
+relógio — só abrem quando **todo mundo** que viu a categoria abrir avisou.
+
+- Quem já estava pronto não espera nada a mais: se todos avisaram dentro dos
+  2,8 s, a pergunta abre na hora de sempre.
+- Faltando alguém, a tela da categoria fica com *"Carregando a imagem para todo
+  mundo… 1 de 2 prontos"* e a barra recomeça. O último aviso abre a pergunta na
+  hora; se ele não vier, a sala segue depois de **4 segundos**, para uma
+  internet ruim não travar todo mundo.
+- Quem entra com a categoria na tela não é esperado, e quem sai deixa de ser.
+- Imagem quebrada também avisa: esperar por ela não adiantaria.
+- A imagem vai direto no `<img>` da pergunta, ainda escondido. Quando a
+  pergunta abre, o navegador não baixa de novo: ela aparece pintada no mesmo
+  quadro em que o relógio começa.
+
+Testado com duas abas, uma limitada a 30 kbps: nas três rodadas a sala esperou
+de 0,4 a 2,4 s a mais pela aba lenta, e nas duas a imagem já estava pintada
+quando a pergunta chegou. `testes/imagem.test.js` cobre o portão.
 
 Cada etapa mostra **quantos segundos faltam, em número**. A rodada não espera o
 relógio acabar: assim que **todo mundo acerta**, ela fecha na hora e o resultado

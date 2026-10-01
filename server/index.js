@@ -288,6 +288,14 @@ io.on('connection', (socket) => {
     responder(callback, sala.palpitar(socket.id, texto));
   });
 
+  // A imagem da proxima pergunta terminou de carregar neste navegador. Nao
+  // precisa de resposta: o servidor so junta os avisos e abre a pergunta
+  // quando todo mundo ja esta com ela.
+  socket.on('rodada:imagemPronta', ({ rodada } = {}) => {
+    const sala = salaDoSocket();
+    if (sala && Number.isInteger(rodada)) sala.imagemCarregada(socket.id, rodada);
+  });
+
   // Voto para pular a rodada. Metade mais um fecha a conta.
   socket.on('sala:pular', (_dados, callback) => {
     const sala = salaDoSocket();
