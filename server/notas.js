@@ -17,6 +17,94 @@
 
 const NOTAS = [
   {
+    versao: '1.26',
+    data: '2026-10-03',
+    titulo: 'Estatisticas das perguntas',
+    itens: [
+      'O saguao ganhou o botao Estatisticas das perguntas: para cada pergunta, quantas vezes ela ja caiu, quanto acertam e quanto tempo levam, em media, para acertar.',
+      'Da para buscar pelo texto da pergunta, filtrar por categoria ou parte dela e ordenar pelas mais feitas, mais ou menos acertadas, acerto mais rapido ou mais lento, e dificuldade.',
+      'Em cima ficam os totais do que esta filtrado. Pergunta de imagem mostra a imagem, e a de musica tem um botao para ouvir o trecho.',
+      'As respostas nao aparecem, para a aba nao virar cola no meio da partida.'
+    ]
+  },
+  {
+    versao: '1.25',
+    data: '2026-10-01',
+    titulo: 'Pausar o jogo',
+    itens: [
+      'O lider da sala agora tem um botao para pausar o jogo, no topo da pergunta e na tela da categoria.',
+      'Pausado, os relogios param onde estavam e a tela "Jogo pausado" cobre a pergunta. Ninguem responde nem vota ate continuar.',
+      'Quando o lider continua, o relogio segue de onde parou, e o tempo parado nao conta na pontuacao.'
+    ]
+  },
+  {
+    versao: '1.24',
+    data: '2026-10-01',
+    titulo: 'Quem da nome: leis, efeitos e sindromes',
+    itens: [
+      'Historia e Cultura ganhou a parte Quem da nome, com 94 perguntas sobre o nome por tras de leis, efeitos, paradoxos, sindromes e palavras.',
+      'Leis de Murphy, de Gerson e de Parkinson, Lei Maria da Penha e Lei Rouanet. Efeitos Mandela, Streisand, Dunning-Kruger, Doppler e Tostines.',
+      'Navalha de Ockham, gato de Schrodinger e problema de Monty Hall. Sindromes de Estocolmo e de Gabriela. E de onde vem o nome do sanduiche, da guilhotina e do boicote.',
+      'O banco foi de 3854 para 3948 perguntas.'
+    ]
+  },
+  {
+    versao: '1.23',
+    data: '2026-10-01',
+    titulo: 'Ciencia ganha Botanica, Biologia e Quimica',
+    itens: [
+      'Mais 115 perguntas de ciencia, e a categoria agora tem tres partes para escolher na sala: Botanica, Biologia e Quimica.',
+      'Botanica: como se classificam o morango (pseudofruto) e o abacaxi (infrutescencia), os tipos de fruto, a familia da laranjeira, a das orquideas, e as partes da flor e da planta.',
+      'Biologia: reino, filo, classe, ordem, familia, genero e especie. Do cachorro aos primatas e aos bovinos, mais os filos dos animais e os reinos.',
+      'Quimica: as familias da tabela periodica (o oxigenio e um calcogenio; os gases nobres sao outra familia), metais e ametais, misturas e pH.',
+      'Na Escalada entram as listas de gases nobres, halogenios, metais alcalinos, frutas citricas, primatas e os cinco reinos.',
+      'O banco foi de 3739 para 3854 perguntas, e Ciencia de 109 para 224.'
+    ]
+  },
+  {
+    versao: '1.22',
+    data: '2026-10-01',
+    titulo: 'Enter envia no celular',
+    itens: [
+      'No celular, o Enter do teclado agora envia a resposta num toque so, mesmo com o texto preditivo ligado. O teclado mostra a tecla Enviar.',
+      'Tocar no botao de enviar nao fecha mais o teclado: ele fica aberto para a proxima resposta.'
+    ]
+  },
+  {
+    versao: '1.21',
+    data: '2026-10-01',
+    titulo: 'A imagem aparece antes do relogio comecar',
+    itens: [
+      'Pergunta com imagem (bandeira, foto, logo) agora baixa a imagem enquanto a categoria esta na tela.',
+      'O relogio so comeca quando a imagem ja esta aparecendo para todo mundo: ninguem mais perde segundos olhando um quadro vazio.',
+      'Se alguem ainda estiver baixando, a tela da categoria avisa quantos ja estao prontos. A sala espera no maximo 4 segundos a mais.'
+    ]
+  },
+  {
+    versao: '1.20',
+    data: '2026-09-29',
+    titulo: 'Painel de desempenho, e a sua nota agora mexe na dificuldade',
+    itens: [
+      'O perfil ganhou um painel: sua nota geral e a de cada categoria, com a variacao da ultima partida, a evolucao partida a partida e o seu acerto em cada faixa de dificuldade ao lado do que a sua nota esperava.',
+      'Os chips em cima do painel trocam entre Geral e cada categoria. Clicar numa categoria da lista tambem abre ela no painel.',
+      'A lista por categoria marca o seu ponto forte e o que pede treino, e mostra quanto cada nota andou na ultima partida.',
+      'A dificuldade das perguntas agora olha quem jogou: quando a sala erra o que as notas dela prometiam acertar, a pergunta sobe; quando acerta o que era dado como perdido, desce. Errar entre craques pesa mais que errar entre novatos.',
+      'Quem ainda esta com nota provisoria pesa pouco nessa conta, e quem nunca jogou nao pesa nada.'
+    ]
+  },
+  {
+    versao: '1.19',
+    data: '2026-09-29',
+    titulo: 'Mais 216 perguntas de series e desenhos',
+    itens: [
+      'Perguntas de dentro das series, no estilo dos quizzes de fa: qual e o nome do irmao do Chris, quem e o "Eu" de Eu, a Patroa e as Criancas, quantos meses de aluguel o Seu Madruga deve.',
+      'Entraram Chaves, Chapolin, Um Maluco no Pedaco, Kenan e Kel, Hannah Montana, Dois Homens e Meio, Malcolm, A Grande Familia, Castelo Ra-Tim-Bum, Stranger Things, Wandinha, Round 6 e mais.',
+      'Todo Mundo Odeia o Chris, Eu, a Patroa e as Criancas, Friends, Game of Thrones e La Casa de Papel ganharam perguntas novas.',
+      'Desenhos agora tem perguntas sobre Os Simpsons, Bob Esponja, Scooby-Doo, Turma da Monica, Os Flintstones, Hora de Aventura e outros, alem das imagens.',
+      'O banco foi de 3523 para 3739 perguntas, e Cinema & TV passou de 1136 para 1352.'
+    ]
+  },
+  {
     versao: '1.18',
     data: '2026-09-26',
     titulo: 'Filmes em emojis e 246 perguntas de cinema',

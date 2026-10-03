@@ -7,11 +7,15 @@
  * e o servidor vai ajustando esse número conforme as partidas acontecem:
  *
  *   - quanto MENOS gente acerta, mais a dificuldade SOBE;
- *   - quanto MAIS demoram para acertar, mais a dificuldade SOBE.
+ *   - quanto MAIS demoram para acertar, mais a dificuldade SOBE;
+ *   - quanto MENOS a sala acerta do que as notas dela prometiam, mais SOBE.
  *
- * A dificuldade NÃO altera a pontuação — ela existe para separar perguntas por
- * nível depois (montar salas "só fácil", "só difícil", equilibrar rodadas...).
- * Se um dia for usada para pontuar, o valor já está pronto aqui.
+ * O terceiro ponto fecha o circulo com o perfil: a dificuldade mexe na nota
+ * de cada jogador (perfis.js), e a nota de quem jogou mexe na dificuldade.
+ * Errar entre craques diz mais que errar entre novatos.
+ *
+ * A dificuldade NÃO altera a pontuação. Ela ordena o sorteio (a partida
+ * começa pelas fáceis) e pesa na nota por categoria do perfil.
  */
 
 const fs = require('fs');
@@ -34,6 +38,19 @@ const PESO_MINIMO = 0.10;
 // rodadas. Sem isso, a primeira partida sozinha jogaria o valor para o extremo
 // (uma rodada em que ninguém acerta valeria 100 na hora).
 const RODADAS_DA_BASE = 4;
+
+// A chance de acerto que a nota promete, a mesma conta do perfil: nota igual
+// a dificuldade e meio a meio, 10 pontos acima sao 73%, 10 abaixo 27%.
+const ESCALA_NOTA = 10;
+
+// Quantos pontos a surpresa da sala vale. A surpresa vai de -1 (todos que
+// deviam errar acertaram) a +1 (todos que deviam acertar erraram).
+//
+// Na simulacao de `testes/circulo.test.js`, uma pergunta dificil jogada so
+// por craques e uma facil jogada so por novatos (as duas com uns 73% de
+// acerto) ficavam 5 a 11 pontos separadas sem este ajuste, e 14 a 20 com 50.
+// Passando de 80, uma rodada sozinha pesa demais.
+const PESO_SURPRESA = 50;
 
 const NIVEIS = [
   { ate: 30,  nome: 'Fácil',         cor: '#22c55e' },
@@ -177,6 +194,79 @@ function estatisticaDe(id) {
 
 /* -------------------------------- Registro -------------------------------- */
 
+/** Chance de acertar uma pergunta desta dificuldade com esta nota. */
+function chanceDeAcerto(nota, dificuldade) {
+  return 1 / (1 + Math.exp((dificuldade - nota) / ESCALA_NOTA));
+}
+
+/**
+ * O quanto a sala foi pior do que as notas dela prometiam, de -1 a +1.
+ *
+ * Cada pessoa tem uma chance esperada (a nota contra a dificuldade de antes
+ * da rodada). Errar o que era para acertar soma; acertar o que era para
+ * errar subtrai. Nota provisoria pesa na proporcao da confianca: quem nunca
+ * jogou a categoria nao diz nada sobre a pergunta.
+ */
+function surpresaDaSala(sala, dificuldadeAtual) {
+  if (!sala || !sala.length) return 0;
+  const soma = sala.reduce((total, j) => {
+    const esperado = chanceDeAcerto(j.nota, dificuldadeAtual);
+    return total + j.confianca * (esperado - (j.acertou ? 1 : 0));
+  }, 0);
+  return soma / sala.length;
+}
+
+/**
+ * A dificuldade que UMA rodada sugere, de 0 a 100.
+ *
+ *   bruta     = 100 x (0,65 x quem errou + 0,35 x tempo)
+ *   surpresa  = media de confianca x (chance esperada - acertou)
+ *   observada = bruta + 50 x surpresa
+ *
+ * `sala` e quem viu a pergunta abrir: { nota, confianca, acertou } de cada
+ * um, com a nota da categoria da pergunta. Sem sala (modos em que nem todos
+ * respondem) nao ha surpresa, e fica so a bruta, como era antes.
+ */
+function dificuldadeObservada({ jogadores, tempos, duracaoMs, sala, dificuldadeAtual }) {
+  const acertos = tempos.length;
+  const parteAcerto = 1 - acertos / jogadores;
+
+  // Quem não acertou conta como se tivesse levado a rodada inteira.
+  const parteTempo = acertos === 0
+    ? 1
+    : tempos.reduce((soma, ms) => soma + Math.min(1, ms / duracaoMs), 0) / acertos;
+
+  const bruta = 100 * (PESO_ACERTO * parteAcerto + PESO_TEMPO * parteTempo);
+  const ajuste = PESO_SURPRESA * surpresaDaSala(sala, dificuldadeAtual);
+  return Math.min(100, Math.max(0, bruta + ajuste));
+}
+
+/**
+ * O que a estatistica da pergunta vira depois de uma rodada. Nao guarda nada:
+ * `registrar` guarda, e a simulacao dos testes usa esta direto.
+ */
+function proximaEstatistica(anterior, base, rodada) {
+  const atual = anterior || { vezes: 0, jogadores: 0, acertos: 0, dificuldade: base, tempoMedio: 0 };
+  const { jogadores, tempos } = rodada;
+  const observada = dificuldadeObservada({ ...rodada, dificuldadeAtual: atual.dificuldade });
+
+  const peso = Math.max(PESO_MINIMO, 1 / (atual.vezes + RODADAS_DA_BASE));
+  const dificuldade = Math.min(100, Math.max(0,
+    atual.dificuldade + (observada - atual.dificuldade) * peso
+  ));
+
+  const somaTempos = atual.tempoMedio * atual.acertos + tempos.reduce((s, t) => s + t, 0);
+  const totalAcertos = atual.acertos + tempos.length;
+
+  return {
+    vezes: atual.vezes + 1,
+    jogadores: atual.jogadores + jogadores,
+    acertos: totalAcertos,
+    dificuldade: Math.round(dificuldade * 10) / 10,
+    tempoMedio: totalAcertos ? Math.round(somaTempos / totalAcertos) : 0
+  };
+}
+
 /**
  * Registra o resultado de uma rodada e devolve a dificuldade atualizada.
  *
@@ -186,40 +276,13 @@ function estatisticaDe(id) {
  * @param {number} rodada.jogadores  quantas pessoas podiam responder
  * @param {number[]} rodada.tempos   ms de cada acerto (só de quem acertou)
  * @param {number} rodada.duracaoMs  tempo total que a pergunta ficou no ar
+ * @param {object[]} [rodada.sala] { nota, confianca, acertou } de quem viu a pergunta abrir
  */
-function registrar(id, base, { jogadores, tempos, duracaoMs }) {
+function registrar(id, base, rodada) {
+  const { jogadores, duracaoMs } = rodada;
   if (!jogadores || jogadores < 1 || !duracaoMs) return dificuldadeDe(id, base);
 
-  const acertos = tempos.length;
-  const parteAcerto = 1 - acertos / jogadores;
-
-  // Quem não acertou conta como se tivesse levado a rodada inteira.
-  const parteTempo = acertos === 0
-    ? 1
-    : tempos.reduce((soma, ms) => soma + Math.min(1, ms / duracaoMs), 0) / acertos;
-
-  const observada = 100 * (PESO_ACERTO * parteAcerto + PESO_TEMPO * parteTempo);
-
-  const anterior = estatisticas.get(id) || {
-    vezes: 0, jogadores: 0, acertos: 0, dificuldade: base, tempoMedio: 0
-  };
-
-  const peso = Math.max(PESO_MINIMO, 1 / (anterior.vezes + RODADAS_DA_BASE));
-  const dificuldade = Math.min(100, Math.max(0,
-    anterior.dificuldade + (observada - anterior.dificuldade) * peso
-  ));
-
-  const somaTempos = anterior.tempoMedio * anterior.acertos + tempos.reduce((s, t) => s + t, 0);
-  const totalAcertos = anterior.acertos + acertos;
-
-  estatisticas.set(id, {
-    vezes: anterior.vezes + 1,
-    jogadores: anterior.jogadores + jogadores,
-    acertos: totalAcertos,
-    dificuldade: Math.round(dificuldade * 10) / 10,
-    tempoMedio: totalAcertos ? Math.round(somaTempos / totalAcertos) : 0
-  });
-
+  estatisticas.set(id, proximaEstatistica(estatisticas.get(id), base, rodada));
   sujos.add(id);
   agendarSalvamento();
   return estatisticas.get(id).dificuldade;
@@ -252,5 +315,7 @@ const pronto = carregar();
 process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 
 module.exports = {
-  idDe, registrar, dificuldadeDe, estatisticaDe, nivelDe, resumo, salvar, pronto, NIVEIS
+  idDe, registrar, dificuldadeDe, estatisticaDe, nivelDe, resumo, salvar, pronto, NIVEIS,
+  dificuldadeObservada, proximaEstatistica, surpresaDaSala, chanceDeAcerto,
+  ESCALA_NOTA, PESO_SURPRESA
 };

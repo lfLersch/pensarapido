@@ -57,6 +57,9 @@
       <button class="btn btn--fantasma btn--bloco perfil-atalho" type="button" id="btn-abrir-perfil">
         <span class="btn__icone">🏅</span> Meu perfil e conquistas
       </button>
+      <button class="btn btn--fantasma btn--bloco perfil-atalho perfil-atalho--junto" type="button" id="btn-abrir-estatisticas">
+        <span class="btn__icone">📊</span> Estatisticas das perguntas
+      </button>
 
       <p class="aviso" id="aviso-lobby" role="alert"></p>
 
@@ -99,11 +102,18 @@
 
       <div class="perfil-numeros" id="perfil-numeros"></div>
 
-      <h3 class="salas__titulo perfil-secao">Desempenho por categoria</h3>
+      <h3 class="salas__titulo perfil-secao">Painel de desempenho</h3>
+      <div class="painel__filtro" id="painel-filtro" role="tablist" aria-label="Ver o painel de"></div>
+      <div class="painel" id="painel"></div>
       <p class="perfil-explica">
-        A nota vai de 0 a 100 e leva em conta a dificuldade: acertar pergunta dificil sobe muito,
-        errar facil derruba muito. Nota 70 quer dizer que numa pergunta de dificuldade 70 a chance e meio a meio.
+        A nota vai de 0 a 100, na mesma escala da dificuldade das perguntas: nota 70 quer dizer que numa
+        pergunta de dificuldade 70 a chance e meio a meio. Acertar pergunta dificil sobe muito, errar facil
+        derruba muito. E a volta: quando a sala acerta menos do que as notas dela prometiam, a pergunta fica
+        mais dificil para todo mundo. Errar entre quem manda bem na categoria pesa mais que errar entre quem
+        esta comecando.
       </p>
+
+      <h3 class="salas__titulo perfil-secao">Por categoria</h3>
       <ul class="desempenho" id="perfil-desempenho"></ul>
 
       <h3 class="salas__titulo perfil-secao">Conquistas <span id="perfil-contagem"></span></h3>
@@ -111,6 +121,67 @@
 
       <h3 class="salas__titulo perfil-secao">Quem mais venceu</h3>
       <ol class="melhores" id="perfil-melhores"></ol>
+    </div>
+  </section>
+
+  <!-- ======================= 1A2. ESTATISTICAS ======================= -->
+  <section class="tela" id="tela-estatisticas">
+    <div class="caixa caixa--larga">
+      <div class="topo-tela">
+        <button class="btn btn--fantasma btn--icone" id="btn-voltar-estatisticas" aria-label="Voltar">←</button>
+        <div>
+          <h2 class="titulo">Estatisticas</h2>
+          <p class="subtitulo">Quantas vezes cada pergunta caiu, quanto acertam e em quanto tempo.</p>
+        </div>
+      </div>
+
+      <div class="perfil-numeros est-resumo" id="est-resumo" aria-live="polite"></div>
+
+      <div class="est-filtros">
+        <input class="est-campo est-campo--busca" id="est-busca" type="search" maxlength="80"
+               placeholder="Buscar no texto da pergunta" aria-label="Buscar no texto da pergunta"
+               autocomplete="off" spellcheck="false" enterkeyhint="search" />
+        <select class="est-campo" id="est-categoria" aria-label="Categoria">
+          <option value="">Todas as categorias</option>
+        </select>
+        <select class="est-campo" id="est-ordem" aria-label="Ordenar por">
+          <option value="vezes">Mais feitas</option>
+          <option value="menos-vezes">Menos feitas</option>
+          <option value="acerto">Mais acertadas</option>
+          <option value="menos-acerto">Menos acertadas</option>
+          <option value="rapidas">Acerto mais rapido</option>
+          <option value="lentas">Acerto mais lento</option>
+          <option value="dificuldade">Mais dificeis</option>
+          <option value="menos-dificuldade">Mais faceis</option>
+        </select>
+        <label class="est-so-feitas">
+          <input type="checkbox" id="est-feitas" /> So as que ja cairam
+        </label>
+      </div>
+
+      <p class="est-contagem" id="est-contagem"></p>
+      <table class="est-tabela" id="est-tabela">
+        <thead>
+          <tr>
+            <th scope="col" class="est-col-pergunta">Pergunta</th>
+            <th scope="col" class="est-num" data-ordem="vezes"><button type="button">Vezes</button></th>
+            <th scope="col" class="est-num" data-ordem="acerto"><button type="button">Acerto</button></th>
+            <th scope="col" class="est-num" data-ordem="rapidas"><button type="button">Tempo do acerto</button></th>
+            <th scope="col" class="est-num" data-ordem="dificuldade"><button type="button">Dificuldade</button></th>
+          </tr>
+        </thead>
+        <tbody id="est-linhas"></tbody>
+      </table>
+      <p class="painel__vazio est-vazio" id="est-vazio" hidden></p>
+      <button class="btn btn--fantasma btn--bloco est-mais" type="button" id="est-mais" hidden>Mostrar mais</button>
+
+      <p class="perfil-explica est-explica">
+        Vezes conta toda vez que a pergunta entrou em jogo, em qualquer modo. O acerto e o tempo vem das
+        rodadas que medem a pergunta (os leiloes — Presente Grego, Leilao Geral e Dando dicas — e o Mais ou Menos
+        Pontos ficam de fora): acerto e a parte de quem
+        estava na rodada que acertou, e o tempo e quanto levou, em media, do relogio abrir ate o acerto.
+        Com poucas respostas o numero ainda balanca. As respostas nao aparecem aqui, para a aba nao virar cola.
+      </p>
     </div>
   </section>
 
@@ -253,10 +324,25 @@
       <h2 class="revelacao__nome" id="revelacao-nome">Bandeiras</h2>
       <div class="revelacao__barra"><i id="revelacao-barra"></i></div>
       <span class="conta-regressiva" id="revelacao-num"></span>
+      <p class="revelacao__espera" id="revelacao-espera" hidden></p>
+      <button class="btn btn--fantasma btn--pausar" id="btn-pausar-rev" type="button" title="Pausar o jogo" hidden>
+        <span class="btn__icone">⏸</span> Pausar
+      </button>
       <button class="btn btn--fantasma btn--pular" id="btn-pular-rev" type="button">
         <span class="btn__icone">⏭</span> Pular categoria
         <b class="pular__votos" id="pular-votos-rev"></b>
       </button>
+    </div>
+
+    <!-- Jogo pausado: cobre a pergunta para ninguem pensar com o relogio parado. -->
+    <div class="pausa" id="pausa" hidden role="dialog" aria-modal="true" aria-labelledby="pausa-titulo">
+      <div class="pausa__caixa">
+        <div class="pausa__icone" aria-hidden="true">⏸</div>
+        <h2 class="pausa__titulo" id="pausa-titulo">Jogo pausado</h2>
+        <p class="pausa__quem" id="pausa-quem"></p>
+        <button class="btn btn--primario" id="btn-continuar" type="button">▶ Continuar</button>
+        <p class="pausa__espera" id="pausa-espera">Esperando o lider continuar…</p>
+      </div>
     </div>
 
     <!-- 4b. Pergunta -->
@@ -268,6 +354,9 @@
           <span class="etiqueta">Meta <b id="jogo-meta">120</b></span>
         </div>
         <div class="jogo__canto">
+          <button class="btn btn--fantasma btn--pausar" id="btn-pausar" type="button" title="Pausar o jogo" hidden>
+            <span class="btn__icone">⏸</span><span class="btn--pausar__rotulo"> Pausar</span>
+          </button>
           <button class="btn btn--fantasma btn--pular" id="btn-pular" type="button"
                   title="Votar para pular esta rodada">
             <span class="btn__icone">⏭</span> Pular
@@ -399,6 +488,7 @@
           <p class="chat__quase" id="chat-quase" hidden></p>
           <form class="chat__form" id="chat-form" autocomplete="off">
             <input id="chat-input" type="text" maxlength="120" spellcheck="false"
+                   enterkeyhint="send"
                    placeholder="Sua resposta ou uma mensagem…" />
             <button class="chat__enviar" type="submit" aria-label="Enviar">➤</button>
           </form>
