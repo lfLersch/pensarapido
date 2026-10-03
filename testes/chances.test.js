@@ -128,9 +128,11 @@ const ditoNoChat = (eventos) => eventos
   /* ---------------- 5. Os outros modos tem regra propria ---------------- */
   {
     const modos = ['tempo', 'escalada', 'carrossel', 'carrossel-cego', 'presente-grego',
-      'ranking', 'veni', 'leilao-geral', 'dando-dicas'];
+      'ranking', 'veni', 'leilao-geral', 'dando-dicas', 'corrida-musical', 'qual-e-a-musica'];
     const usam = modos.filter((modo) => new Sala('CH03', config(modo), () => {}, () => {}).usaChances());
-    conferir('so Modo Tempo e Escalada contam chances', usam, ['tempo', 'escalada']);
+    // A Corrida musical tambem e resposta digitada por todo mundo ao mesmo
+    // tempo; o Qual e a musica e um clique so.
+    conferir('so Modo Tempo, Escalada e Corrida musical contam chances', usam, ['tempo', 'escalada', 'corrida-musical']);
   }
 
   Date.now = dateNowReal;

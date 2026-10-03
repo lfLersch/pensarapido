@@ -10,6 +10,7 @@ const {
   categoriasEmJogo, perguntasEscolhidas
 } = require('./sala');
 const dificuldade = require('./dificuldade');
+const musicas = require('./musicas');
 const usos = require('./usos');
 const perfis = require('./perfis');
 const google = require('./google');
@@ -20,6 +21,7 @@ const PORTA = process.env.PORT || 3000;
 const SEGUNDOS_PERMITIDOS = [15, 20, 30, 45];
 const META_MIN = 20;
 const META_MAX = 500;
+const META_PADRAO = 120;
 // Sala que esvaziou no meio da partida nao morre na hora: quem caiu tem esse
 // tempo para voltar e reencontrar o proprio placar.
 const MS_ESPERANDO_VOLTA = 10 * 60 * 1000;
@@ -28,7 +30,18 @@ const app = express();
 const servidor = http.createServer(app);
 const io = new Server(servidor);
 
-app.use(express.static(path.join(__dirname, '..', 'public')));
+const PASTA_PUBLICA = path.join(__dirname, '..', 'public');
+app.use(express.static(PASTA_PUBLICA));
+
+// O trecho da rodada, pelo endereco sorteado. O nome do arquivo diria qual e
+// a musica; o codigo nao diz nada, e so o servidor sabe a que arquivo ele leva.
+app.get('/trecho/:codigo', (req, res) => {
+  const audio = musicas.audioDoEndereco(req.params.codigo);
+  if (!audio) return res.sendStatus(404);
+  res.set('Cache-Control', 'private, max-age=1800');
+  res.type('audio/mpeg');
+  res.sendFile(path.join(PASTA_PUBLICA, audio));
+});
 
 // O cliente monta as telas de configuração a partir daqui.
 app.get('/api/config', (_req, res) => {
@@ -39,6 +52,14 @@ app.get('/api/config', (_req, res) => {
     maxTexto: MAX_TEXTO,
     segundosPermitidos: SEGUNDOS_PERMITIDOS,
     meta: { min: META_MIN, max: META_MAX },
+    // Corrida musical e Qual e a musica: quantas musicas a partida pode ter.
+    musicas: {
+      min: musicas.MUSICAS_MIN,
+      max: musicas.MUSICAS_MAX,
+      padrao: musicas.MUSICAS_PADRAO,
+      sugeridas: musicas.MUSICAS_SUGERIDAS,
+      total: musicas.CATALOGO.length
+    },
     niveis: dificuldade.NIVEIS,
     versao: VERSAO,
     notas: NOTAS,
@@ -158,6 +179,45 @@ function limparCodigo(valor) {
 function validarConfig(bruta) {
   if (!bruta || typeof bruta !== 'object') return { erro: 'Configuração inválida.' };
 
+  const modo = MODOS.find((m) => m.id === bruta.modo && m.disponivel);
+  if (!modo) return { erro: 'Esse modo de jogo ainda não está disponível.' };
+
+  // Os modos musicais tocam os trechos de Ouvir musicas e nada mais: a
+  // escolha de categorias nao vale para eles.
+  const escolha = modo.musical
+    ? { categorias: ['ouvir'], subs: [], fora: [] }
+    : escolherCategorias(bruta);
+  if (escolha.erro) return { erro: escolha.erro };
+
+  // O que perguntar sobre o trecho e quando a partida acaba: na meta ou
+  // depois de um numero de musicas.
+  let musical = {};
+  if (modo.musical) {
+    const r = musicas.configMusical(bruta);
+    if (r.erro) return { erro: r.erro };
+    musical = r.config;
+  }
+
+  // Na partida por musicas a meta nao conta: um valor torto esquecido no
+  // campo, que nem aparece na tela, nao pode travar a sala.
+  let metaPontos = Number(bruta.metaPontos);
+  if (!Number.isInteger(metaPontos) || metaPontos < META_MIN || metaPontos > META_MAX) {
+    if (musical.fim !== 'musicas') {
+      return { erro: `A meta deve ser um número entre ${META_MIN} e ${META_MAX}.` };
+    }
+    metaPontos = META_PADRAO;
+  }
+
+  const segundos = Number(bruta.segundosPorPergunta);
+  const segundosPorPergunta = SEGUNDOS_PERMITIDOS.includes(segundos) ? segundos : 20;
+
+  return {
+    config: { ...escolha, modo: modo.id, metaPontos, segundosPorPergunta, ...musical }
+  };
+}
+
+/** As categorias e partes marcadas, so com o que existe de fato e tem pergunta. */
+function escolherCategorias(bruta) {
   const idsValidos = new Set(CATEGORIAS.map((c) => c.id));
   const categorias = Array.isArray(bruta.categorias)
     ? [...new Set(bruta.categorias.filter((id) => idsValidos.has(id)))]
@@ -182,19 +242,7 @@ function validarConfig(bruta) {
   const comPerguntas = categoriasEmJogo(escolha)
     .filter((id) => perguntasEscolhidas(escolha, id).length > 0);
   if (comPerguntas.length === 0) return { erro: 'Escolha pelo menos uma categoria.' };
-
-  const modo = MODOS.find((m) => m.id === bruta.modo && m.disponivel);
-  if (!modo) return { erro: 'Esse modo de jogo ainda não está disponível.' };
-
-  const metaPontos = Number(bruta.metaPontos);
-  if (!Number.isInteger(metaPontos) || metaPontos < META_MIN || metaPontos > META_MAX) {
-    return { erro: `A meta deve ser um número entre ${META_MIN} e ${META_MAX}.` };
-  }
-
-  const segundos = Number(bruta.segundosPorPergunta);
-  const segundosPorPergunta = SEGUNDOS_PERMITIDOS.includes(segundos) ? segundos : 20;
-
-  return { config: { categorias, subs, fora, modo: modo.id, metaPontos, segundosPorPergunta } };
+  return escolha;
 }
 
 /* -------------------------------- Socket.IO -------------------------------- */
@@ -286,6 +334,17 @@ io.on('connection', (socket) => {
     if (typeof texto !== 'string') return responder(callback, { erro: 'Mensagem inválida.' });
 
     responder(callback, sala.palpitar(socket.id, texto));
+  });
+
+  // Qual e a musica: o clique numa das quatro opcoes. Vale o primeiro.
+  socket.on('sala:escolher', ({ opcao } = {}, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Voce nao esta em uma sala.' });
+
+    const indice = Number(opcao);
+    if (!Number.isInteger(indice)) return responder(callback, { erro: 'Essa opcao nao existe.' });
+
+    responder(callback, sala.escolher(socket.id, indice));
   });
 
   // Voto para pular a rodada. Metade mais um fecha a conta.

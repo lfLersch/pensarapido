@@ -426,6 +426,18 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   border-radius: 99px;
 }
 
+/* Modos musicais: cada ajuste com o rotulo em cima e as pilulas embaixo */
+
+.opcao-config { display: grid; gap: 8px; }
+.opcao-config + .opcao-config { margin-top: 16px; }
+.opcao-config__rotulo {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+
 /* Meta / tempo */
 
 .meta { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
@@ -1032,6 +1044,9 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 /* Tocador das perguntas de audio */
 
+/* Nos modos musicais a regra da rodada vem logo antes do tocador. */
+.regra-rodada:not([hidden]) + .tocador { margin-top: 12px; }
+
 .tocador {
   display: flex;
   align-items: center;
@@ -1100,6 +1115,86 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: var(--destaque);
   white-space: nowrap;
 }
+
+/* Qual e a musica: as quatro opcoes, cada uma com a sua cor */
+
+.opcoes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+.opcao {
+  --cor-opcao: var(--primaria);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 15.5px;
+  font-weight: 700;
+  text-align: left;
+  color: var(--texto);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1.5px solid var(--borda);
+  border-left: 5px solid var(--cor-opcao);
+  border-radius: var(--raio-peq);
+  cursor: pointer;
+  transition: transform var(--transicao), border-color var(--transicao),
+              background var(--transicao), opacity var(--transicao);
+  /* backwards, e nao both: o fim da animacao nao pode prender a opacidade
+     — as opcoes que nao cliquei precisam apagar. */
+  animation: subir 260ms ease backwards;
+}
+.opcao:nth-child(1) { --cor-opcao: #f43f5e; }
+.opcao:nth-child(2) { --cor-opcao: #3b82f6; animation-delay: 40ms; }
+.opcao:nth-child(3) { --cor-opcao: #f59e0b; animation-delay: 80ms; }
+.opcao:nth-child(4) { --cor-opcao: #a855f7; animation-delay: 120ms; }
+.opcao:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--cor-opcao); }
+.opcao:disabled { cursor: default; }
+
+.opcao__letra {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--cor-opcao);
+  border-radius: 50%;
+}
+.opcao__texto { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* Na revelacao, os avatares de quem marcou cada opcao. */
+.opcao__quem { flex: none; font-size: 17px; letter-spacing: 2px; }
+.opcao__quem:empty { display: none; }
+
+/* Cliquei: as outras apagam e a minha fica marcada ate o fim da rodada. */
+.opcoes.fechadas .opcao { opacity: 0.4; }
+.opcoes.fechadas .opcao.minha {
+  opacity: 1;
+  background: rgba(124, 92, 255, 0.18);
+  border-color: var(--primaria);
+}
+.opcoes.fechadas:not(.reveladas) .opcao.minha { box-shadow: 0 6px 20px rgba(124, 92, 255, 0.3); }
+
+/* Fim da rodada: a certa acende, a minha errada fica vermelha. */
+.opcoes.reveladas .opcao { opacity: 0.65; }
+.opcoes.reveladas .opcao.certa {
+  opacity: 1;
+  border-color: var(--certo);
+  background: rgba(34, 197, 94, 0.16);
+}
+.opcoes.reveladas .opcao.errada {
+  opacity: 1;
+  border-color: var(--errado);
+  background: rgba(244, 63, 94, 0.14);
+}
+.opcoes.reveladas .opcao.certa .opcao__letra  { background: var(--certo); }
+.opcoes.reveladas .opcao.errada .opcao__letra { background: var(--errado); }
 
 .pergunta__figura {
   margin: 0 0 20px;
@@ -2397,4 +2492,10 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   background: var(--superficie);
   border: 1px solid var(--borda);
   border-radius: var(--raio-peq);
+}
+@media (max-width: 560px) {
+  /* No celular as quatro opcoes ficam uma embaixo da outra: com duas por
+     linha, titulo comprido quebrava em tres linhas. */
+  .opcoes { grid-template-columns: 1fr; gap: 8px; }
+  .opcao { min-height: 52px; padding: 10px 12px; }
 }

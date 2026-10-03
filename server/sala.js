@@ -5,6 +5,7 @@ const { avaliar, normalizar, mascaraDeAcerto } = require('./comparar');
 const { paraRodada, itemDe } = require('./escalada');
 const { PALAVRAS } = require('./dicas');
 const { RANKINGS } = require('./rankings');
+const musicas = require('./musicas');
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
 const perfis = require('./perfis');
@@ -128,6 +129,18 @@ const MIN_LETRAS_ENTREGA = 3;
    pessoa em cada uma. O que ja foi dito continua fora nas rodadas seguintes. */
 const VOLTAS_RANKING = 3;
 
+/* Corrida musical: o trecho toca e quem escreve a resposta primeiro leva a
+   rodada inteira. O primeiro acerto fecha a rodada. */
+const PONTOS_CORRIDA = 10;
+
+/* Qual e a musica: quatro opcoes e um clique. A rodada e fatiada em dez
+   partes iguais e cada parte custa 1 ponto: numa rodada de 20s, quem clica
+   na certa ate 2s leva 10, ate 4s leva 9... e nos dois ultimos segundos, 1.
+   Errar vale zero. */
+const PONTOS_MAX_ESCOLHA = 10;
+const PONTOS_MIN_ESCOLHA = 1;
+const COR_MUSICAL = '#f43f5e';
+
 /* 1 eh bom 2 ok 3 eh demais: uma palavra e tres dicas, da mais vaga para a mais obvia. */
 const PONTOS_VENI = [10, 6, 3];  // quanto vale acertar em cada dica
 const DICAS_POR_RODADA = 3;
@@ -225,6 +238,22 @@ const MODOS = [
     duplas: true
   },
   {
+    id: 'corrida-musical',
+    nome: 'Corrida musical',
+    icone: '🏁',
+    descricao: 'Toca um trecho de musica e quem escrever a resposta primeiro no chat leva 10 pontos — a rodada acaba no primeiro acerto. Da para perguntar o nome da musica, quem canta ou os dois. Sao 5 chances por musica.',
+    disponivel: true,
+    musical: true
+  },
+  {
+    id: 'qual-e-a-musica',
+    nome: 'Qual e a musica',
+    icone: '🎶',
+    descricao: 'Toca um trecho e aparecem 4 opcoes: clique na certa. Quanto mais rapido, mais pontos, de 10 ate 1, e errar vale zero. Cada um clica uma vez, e ninguem ve a escolha do outro ate o fim. Da para perguntar o nome da musica, quem canta ou os dois.',
+    disponivel: true,
+    musical: true
+  },
+  {
     id: 'equipes',
     nome: 'Equipes',
     icone: '🤝',
@@ -271,6 +300,65 @@ function calcularPontos(msNaRodada, posicao) {
   const faixa = Math.floor(Math.max(0, msNaRodada) / MS_POR_FAIXA);
   const base = PONTOS_MAX - faixa;
   return Math.max(PONTOS_MIN, base - (posicao - 1));
+}
+
+/**
+ * Pontuação do Qual e a musica: quanto mais rápido o clique, mais pontos.
+ *
+ * A rodada é fatiada em dez partes iguais, e cada uma custa 1 ponto — a
+ * escala acompanha o tempo escolhido para a sala. Numa rodada de 20s:
+ * 10 até 2s, 9 até 4s, ... 1 nos últimos dois segundos. Diferente do Modo
+ * Tempo, não há desconto de fila: cada um tem a própria corrida contra o
+ * relógio, e ninguém vê o clique do outro.
+ *
+ * @param {number} ms         quando o clique chegou, desde que a musica abriu
+ * @param {number} duracaoMs  quanto a rodada dura
+ */
+function pontosPorRapidez(ms, duracaoMs) {
+  if (!duracaoMs) return PONTOS_MIN_ESCOLHA;
+  const decorrido = Math.min(Math.max(0, ms), duracaoMs);
+  // Conta inteira de proposito: 2000 * 10 / 20000 da 1 exato, e nao 0,9999.
+  const faixa = Math.floor((decorrido * PONTOS_MAX_ESCOLHA) / duracaoMs);
+  return Math.max(PONTOS_MIN_ESCOLHA, PONTOS_MAX_ESCOLHA - faixa);
+}
+
+/**
+ * Onde um valor fica entre outros, de 0 (abaixo de todos) a 1 (acima de
+ * todos), com os empates no meio. `todas` vem em ordem crescente.
+ */
+function posicaoEntre(todas, valor) {
+  let abaixo = 0;
+  let iguais = 0;
+  for (const d of todas) {
+    if (d < valor) abaixo++;
+    else if (d === valor) iguais++;
+    else break;
+  }
+  return todas.length ? (abaixo + iguais / 2) / todas.length : 0.5;
+}
+
+/**
+ * Entre as candidatas, a de dificuldade mais perto do alvo — 0 é a mais
+ * fácil do grupo e 1 a mais difícil. A posição é medida dentro do grupo
+ * (`todas`), e não em números absolutos.
+ *
+ * @param {number[]} candidatas   índices para escolher
+ * @param {(i:number)=>number} difDe  a dificuldade de cada índice
+ * @param {number[]} todas        as dificuldades do grupo inteiro
+ * @param {number} alvo           de 0 a 1
+ */
+function maisPertoDoAndamento(candidatas, difDe, todas, alvo) {
+  const ordenadas = todas.slice().sort((a, b) => a - b);
+  let melhor = candidatas[0];
+  let menorDistancia = Infinity;
+  for (const i of candidatas) {
+    const distancia = Math.abs(posicaoEntre(ordenadas, difDe(i)) - alvo);
+    if (distancia < menorDistancia) {
+      menorDistancia = distancia;
+      melhor = i;
+    }
+  }
+  return melhor;
 }
 
 /**
@@ -322,7 +410,10 @@ function indicePerguntas() {
 class Sala {
   /**
    * @param {string} codigo
-   * @param {{categorias:string[], modo:string, metaPontos:number, segundosPorPergunta:number}} config
+   * @param {{categorias:string[], modo:string, metaPontos:number, segundosPorPergunta:number,
+   *          perguntar?:string, fim?:string, musicas?:number|null}} config
+   *        `perguntar`, `fim` e `musicas` so existem nos modos musicais: o que
+   *        perguntar sobre o trecho e se a partida acaba na meta ou na musica N.
    * @param {(evento:string, dados:any)=>void} emitir  publica um evento na sala
    * @param {(socketId:string, evento:string, dados:any)=>void} [emitirPara]
    *        fala com uma pessoa so. No Presente Grego a pergunta vai por aqui:
@@ -410,6 +501,13 @@ class Sala {
     // fechado de cada um nesta janela — ninguem ve ate o tempo acabar.
     this.dicaAtual = 0;
     this.palpitesVeni = new Map();
+
+    // Corrida musical e Qual e a musica: os trechos que ainda nao tocaram
+    // nesta partida, e o clique de cada um na rodada. O clique e guardado pelo
+    // nickname, como as chances: cair e voltar nao apaga o que ja foi marcado.
+    this.filaMusicas = null;
+    this.sacoDeTipos = [];
+    this.escolhas = new Map(); // nickname normalizado -> { indice, ms, pontos }
 
     this.temporizador = null;
     this.temporizadorVez = null; // o relógio dos 7s corre à parte do da rodada
@@ -672,6 +770,8 @@ class Sala {
 
     this.rodada = 0;
     this.filas = new Map();
+    this.filaMusicas = null;
+    this.sacoDeTipos = [];
     this.ultimasCategorias = [];
     this.respostasUsadas.clear();
     this.listasUsadas.clear();
@@ -701,6 +801,31 @@ class Sala {
 
   ehDandoDicas() {
     return this.config.modo === 'dando-dicas';
+  }
+
+  /** Corrida musical: o trecho toca e o primeiro acerto no chat leva a rodada. */
+  ehCorrida() {
+    return this.config.modo === 'corrida-musical';
+  }
+
+  /** Qual e a musica: o trecho toca e cada um clica numa das quatro opcoes. */
+  ehQualMusica() {
+    return this.config.modo === 'qual-e-a-musica';
+  }
+
+  /** Os modos que tocam os trechos de Ouvir musicas em toda rodada. */
+  ehMusical() {
+    return this.ehCorrida() || this.ehQualMusica();
+  }
+
+  /** A partida acaba depois de um numero de musicas, e nao numa pontuacao. */
+  fimPorMusicas() {
+    return this.ehMusical() && this.config.fim === 'musicas';
+  }
+
+  /** Corrida musical com alguem ja tendo acertado: a rodada esta decidida. */
+  corridaDecidida() {
+    return this.ehCorrida() && this.acertos.size > 0;
   }
 
   /** O leilao do Dando dicas anda para tras: ganha quem pedir MENOS. */
@@ -1099,6 +1224,12 @@ class Sala {
    * começo (perguntas fáceis) ou na reta final (perguntas difíceis).
    */
   andamento() {
+    // Partida por musicas: o andamento e a propria contagem — a primeira
+    // musica sai entre as mais faceis e a ultima entre as mais dificeis.
+    if (this.fimPorMusicas()) {
+      const total = this.config.musicas;
+      return total > 1 ? Math.min(1, Math.max(0, (this.rodada - 1) / (total - 1))) : 0;
+    }
     const meta = this.config.metaPontos;
     if (!meta) return 0;
     let lider = 0;
@@ -1117,30 +1248,8 @@ class Sala {
     if (candidatas.length === 1) return candidatas[0];
 
     const difDe = (q) => dificuldade.dificuldadeDe(idDaPergunta(categoria, q), q.dif ?? 40);
-    const todas = this.perguntasDaCategoria(categoria).map(difDe).sort((a, b) => a - b);
-    const posicao = (valor) => {
-      // Fração das perguntas da categoria abaixo deste valor (empates no meio).
-      let abaixo = 0;
-      let iguais = 0;
-      for (const d of todas) {
-        if (d < valor) abaixo++;
-        else if (d === valor) iguais++;
-        else break;
-      }
-      return todas.length ? (abaixo + iguais / 2) / todas.length : 0.5;
-    };
-
-    const alvo = this.andamento();
-    let melhor = candidatas[0];
-    let menorDistancia = Infinity;
-    for (const i of candidatas) {
-      const distancia = Math.abs(posicao(difDe(fila[i])) - alvo);
-      if (distancia < menorDistancia) {
-        menorDistancia = distancia;
-        melhor = i;
-      }
-    }
-    return melhor;
+    const todas = this.perguntasDaCategoria(categoria).map(difDe);
+    return maisPertoDoAndamento(candidatas, (i) => difDe(fila[i]), todas, this.andamento());
   }
 
   /**
@@ -1359,6 +1468,232 @@ class Sala {
   }
 
   /**
+   * Corrida musical e Qual e a musica: um trecho e uma pergunta sobre ele.
+   *
+   * O trecho nao volta na mesma partida, nem trocando a pergunta: quem ouviu
+   * Yellow perguntando o nome responde "Coldplay" sem precisar ouvir de novo.
+   */
+  perguntaMusical() {
+    const pedido = this.tipoDaRodada();
+    const musica = this.sacarMusica(pedido);
+    // No "os dois" a fila tem trecho que so tem uma das perguntas (o da
+    // abertura do iCarly nao tem a do nome): vale a que ele tem.
+    const tipo = musica[pedido] ? pedido : (pedido === 'nome' ? 'quem' : 'nome');
+    const q = musica[tipo];
+    const id = idDaPergunta('ouvir', q);
+    const difBase = q.dif ?? 40;
+    usos.registrar(id);
+
+    const pergunta = {
+      id,
+      pergunta: q.pergunta,
+      imagem: null,
+      audio: q.audio,
+      letra: null,
+      resposta: q.resposta,
+      aceita: q.aceita || [],
+      itens: [{ oficial: q.resposta, variantes: q.aceita || [] }],
+      necessarias: 1,
+      fixo: true,
+      // A tela da categoria ja avisa o que vem: o nome ou quem canta.
+      categoria: tipo === 'nome'
+        ? { id: 'ouvir', nome: 'Nome da musica', icone: '🎵', cor: COR_MUSICAL }
+        : { id: 'ouvir', nome: 'Quem canta', icone: '🎤', cor: COR_MUSICAL },
+      difBase,
+      dificuldade: dificuldade.dificuldadeDe(id, difBase),
+      // O fim da rodada mostra as duas coisas, seja qual for a pergunta.
+      musica: {
+        nome: musica.nome ? musica.nome.resposta : null,
+        artista: musica.quem ? musica.quem.resposta : null
+      }
+    };
+
+    // As quatro opcoes ficam guardadas aqui; a certa nunca sai do servidor
+    // antes do fim da rodada.
+    if (this.ehQualMusica()) Object.assign(pergunta, musicas.opcoesPara(musica, tipo));
+    return pergunta;
+  }
+
+  /**
+   * O nome da musica, quem canta ou — no "os dois" — um deles.
+   *
+   * No "os dois" a sorte sai de um saco com dois de cada: a cada quatro
+   * musicas, duas perguntam o nome e duas quem canta. Cara ou coroa a cada
+   * rodada deixava sair quem canta cinco vezes seguidas.
+   */
+  tipoDaRodada() {
+    const perguntar = this.config.perguntar;
+    if (perguntar === 'nome' || perguntar === 'quem') return perguntar;
+    if (!this.sacoDeTipos || this.sacoDeTipos.length === 0) {
+      this.sacoDeTipos = embaralhar(['nome', 'nome', 'quem', 'quem']);
+    }
+    return this.sacoDeTipos.pop();
+  }
+
+  /**
+   * Tira o proximo trecho da fila da partida.
+   *
+   * A fila nasce pelo rodizio (quem tocou menos nas outras partidas vem na
+   * frente) e, dentro da frente dela, sai o trecho de dificuldade mais perto
+   * do andamento — a partida comeca pelas musicas mais conhecidas.
+   */
+  sacarMusica(tipo) {
+    if (!this.filaMusicas || this.filaMusicas.length === 0) this.filaMusicas = this.novaFilaMusicas();
+    const fila = this.filaMusicas;
+
+    const janela = Math.max(JANELA_DIFICULDADE_MIN, Math.ceil(fila.length * JANELA_DIFICULDADE));
+    let candidatas = [];
+    for (let i = 0; i < fila.length && candidatas.length < janela; i++) {
+      if (fila[i][tipo]) candidatas.push(i);
+    }
+    // Acabaram os trechos com a pergunta da vez: serve qualquer um.
+    if (!candidatas.length) candidatas = fila.slice(0, janela).map((_, i) => i);
+
+    const difDe = (m) => {
+      const q = m[tipo] || m.nome || m.quem;
+      return dificuldade.dificuldadeDe(idDaPergunta('ouvir', q), q.dif ?? 40);
+    };
+    const todas = musicas.musicasPara(this.config.perguntar).filter((m) => m[tipo]).map(difDe);
+    const indice = candidatas.length === 1
+      ? candidatas[0]
+      : maisPertoDoAndamento(candidatas, (i) => difDe(fila[i]), todas, this.andamento());
+
+    return fila.splice(indice, 1)[0];
+  }
+
+  /**
+   * Os trechos que servem para o que a sala pergunta, com a frente para quem
+   * tocou menos. Um trecho sao duas perguntas no banco, e os usos se somam.
+   */
+  novaFilaMusicas() {
+    return usos.embaralharPorUso(
+      musicas.musicasPara(this.config.perguntar),
+      (m) => [m.nome, m.quem].filter(Boolean).map((q) => idDaPergunta('ouvir', q))
+    );
+  }
+
+  /**
+   * Qual e a musica: o clique de alguem numa das quatro opcoes.
+   *
+   * Vale o primeiro — nao da para trocar. O servidor so conta para a mesa
+   * QUANTOS ja escolheram, nunca o que: se desse para ver o clique do
+   * vizinho, a primeira resposta valeria pela sala inteira.
+   */
+  escolher(socketId, indice) {
+    const jogador = this.jogadores.get(socketId);
+    if (!jogador) return { erro: 'Voce nao esta nesta sala.' };
+    if (!this.ehQualMusica()) return { erro: 'Neste modo a resposta e escrita no chat.' };
+
+    const pergunta = this.perguntaAtual;
+    if (this.estado !== 'pergunta' || !pergunta || !pergunta.opcoes) {
+      return { erro: 'Nao ha musica tocando agora.' };
+    }
+    // Quem chegou com a musica tocando nao recebeu as opcoes: joga a proxima.
+    if (!this.naRodada.has(socketId)) return { erro: 'Voce entra na proxima musica.' };
+
+    const chave = normalizar(jogador.nickname);
+    if (this.escolhas.has(chave)) return { erro: 'Voce ja escolheu: vale o primeiro clique.' };
+    if (!Number.isInteger(indice) || indice < 0 || indice >= pergunta.opcoes.length) {
+      return { erro: 'Essa opcao nao existe.' };
+    }
+
+    // O relogio que vale e o do servidor, como no Modo Tempo.
+    this.escolhas.set(chave, { indice, ms: Date.now() - this.inicioPergunta, pontos: 0 });
+
+    const esperados = this.esperadosNaEscolha();
+    this.emitir('musica:escolheu', {
+      jogadorId: socketId,
+      quantos: esperados.filter((j) => this.escolhas.has(normalizar(j.nickname))).length,
+      total: esperados.length
+    });
+
+    // A mesa inteira ja clicou: nao ha o que esperar do relogio.
+    if (this.todosEscolheram()) this.agendar(() => this.encerrarRodada(), MS_TODOS_TRAVARAM);
+    return { ok: true, indice };
+  }
+
+  /** Quem viu as opcoes abrirem e continua na sala: a rodada espera essas pessoas. */
+  esperadosNaEscolha() {
+    return [...this.jogadores.values()].filter((j) => this.naRodada.has(j.id));
+  }
+
+  todosEscolheram() {
+    const esperados = this.esperadosNaEscolha();
+    return esperados.length > 0
+      && esperados.every((j) => this.escolhas.has(normalizar(j.nickname)));
+  }
+
+  /**
+   * Fecha a conta do Qual e a musica: quem clicou na certa leva o que o
+   * relogio marcava no clique. Os pontos so entram aqui, no fim — durante a
+   * rodada o placar parado nao entrega quem acertou.
+   */
+  pagarEscolhas() {
+    const pergunta = this.perguntaAtual;
+    if (!pergunta || !pergunta.opcoes) return;
+    const duracao = this.duracaoDaRodada();
+
+    const certos = [...this.jogadores.values()]
+      .map((jogador) => ({ jogador, escolha: this.escolhas.get(normalizar(jogador.nickname)) }))
+      .filter(({ escolha }) => escolha && escolha.indice === pergunta.certa)
+      .sort((a, b) => a.escolha.ms - b.escolha.ms);
+
+    certos.forEach(({ jogador, escolha }, i) => {
+      const pontos = pontosPorRapidez(escolha.ms, duracao);
+      escolha.pontos = pontos;
+      jogador.pontos += pontos;
+      jogador.acertos += 1;
+      this.pontosRodada.set(jogador.id, pontos);
+      this.acertos.set(jogador.id, { ms: escolha.ms, pontos, posicao: i + 1, bonus: 0 });
+    });
+    if (certos.length) this.primeiroAcertoEm = this.inicioPergunta + certos[0].escolha.ms;
+  }
+
+  /** As opcoes, a certa e quem marcou o que — so depois que a rodada fecha. */
+  resumoDasEscolhas() {
+    const pergunta = this.perguntaAtual;
+    if (!this.ehQualMusica() || !pergunta || !pergunta.opcoes) return null;
+    const quem = [];
+    for (const jogador of this.jogadores.values()) {
+      const escolha = this.escolhas.get(normalizar(jogador.nickname));
+      if (!escolha) continue;
+      quem.push({
+        jogadorId: jogador.id,
+        nickname: jogador.nickname,
+        avatar: jogador.avatar,
+        indice: escolha.indice,
+        ms: escolha.ms,
+        pontos: escolha.pontos
+      });
+    }
+    return { opcoes: pergunta.opcoes, certa: pergunta.certa, quem };
+  }
+
+  /**
+   * A partida acabou? Pela meta de pontos, ou — na partida por musicas —
+   * quando a ultima musica tocou.
+   */
+  partidaAcabou() {
+    if (this.fimPorMusicas()) return this.rodada >= this.config.musicas;
+    return [...this.jogadores.values()].some((j) => j.pontos >= this.config.metaPontos);
+  }
+
+  /**
+   * Quem venceu. Com meta, quem chegou nela; na partida por musicas, quem
+   * terminou com mais pontos — empate no topo e vitoria de todos os
+   * empatados, e ninguem vence com zero.
+   */
+  vencedores() {
+    const todos = [...this.jogadores.values()];
+    if (this.fimPorMusicas()) {
+      const maior = Math.max(0, ...todos.map((j) => j.pontos));
+      return maior > 0 ? todos.filter((j) => j.pontos === maior) : [];
+    }
+    const meta = this.config.metaPontos;
+    return meta ? todos.filter((j) => j.pontos >= meta) : [];
+  }
+
+  /**
    * Modo Escalada: a rodada N pede N respostas.
    * A rodada 1 é uma pergunta comum; da 2 em diante vem uma lista.
    */
@@ -1514,6 +1849,10 @@ class Sala {
   }
 
   proximaRodada() {
+    // Partida por musicas que ja tocou a ultima: nada de musica extra, nem
+    // quando a sala volta de uma pausa no meio da tela de resultado.
+    if (this.fimPorMusicas() && this.rodada >= this.config.musicas) return this.terminar();
+
     // Leilao sem dois lados não tem como acontecer.
     if (this.ehLeilao() && this.equipesAtivas().length < 2) {
       this.avisar(this.ehLeilaoGeral()
@@ -1545,6 +1884,8 @@ class Sala {
         : this.perguntaRanking();
     } else if (this.ehVeni()) {
       this.perguntaAtual = this.perguntaVeni();
+    } else if (this.ehMusical()) {
+      this.perguntaAtual = this.perguntaMusical();
     } else if (this.ehCarrossel()) {
       this.perguntaAtual = this.perguntaCarrossel(this.rodada);
       this.prepararCarrossel();
@@ -1555,6 +1896,9 @@ class Sala {
     }
 
     const categoria = this.perguntaAtual.categoria;
+    // O arquivo do trecho tem o nome da musica: para a tela vai um endereco
+    // sorteado, que so o servidor liga ao arquivo (ver musicas.js).
+    this.perguntaAtual.enderecoAudio = musicas.enderecoDoTrecho(this.perguntaAtual.audio);
 
     this.acertos = new Map();
     this.progresso = new Map();
@@ -1567,6 +1911,7 @@ class Sala {
     this.chancesGastas = new Map();
     this.dicaAtual = 0;
     this.palpitesVeni = new Map();
+    this.escolhas = new Map();
     this.primeiroAcertoEm = null;
     this.estado = 'categoria';
 
@@ -1574,6 +1919,10 @@ class Sala {
       rodada: this.rodada,
       categoria,
       duracaoMs: MS_REVELACAO,
+      // O trecho comeca a baixar enquanto a categoria esta na tela: quando a
+      // pergunta abre ele toca na hora, para todo mundo junto. Na Corrida
+      // musical, quem tem internet lenta largava atras.
+      audio: this.perguntaAtual.enderecoAudio || null,
       placar: this.placar()
     });
 
@@ -1622,9 +1971,15 @@ class Sala {
       categoria: this.perguntaAtual.categoria,
       pergunta: this.perguntaAtual.pergunta,
       imagem: this.perguntaAtual.imagem,
-      audio: this.perguntaAtual.audio,
+      audio: this.perguntaAtual.enderecoAudio || null,
       letra: this.perguntaAtual.letra,
       necessarias: this.perguntaAtual.necessarias,
+      // Qual e a musica: as quatro opcoes, sem dizer qual e a certa.
+      opcoes: this.ehQualMusica() ? this.perguntaAtual.opcoes : null,
+      // Corrida musical e Qual e a musica: o que a rodada paga.
+      musical: this.ehMusical()
+        ? { modo: this.ehCorrida() ? 'corrida' : 'opcoes', pontos: this.ehCorrida() ? PONTOS_CORRIDA : PONTOS_MAX_ESCOLHA }
+        : null,
       // A resposta NUNCA vai junto — o servidor é quem confere.
       // Vai só o formato dela: "Johnny Depp" vira "•••••• ••••".
       // Em lista com várias respostas não há máscara: entregaria demais.
@@ -1632,7 +1987,8 @@ class Sala {
       // jogo ali é adivinhar pelas dicas.
       // No Dando dicas a mascara entregaria o tamanho da palavra que o
       // parceiro esta tentando arrancar a duras penas.
-      mascara: !this.ehVeni() && !this.ehDandoDicas()
+      // No Qual e a musica ela apontaria a opcao certa pelo tamanho.
+      mascara: !this.ehVeni() && !this.ehDandoDicas() && !this.ehQualMusica()
         && this.perguntaAtual.necessarias === 1 && this.perguntaAtual.resposta
         ? this.perguntaAtual.resposta.replace(/[\p{L}\p{N}]/gu, '•')
         : null,
@@ -2173,6 +2529,12 @@ class Sala {
       return { veredito: 'chat' };
     }
 
+    // Qual e a musica: a resposta e um clique, e o chat fecha enquanto a
+    // musica toca — "e a do Coldplay" valeria pela mesa inteira.
+    if (this.ehQualMusica() && this.estado === 'pergunta') {
+      return { erro: 'Aqui a resposta e um clique numa das opcoes. O chat volta no fim da rodada.' };
+    }
+
     // Dando dicas tem duas bocas na rodada, e elas dizem coisas diferentes:
     // uma manda palavras soltas, a outra chuta a palavra secreta. Resolve tudo
     // ali, antes da conta de itens que os outros modos fazem.
@@ -2316,8 +2678,10 @@ class Sala {
     }
 
     // Quem ainda disputa a pergunta: ela esta no ar e a pessoa nao fechou.
-    // Quem gastou as chances vira plateia, igual a quem ja acertou.
-    const disputando = this.estado === 'pergunta' && !this.acertos.has(socketId);
+    // Quem gastou as chances vira plateia, igual a quem ja acertou. Na
+    // Corrida musical o primeiro acerto ja decidiu a rodada para todo mundo.
+    const decidida = this.corridaDecidida();
+    const disputando = this.estado === 'pergunta' && !this.acertos.has(socketId) && !decidida;
     const semChances = disputando && this.chancesRestantes(jogador) === 0;
 
     // Longe de tudo: vai para todo mundo. Para quem ainda disputa, e tambem um
@@ -2331,6 +2695,7 @@ class Sala {
     // Perto de alguma resposta, mas essa pessoa não pode mais pontuar (já
     // completou, gastou as chances, ou a pergunta ainda nem apareceu): a
     // mensagem morre aqui.
+    if (decidida && !this.acertos.has(socketId)) return { veredito: 'bloqueado', motivo: 'corrida' };
     if (!disputando) return { veredito: 'bloqueado' };
     if (semChances) return { veredito: 'bloqueado', motivo: 'chances' };
 
@@ -2385,6 +2750,11 @@ class Sala {
       jogador.pontos += bonus;
       this.pontosRodada.set(socketId, (this.pontosRodada.get(socketId) || 0) + bonus);
       pontos = this.pontosRodada.get(socketId);
+    } else if (this.ehCorrida()) {
+      // Corrida musical: a rodada inteira e de quem chegou primeiro.
+      pontos = PONTOS_CORRIDA;
+      jogador.pontos += pontos;
+      this.pontosRodada.set(socketId, pontos);
     } else {
       // Modo Tempo: faixa de 5s menos quem acertou antes.
       pontos = calcularPontos(ms, posicao);
@@ -2641,18 +3011,24 @@ class Sala {
    */
   ninguemMaisPontua() {
     if (this.jogadores.size === 0) return false;
+    // Corrida musical: o primeiro acerto leva a rodada, e com ele ela acaba.
+    if (this.corridaDecidida()) return true;
+    // Qual e a musica: um clique por pessoa, e a conta e feita no fim.
+    if (this.ehQualMusica()) return this.todosEscolheram();
     return [...this.jogadores.values()].every((j) => this.acertos.has(j.id)
       || this.errouRanking.has(j.id) || this.chancesRestantes(j) === 0);
   }
 
   /**
-   * Modo Tempo e Escalada: todos respondem a mesma pergunta ao mesmo tempo,
-   * digitando livre. Os outros modos ja tem regra propria para o palpite — a
-   * vez do Carrossel, o respondedor do leilao, a vez unica do Mais ou Menos
-   * Pontos, o palpite fechado do 1 eh bom.
+   * Modo Tempo, Escalada e Corrida musical: todos respondem a mesma pergunta
+   * ao mesmo tempo, digitando livre. Os outros modos ja tem regra propria
+   * para o palpite — a vez do Carrossel, o respondedor do leilao, a vez unica
+   * do Mais ou Menos Pontos, o palpite fechado do 1 eh bom, o clique unico
+   * do Qual e a musica.
    */
   usaChances() {
-    return !this.ehCarrossel() && !this.ehLeilao() && !this.ehRanking() && !this.ehVeni();
+    return !this.ehCarrossel() && !this.ehLeilao() && !this.ehRanking() && !this.ehVeni()
+      && !this.ehQualMusica();
   }
 
   /** Quantos palpites errados a pessoa ainda pode dar nesta pergunta. */
@@ -2923,10 +3299,15 @@ class Sala {
   pularRodada() {
     if (!this.rodadaNoAr()) return;
     this.limparTemporizador();
+    // Qual e a musica: quem ja tinha clicado na certa leva o que o clique
+    // valia, como em qualquer rodada pulada.
+    if (this.ehQualMusica() && this.estado === 'pergunta') this.pagarEscolhas();
     this.estado = 'resultado';
 
     const pergunta = this.perguntaAtual;
     const resposta = pergunta ? this.revelacaoSimples(pergunta) : { texto: '—', lista: [] };
+    // Pular a ultima musica tambem fecha a partida por musicas.
+    const acabou = this.partidaAcabou();
 
     this.avisar(`A sala pulou a rodada. A resposta era: ${resposta.texto}`, true);
 
@@ -2941,12 +3322,14 @@ class Sala {
       // Rodada pulada não mede a pergunta: quase ninguém tentou responder.
       dificuldade: { valor: 0, nivel: 'sem conta', cor: '#6f6791' },
       detalhes: [],
+      musica: pergunta ? pergunta.musica || null : null,
+      escolhas: this.resumoDasEscolhas(),
       placar: this.placar(),
       duracaoMs: MS_RESULTADO,
-      acabou: false
+      acabou
     });
 
-    this.agendar(() => this.proximaRodada(), MS_RESULTADO);
+    this.agendar(() => (acabou ? this.terminar() : this.proximaRodada()), MS_RESULTADO);
   }
 
   /**
@@ -3003,6 +3386,7 @@ class Sala {
     if (this.ehDandoDicas()) this.pagarDicas();
     else if (this.ehLeilaoGeral()) this.pagarLeilaoGeral();
     else if (this.ehPresenteGrego()) this.pagarPresente();
+    else if (this.ehQualMusica()) this.pagarEscolhas();
 
     // Carrossel: quem chegou vivo ao fim da rodada leva o bônus.
     if (this.ehCarrossel()) {
@@ -3026,7 +3410,10 @@ class Sala {
     // No Presente Grego a rodada não mede a pergunta: responde uma pessoa só,
     // contra um alvo que ela nem escolheu. Registrar isso sujaria a
     // estatística da lista, então aqui a dificuldade é só lida.
-    const novaDificuldade = this.ehLeilao() || this.ehRanking()
+    // Os modos musicais usam as perguntas de Ouvir musicas e também só leem:
+    // na Corrida acerta uma pessoa só, e no Qual e a musica o chute entre
+    // quatro opcoes faria a música parecer mais fácil do que é para quem digita.
+    const novaDificuldade = this.ehLeilao() || this.ehRanking() || this.ehMusical()
       ? dificuldade.dificuldadeDe(this.perguntaAtual.id, this.perguntaAtual.difBase)
       : dificuldade.registrar(this.perguntaAtual.id, this.perguntaAtual.difBase, {
           jogadores: participantes,
@@ -3056,7 +3443,9 @@ class Sala {
         eliminado: this.ehCarrossel() ? !this.vivos.has(jogador.id) : false,
         // Presente Grego e Dando dicas: de que time é e o que fez nesta rodada.
         equipe: this.temEquipes() ? (this.equipeDe(jogador.id) || {}).id || null : null,
-        papel: this.papelNoPresente(jogador.id)
+        papel: this.papelNoPresente(jogador.id),
+        // Qual e a musica: a opcao que a pessoa marcou (null se nao clicou).
+        escolha: this.ehQualMusica() ? this.escolhaDe(jogador) : null
       };
     });
 
@@ -3064,7 +3453,7 @@ class Sala {
 
     this.anotarRodadaNosPerfis(pergunta, novaDificuldade);
 
-    const vencedores = [...this.jogadores.values()].filter((j) => j.pontos >= this.config.metaPontos);
+    const acabou = this.partidaAcabou();
 
     // Como revelar depende do tipo: uma resposta só, um conjunto fechado
     // ("os 8 campeoes do mundo") ou um repertório aberto ("paises da Africa").
@@ -3137,9 +3526,14 @@ class Sala {
       textoResposta = `qualquer ${pergunta.necessarias} de ${pergunta.itens.length} possiveis`;
     }
 
+    // Nos modos musicais a ficha completa vem junto: na pergunta de quem
+    // canta, a mesa tambem quer saber que musica era.
+    const ficha = pergunta.musica
+      ? [pergunta.musica.nome, pergunta.musica.artista].filter(Boolean).join(' · ')
+      : '';
     this.avisar(this.ehLeilao()
       ? `Fim do leilao: ${textoResposta}`
-      : `A resposta era: ${textoResposta}`, true);
+      : `A resposta era: ${textoResposta}${ficha && ficha !== textoResposta ? ` (${ficha})` : ''}`, true);
 
     this.emitir('rodada:resultado', {
       rodada: this.rodada,
@@ -3155,7 +3549,12 @@ class Sala {
       listaCompleta,
       listaParcial: !pergunta.fixo && pergunta.necessarias > 1,
       necessarias: pergunta.necessarias,
-      aceita: pergunta.aceita,
+      // Qual e a musica nao tem grafia para aceitar: a resposta foi um clique.
+      aceita: this.ehQualMusica() ? [] : pergunta.aceita,
+      // Corrida musical e Qual e a musica: o nome e quem canta.
+      musica: pergunta.musica || null,
+      // Qual e a musica: as opcoes, a certa e quem marcou o que.
+      escolhas: this.resumoDasEscolhas(),
       dificuldade: {
         valor: Math.round(novaDificuldade),
         nivel: dificuldade.nivelDe(novaDificuldade).nome,
@@ -3164,13 +3563,19 @@ class Sala {
       detalhes,
       placar: this.placar(),
       duracaoMs: msResultado,
-      acabou: vencedores.length > 0
+      acabou
     });
 
     this.agendar(() => {
-      if (vencedores.length > 0) this.terminar();
+      if (acabou) this.terminar();
       else this.proximaRodada();
     }, msResultado);
+  }
+
+  /** Qual e a musica: a opcao que esta pessoa marcou nesta rodada, ou null. */
+  escolhaDe(jogador) {
+    const escolha = this.escolhas.get(normalizar(jogador.nickname));
+    return escolha ? escolha.indice : null;
   }
 
   /**
@@ -3196,7 +3601,9 @@ class Sala {
       const acerto = this.acertos.get(jogador.id);
       const novas = perfis.anotarRodada(jogador.cliente, jogador.nickname, {
         acertou,
-        ms: acerto ? acerto.ms : null,
+        // O Relampago (menos de 2s) e para quem escreveu a resposta: no Qual
+        // e a musica um clique na sorte logo de cara acerta uma vez em quatro.
+        ms: acerto && !this.ehQualMusica() ? acerto.ms : null,
         primeiro: Boolean(acerto && acerto.posicao === 1),
         dificuldade: difAntes,
         categoria,
@@ -3215,9 +3622,14 @@ class Sala {
    * quem cai nem chega a responder, e as listas de Mais ou Menos Pontos e o
    * Veni nao sao perguntas de categoria: nesses casos quem nao acertou nao
    * errou, e contar como erro puxaria a nota para baixo sem motivo.
+   *
+   * Os modos musicais tambem ficam fora. Na Corrida so o primeiro acerta, e
+   * quem sabia mas chegou depois nao errou; no Qual e a musica o chute entre
+   * quatro opcoes acerta um quarto das vezes sem saber nada.
    */
   rodadaMedeTodos() {
-    return !this.ehLeilao() && !this.ehRanking() && !this.ehCarrossel() && !this.ehVeni();
+    return !this.ehLeilao() && !this.ehRanking() && !this.ehCarrossel() && !this.ehVeni()
+      && !this.ehMusical();
   }
 
   /** Conquista nova: a pessoa recebe o aviso dela e a sala fica sabendo. */
@@ -3228,12 +3640,12 @@ class Sala {
   }
 
   terminar() {
-    const meta = this.config.metaPontos;
+    const vencedores = new Set(this.vencedores().map((j) => j.id));
     // Chamado duas vezes, a partida contaria dobrado no perfil.
     const jaTerminou = this.estado === 'fim';
     for (const jogador of jaTerminou ? [] : this.jogadores.values()) {
       const novas = perfis.fimDePartida(jogador.cliente, jogador.nickname, {
-        venceu: Boolean(meta) && jogador.pontos >= meta,
+        venceu: vencedores.has(jogador.id),
         pontos: jogador.pontos
       });
       this.anunciarConquistas(jogador, novas);
@@ -3245,7 +3657,10 @@ class Sala {
     this.emitir('jogo:fim', {
       placar: this.placar(),
       metaPontos: this.config.metaPontos,
-      rodadas: this.rodada
+      rodadas: this.rodada,
+      // Na partida por musicas nao ha meta: vence quem fez mais pontos, e o
+      // empate no topo e de todos os empatados.
+      vencedores: [...vencedores]
     });
   }
 
@@ -3264,6 +3679,9 @@ class Sala {
     this.chancesGastas = new Map();
     this.voltaRanking = 0;
     this.itensJaDitos = new Set();
+    this.filaMusicas = null;
+    this.sacoDeTipos = [];
+    this.escolhas = new Map();
     // As equipes continuam como estavam: quem já escolheu não escolhe de novo.
     this.leilao = null;
     for (const jogador of this.jogadores.values()) {
@@ -3379,5 +3797,6 @@ function perguntasEscolhidas(config, idCategoria) {
 
 module.exports = {
   Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, CHANCES_POR_PERGUNTA,
-  gerarCodigo, calcularPontos, indicePerguntas, categoriasEmJogo, perguntasEscolhidas
+  PONTOS_CORRIDA, PONTOS_MAX_ESCOLHA,
+  gerarCodigo, calcularPontos, pontosPorRapidez, indicePerguntas, categoriasEmJogo, perguntasEscolhidas
 };

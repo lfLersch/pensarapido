@@ -92,9 +92,16 @@ e que a versão do topo seja a do jogo.
 | Ajuste | Opções |
 | --- | --- |
 | Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História, Ciência, Games, **Mainstream**, **Marcas** |
-| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral** ou **Dando dicas** (Equipes aparece como *em breve*) |
+| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical** ou **Qual é a música** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
+| O que perguntar (modos musicais) | Nome da música, Quem canta ou **Os dois (padrão)** |
+| A partida acaba (modos musicais) | **Na pontuação (padrão)** ou num número de músicas: 5 / 10 / 15 / 20, ou um valor livre entre 3 e 50 |
+
+Nos dois modos musicais a grade de categorias some: eles só tocam os trechos de
+[Ouvir músicas](#categoria-ouvir-músicas). Com a partida por músicas, a
+pontuação para vencer some também — ver
+[Partida por número de músicas](#partida-por-número-de-músicas).
 
 ### Sala de espera
 
@@ -155,8 +162,9 @@ Os limites ficam no topo de [`server/comparar.js`](server/comparar.js)
 
 ### Cinco chances por pergunta
 
-No **Modo Tempo** e na **Escalada**, cada pessoa pode errar **5 vezes por
-pergunta**. Sem esse teto, quem não sabia metralhava palpites até um colar.
+No **Modo Tempo**, na **Escalada** e na **Corrida musical**, cada pessoa pode
+errar **5 vezes por pergunta**. Sem esse teto, quem não sabia metralhava
+palpites até um colar — e numa corrida, metralhar seria a estratégia.
 
 - Gasta chance todo palpite que não acerta: o que vai para o chat e o "quase".
   Durante a pergunta não há como separar conversa de chute, então o "kkk"
@@ -171,9 +179,10 @@ pergunta**. Sem esse teto, quem não sabia metralhava palpites até um colar.
   as chances.
 
 Os outros modos já tinham regra própria para o palpite e não mudam: a vez do
-Carrossel, o respondedor dos leilões, o palpite único do Mais ou Menos Pontos
-e o palpite fechado do 1 é bom 2 ok 3 é demais. O número fica em
-`CHANCES_POR_PERGUNTA`, no topo de [`server/sala.js`](server/sala.js).
+Carrossel, o respondedor dos leilões, o palpite único do Mais ou Menos Pontos,
+o palpite fechado do 1 é bom 2 ok 3 é demais e o clique único do Qual é a
+música. O número fica em `CHANCES_POR_PERGUNTA`, no topo de
+[`server/sala.js`](server/sala.js).
 
 ### Acentos
 
@@ -625,6 +634,109 @@ pessoa só, e o que ela tem na frente não é a pergunta, são as palavras que o
 parceiro escolheu. Se quem dá as dicas ou quem adivinha sai no meio, a rodada é
 **cancelada** sem ninguém pontuar.
 
+### Corrida musical
+
+Toca o começo de uma música e **quem escrever a resposta primeiro no chat
+leva 10 pontos**. Não há segundo lugar: o primeiro acerto fecha a rodada na
+hora e a resposta aparece para todo mundo.
+
+- A resposta é conferida como no Modo Tempo: acento, maiúscula e pontuação
+  não contam, o "quase" mostra onde foi o erro, e na pergunta de quem canta o
+  sobrenome basta (*Sheeran* por *Ed Sheeran*).
+- Cada um tem as [5 chances](#cinco-chances-por-pergunta) por música. Se a
+  mesa inteira gastar as chances sem ninguém acertar, a rodada fecha sem dono.
+- Quem acerta um instante depois do primeiro recebe *"Tarde demais"*, e a
+  mensagem não vai ao chat.
+
+### Qual é a música
+
+Toca o começo de uma música e aparecem **quatro opções**. Cada um clica
+**uma vez**, e **quanto mais rápido, mais pontos**: a rodada é fatiada em
+dez partes iguais e cada parte custa 1 ponto.
+
+| Clicou na certa (rodada de 20s) | Vale |
+| --- | --- |
+| até 2s | **10** |
+| de 2 a 4s | **9** |
+| … | … |
+| de 10 a 12s | **5** |
+| nos 2 últimos segundos | **1** |
+| na errada, ou não clicou | **0** |
+
+A escala acompanha o tempo escolhido para a sala: numa rodada de 30s cada
+ponto dura 3 segundos. Diferente do Modo Tempo, não há desconto de fila — cada
+um corre contra o relógio, não contra os outros.
+
+- **Ninguém vê o clique do outro.** O servidor só conta para a mesa
+  *quantos* já escolheram. Os pontos também só entram no fim: com o placar
+  andando durante a música, dava para saber quem tinha acertado.
+- **O chat fecha enquanto a música toca** — *"é a do Coldplay"* valeria pela
+  sala inteira. Ele volta na tela de resultado.
+- **No fim, as opções abrem**: a certa acende em verde, o clique errado de
+  cada um fica vermelho na tela dele, e cada opção mostra o avatar de quem
+  marcou nela.
+- **Todo mundo clicou?** A rodada fecha sem esperar o relógio.
+- No computador, as teclas **1 a 4** (ou **A a D**) também escolhem.
+
+**As opções erradas são do mesmo estilo da certa.** Cada trecho tem um estilo
+(pop, rock, rap, latina, trilha, sertanejo, funk e nacional), e as erradas
+saem primeiro do mesmo estilo, depois da mesma família (música brasileira com
+brasileira, gringa com gringa) — um sertanejo no meio de três rocks gringos se
+entregaria sozinho. Na pergunta de quem canta, banda vem com banda e dupla com
+dupla: *"Qual dupla canta esta música?"* oferece Jorge e Mateus, Victor e Leo,
+Bruno e Marrone e Zezé Di Camargo e Luciano.
+
+E nunca entra como errada **quem também é resposta**: *Jay-Z* canta em
+*Umbrella*, *Jorge e Mateus* em *Anti-Amor* e *Drake Bell* na abertura do
+iCarly. Nem nome que o jogador confundiria com a certa: *Lose Yourself* não
+aparece como errada de *Love Yourself*, e *Drake* não aparece onde a resposta
+é *Drake Bell*. A lista dos estilos fica em
+[`server/musicas.js`](server/musicas.js), e o teste reprova trecho sem estilo.
+
+O **Relâmpago** (acertar em menos de 2 segundos) não conta no Qual é a música:
+um clique na sorte logo de cara acerta uma vez em quatro.
+
+### O que perguntar sobre a música
+
+Nos dois modos musicais o líder escolhe a pergunta:
+
+- **Nome da música** — *"Qual é o nome desta música?"*;
+- **Quem canta** — *"Quem canta esta música?"* (ou *"Qual banda/dupla/grupo
+  canta…"*, o mesmo enunciado de Ouvir músicas);
+- **Os dois** — metade de cada. O sorteio sai de um saco com dois de cada,
+  então a cada quatro músicas duas perguntam o nome e duas quem canta; cara ou
+  coroa deixava sair a mesma pergunta cinco vezes seguidas.
+
+A tela da categoria já avisa o que vem (🎵 *Nome da música* ou 🎤 *Quem
+canta*), e no fim aparece a ficha completa — *Yellow · Coldplay* — seja qual
+for a pergunta.
+
+As músicas são as 93 de [Ouvir músicas](#categoria-ouvir-músicas). **O mesmo
+trecho não volta na partida**, nem trocando a pergunta: quem ouviu *Yellow*
+perguntando o nome responde *Coldplay* sem precisar ouvir de novo. A fila
+segue o [rodízio](#rodízio-a-mesma-pergunta-não-volta-tão-cedo) — o trecho que
+tocou menos nas outras partidas vem antes, somando as duas perguntas dele — e a
+[dificuldade crescente](#dificuldade-crescente): a partida começa pelas
+músicas mais conhecidas.
+
+Nenhum dos dois modos **alimenta a dificuldade adaptativa** nem a nota por
+categoria: na Corrida só uma pessoa acerta, e quem sabia mas chegou depois não
+errou; no Qual é a música, o chute entre quatro opções faria a música parecer
+mais fácil do que é para quem digita a resposta.
+
+### Partida por número de músicas
+
+Nos modos musicais a partida pode acabar **na pontuação**, como em todos os
+outros modos, ou **depois de um número de músicas** — de 3 a 50. Na partida
+por músicas:
+
+- o topo do jogo mostra *Música 3/10* no lugar da rodada e da meta;
+- **vence quem fez mais pontos** depois da última. Empate no topo é vitória
+  de todos os empatados, e ninguém vence com zero;
+- pular a última música também fecha a partida;
+- a dificuldade crescente anda pela contagem: a primeira música sai entre as
+  mais fáceis e a última entre as mais difíceis.
+
 ### Pular a rodada
 
 Qualquer pessoa pode votar para **pular a rodada**, e com **metade mais um**
@@ -643,7 +755,8 @@ Duas decisões que valem registrar:
   por não saber, e ficar sem saber é pior que a rodada perdida.
 - **O que já foi ganho continua ganho.** Tirar ponto de quem acertou antes da
   votação fechar transformaria o botão em castigo — o voto é para destravar a
-  mesa, não para punir quem sabia.
+  mesa, não para punir quem sabia. No Qual é a música, em que os pontos só
+  entram no fim, quem já tinha clicado na certa leva o que o clique valia.
 
 Rodada pulada **não alimenta a dificuldade adaptativa**: quase ninguém tentou
 responder, então ela não mede nada sobre a pergunta.
@@ -842,8 +955,9 @@ Com nota 50 e já com 10 rodadas jogadas:
 - A dificuldade usada é a de **antes** da rodada, porque a de depois já traz
   o resultado dela.
 - **Contam o Modo Tempo e a Escalada**, em que todos respondem a mesma
-  pergunta. Leilões, Carrossel, Mais ou Menos Pontos e Veni ficam de fora,
-  porque neles quem não acertou nem sempre errou.
+  pergunta. Leilões, Carrossel, Mais ou Menos Pontos, Veni e os modos
+  musicais ficam de fora, porque neles quem não acertou nem sempre errou — e,
+  no Qual é a música, quem acertou pode ter chutado.
 - **Quem chega no meio da rodada não leva erro:** só conta quem viu a pergunta
   abrir.
 - Com menos de 5 rodadas na categoria, a nota aparece como provisória.
@@ -947,6 +1061,7 @@ server/
   sala.js        regras da sala e da partida (estados, pontuação, rodadas, chat)
   comparar.js    normalização e a régua de acerto / quase / chat
   escalada.js    listas de resposta múltipla do Modo Escalada
+  musicas.js     os trechos dos modos musicais, o estilo de cada um e as 4 opções
   banco.js       conexão com o Postgres (só com DATABASE_URL)
   dificuldade.js dificuldade adaptativa e persistência das estatísticas
   questions.js   banco de perguntas por categoria
@@ -1157,6 +1272,24 @@ dos dois nomes.
 - O trecho é sempre o começo da música, de 0:00 a 0:40 (Wish You Were Here, de 0:17 a 0:57). Dá para trocar o de
   qualquer música por outro ponto, escolhendo o segundo na mão.
 - Quando o navegador bloqueia o som automático, o tocador pede um toque.
+- **O endereço do áudio não entrega a música.** O arquivo se chama
+  `trecho-yellow.mp3`, e mandar esse endereço para a tela era mostrar a
+  resposta para quem abrisse o inspetor. Cada rodada ganha um endereço
+  sorteado (`/trecho/<código>`) que só o servidor sabe ligar ao arquivo; ele
+  vale por 30 minutos. O tamanho do arquivo continua sendo o dele: quem baixar
+  os 93 trechos e montar uma tabela de tamanhos ainda descobre a música. O
+  endereço sorteado tira a resposta do inspetor, não de quem tiver esse
+  trabalho todo.
+- **O trecho começa a baixar na tela da categoria.** O endereço já vai junto
+  com a revelação, e quando a pergunta abre o áudio toca na hora — antes, quem
+  tinha internet lenta largava segundos atrás, o que na Corrida musical decide
+  a rodada.
+
+Os trechos também são o banco dos modos [Corrida musical](#corrida-musical) e
+[Qual é a música](#qual-é-a-música), que juntam as duas perguntas de cada
+trecho e anotam o estilo dele em [`server/musicas.js`](server/musicas.js).
+**Música nova precisa de estilo lá**, senão o teste reprova: é dele que saem as
+opções erradas do Qual é a música.
 
 > São músicas com direito autoral. Para jogar entre amigos tudo bem, mas no site
 > público os trechos ficam acessíveis para qualquer um.
@@ -1239,7 +1372,12 @@ fecha em quem sobrou e as duas contas da pontuação), a **votação para pular*
 alterna, as três fases em que vale e o que acontece quando quem votou sai),
 as **5 chances por pergunta** (o que gasta, o que não gasta, a resposta certa
 que não vale nem vaza depois da última, a rodada que fecha quando ninguém mais
-pode pontuar e a chance que não volta ao recarregar a página)
+pode pontuar e a chance que não volta ao recarregar a página),
+os **modos musicais** (todo trecho com estilo, as quatro opções sem nenhuma
+errada que também seja resposta, o endereço do áudio que não entrega a música,
+o primeiro acerto que fecha a Corrida, o clique único que só pontua no fim,
+a escala de 10 a 1, a partida por músicas, o empate no topo e o "os dois" que
+pergunta metade de cada)
 e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim

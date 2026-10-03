@@ -151,15 +151,20 @@ function pesoDe(vezes, piso) {
  * continua possível, e com todos os pesos iguais isto é exatamente um
  * embaralhamento uniforme.
  *
+ * Um item pode ter mais de um id: o trecho de musica e uma coisa so para
+ * quem joga, mas sao duas perguntas no banco (o nome e quem canta). Os usos
+ * se somam — saiu o nome ontem, o trecho perde peso hoje.
+ *
  * @param {T[]} itens
- * @param {(item:T)=>string} idDe  como achar o id de cada item
+ * @param {(item:T)=>string|string[]} idDe  como achar o id (ou os ids) de cada item
  * @returns {T[]} uma copia embaralhada
  * @template T
  */
 function embaralharPorUso(itens, idDe) {
   if (itens.length < 2) return itens.slice();
 
-  const vezes = itens.map((item) => usosDe(idDe(item)));
+  const vezes = itens.map((item) => [].concat(idDe(item))
+    .reduce((soma, id) => soma + usosDe(id), 0));
   const piso = Math.min(...vezes);
 
   return itens

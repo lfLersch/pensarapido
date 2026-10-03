@@ -140,7 +140,7 @@
         </div>
       </div>
 
-      <div class="bloco">
+      <div class="bloco" id="bloco-categorias">
         <div class="bloco__cabecalho">
           <h3 class="bloco__titulo">Categorias</h3>
           <div class="bloco__acoes">
@@ -157,7 +157,36 @@
         <div class="grade-modos" id="grade-modos"></div>
       </div>
 
-      <div class="bloco">
+      <!-- Corrida musical e Qual e a musica: so tocam os trechos de Ouvir
+           musicas, entao no lugar das categorias vem o que perguntar e
+           quando a partida acaba. -->
+      <div class="bloco" id="bloco-musical" hidden>
+        <h3 class="bloco__titulo">Musicas</h3>
+        <p class="bloco__dica" id="musical-dica">Cada rodada toca o comeco de uma musica de Ouvir musicas.</p>
+        <div class="opcao-config">
+          <span class="opcao-config__rotulo">O que perguntar</span>
+          <div class="meta__opcoes" id="perguntar-opcoes"></div>
+        </div>
+        <div class="opcao-config">
+          <span class="opcao-config__rotulo">A partida acaba</span>
+          <div class="meta__opcoes" id="fim-opcoes"></div>
+        </div>
+      </div>
+
+      <div class="bloco" id="bloco-musicas" hidden>
+        <h3 class="bloco__titulo">Quantas musicas</h3>
+        <p class="bloco__dica">Depois da ultima, vence quem tiver mais pontos.</p>
+        <div class="meta">
+          <div class="meta__opcoes" id="musicas-opcoes"></div>
+          <label class="campo campo--inline">
+            <span class="campo__rotulo">Personalizado</span>
+            <input id="input-musicas" type="number" min="3" max="50" step="1" value="10" />
+            <span class="campo__sufixo">musicas</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="bloco" id="bloco-meta">
         <h3 class="bloco__titulo">Pontuacao para vencer</h3>
         <p class="bloco__dica">O primeiro que chegar nessa pontuacao leva a partida.</p>
         <div class="meta">
@@ -254,7 +283,7 @@
       <div class="revelacao__barra"><i id="revelacao-barra"></i></div>
       <span class="conta-regressiva" id="revelacao-num"></span>
       <button class="btn btn--fantasma btn--pular" id="btn-pular-rev" type="button">
-        <span class="btn__icone">⏭</span> Pular categoria
+        <span class="btn__icone">⏭</span> <span id="pular-rev-texto">Pular categoria</span>
         <b class="pular__votos" id="pular-votos-rev"></b>
       </button>
     </div>
@@ -264,8 +293,8 @@
       <header class="jogo__topo">
         <div class="jogo__info">
           <span class="etiqueta">Sala <b id="jogo-codigo">----</b></span>
-          <span class="etiqueta">Rodada <b id="jogo-rodada">1</b></span>
-          <span class="etiqueta">Meta <b id="jogo-meta">120</b></span>
+          <span class="etiqueta"><span id="jogo-rodada-rotulo">Rodada</span> <b id="jogo-rodada">1</b></span>
+          <span class="etiqueta" id="jogo-meta-etiqueta">Meta <b id="jogo-meta">120</b></span>
         </div>
         <div class="jogo__canto">
           <button class="btn btn--fantasma btn--pular" id="btn-pular" type="button"
@@ -309,6 +338,10 @@
             <span class="tocador__aviso" id="tocador-aviso"></span>
             <audio id="tocador-audio" preload="auto"></audio>
           </div>
+
+          <!-- Qual e a musica: as quatro opcoes, um clique so. As letras
+               (A a D, ou 1 a 4 no teclado) servem de atalho. -->
+          <div class="opcoes" id="opcoes" hidden></div>
 
           <figure class="pergunta__figura" id="pergunta-figura" hidden>
             <img id="pergunta-imagem" alt="Imagem da pergunta" />
@@ -379,7 +412,7 @@
               <span class="selo-dificuldade" id="selo-dificuldade"></span>
             </div>
             <p class="proxima" id="proxima">
-              Proxima pergunta em <b id="resultado-num">3</b>s
+              Proxima <span id="proxima-o-que">pergunta</span> em <b id="resultado-num">3</b>s
             </p>
             <p class="resultado__aceita" id="resultado-aceita"></p>
             <ul class="resultado__lista" id="resultado-lista"></ul>

@@ -17,7 +17,12 @@ const estado = {
     subs: new Set(),
     modo: 'tempo',
     metaPontos: 120,
-    segundosPorPergunta: 20
+    segundosPorPergunta: 20,
+    // Corrida musical e Qual e a musica: o que perguntar sobre o trecho e
+    // quando a partida acaba — na meta de pontos ou depois de N musicas.
+    perguntar: 'os-dois',
+    fim: 'pontos',
+    musicas: 10
   },
   acertou: false,
   necessarias: 1,   // Escalada: quantas respostas a rodada pede
@@ -27,6 +32,7 @@ const estado = {
   carrossel: null,  // Carrossel: { voltas, msPorVez, ordem } da rodada
   vivos: null,      // Carrossel: quem ainda nao saiu
   presente: null,   // Presente Grego: { equipes, aposta, ... } da rodada
+  opcoes: null,     // Qual e a musica: { textos, minha, fechadas } da rodada
   votei: false,     // votei para pular a rodada atual
   contagem: null,
   urgencia: null,
@@ -66,6 +72,46 @@ function brindar(texto) {
 }
 
 const plural = (n, um, muitos) => `${n} ${n === 1 ? um : muitos}`;
+
+/* ---------------------------- Modos musicais ---------------------------- */
+
+/** Corrida musical e Qual e a musica: tocam os trechos de Ouvir musicas. */
+function modoMusical(idModo) {
+  const modo = estado.config?.modos.find((m) => m.id === idModo);
+  return Boolean(modo && modo.musical);
+}
+
+/** A partida acaba depois de N musicas, e nao numa meta de pontos. */
+const porMusicas = (config) => Boolean(config) && modoMusical(config.modo) && config.fim === 'musicas';
+
+const PERGUNTAR = [
+  ['nome', '🎵 Nome da musica'],
+  ['quem', '🎤 Quem canta'],
+  ['os-dois', '🔀 Os dois']
+];
+const textoPerguntar = (id) => ({ nome: 'nome da musica', quem: 'quem canta', 'os-dois': 'nome e quem canta' }[id] || '');
+
+/** "Meta 120 pts" ou "10 musicas", para os resumos da configuracao e da sala. */
+function resumoDoFim(config) {
+  return porMusicas(config)
+    ? `<span><b>${plural(config.musicas, 'musica', 'musicas')}</b></span>`
+    : `<span>Meta <b>${config.metaPontos} pts</b></span>`;
+}
+
+/**
+ * As etiquetas do topo do jogo. Nos modos musicais a rodada e uma musica;
+ * na partida por musicas ela vem com o total ("Musica 3/10"), e a meta some
+ * porque nao existe.
+ */
+function escreverTopo(rodada, config) {
+  const musical = Boolean(config) && modoMusical(config.modo);
+  const contagem = porMusicas(config);
+  $('jogo-codigo').textContent = estado.sala?.codigo || '----';
+  $('jogo-rodada-rotulo').textContent = musical ? 'Musica' : 'Rodada';
+  $('jogo-rodada').textContent = contagem ? `${rodada}/${config.musicas}` : rodada;
+  $('jogo-meta-etiqueta').hidden = contagem;
+  $('jogo-meta').textContent = `${config?.metaPontos ?? '—'} pts`;
+}
 
 /* =====================================================================
    1. SAGUÃO
@@ -442,7 +488,8 @@ async function carregarConfig() {
   montarModos();
   montarMetas();
   montarTempos();
-  atualizarResumo();
+  montarMusical();
+  sincronizarModo();
 }
 
 function montarCategorias() {
@@ -577,7 +624,7 @@ function montarModos() {
       item.addEventListener('click', () => {
         estado.escolhas.modo = modo.id;
         document.querySelectorAll('.modo').forEach((m) => m.classList.toggle('escolhido', m.dataset.id === modo.id));
-        atualizarResumo();
+        sincronizarModo();
       });
     } else {
       item.disabled = true;
@@ -644,17 +691,90 @@ function montarTempos() {
   }
 }
 
+/**
+ * Corrida musical e Qual e a musica: o que perguntar sobre o trecho, quando a
+ * partida acaba e — se for por musicas — quantas.
+ */
+function montarMusical() {
+  const pilulas = (caixa, opcoes, campo) => {
+    $(caixa).innerHTML = '';
+    for (const [valor, texto] of opcoes) {
+      const pilula = criar('button', 'pilula');
+      pilula.type = 'button';
+      pilula.dataset.valor = String(valor);
+      pilula.textContent = texto;
+      pilula.addEventListener('click', () => {
+        estado.escolhas[campo] = valor;
+        if (campo === 'musicas') $('input-musicas').value = valor;
+        sincronizarModo();
+      });
+      $(caixa).appendChild(pilula);
+    }
+  };
+
+  const limites = estado.config.musicas || { min: 3, max: 50, padrao: 10, sugeridas: [5, 10, 15, 20] };
+  estado.escolhas.musicas = limites.padrao;
+
+  pilulas('perguntar-opcoes', PERGUNTAR, 'perguntar');
+  pilulas('fim-opcoes', [['pontos', '🏆 Na pontuacao'], ['musicas', '🔢 Num numero de musicas']], 'fim');
+  pilulas('musicas-opcoes', limites.sugeridas.map((n) => [n, `${n} musicas`]), 'musicas');
+
+  const input = $('input-musicas');
+  input.min = String(limites.min);
+  input.max = String(limites.max);
+  input.value = String(limites.padrao);
+  input.addEventListener('input', () => {
+    const valor = parseInt(input.value, 10);
+    if (Number.isInteger(valor)) {
+      estado.escolhas.musicas = valor;
+      sincronizarModo();
+    }
+  });
+
+  if (limites.total) {
+    $('musical-dica').textContent = `Cada rodada toca o comeco de uma das ${limites.total} musicas de Ouvir musicas.`;
+  }
+}
+
+/**
+ * Mostra so o que vale para o modo escolhido: os modos musicais trocam as
+ * categorias pelo que perguntar, e a partida por musicas troca a meta de
+ * pontos pelo numero de musicas.
+ */
+function sincronizarModo() {
+  const musical = modoMusical(estado.escolhas.modo);
+  const contagem = musical && estado.escolhas.fim === 'musicas';
+
+  $('bloco-categorias').hidden = musical;
+  $('bloco-musical').hidden = !musical;
+  $('bloco-musicas').hidden = !contagem;
+  $('bloco-meta').hidden = contagem;
+
+  const marcar = (caixa, valor) => document.querySelectorAll(`#${caixa} .pilula`).forEach((p) => {
+    p.classList.toggle('escolhida', p.dataset.valor === String(valor));
+  });
+  marcar('perguntar-opcoes', estado.escolhas.perguntar);
+  marcar('fim-opcoes', estado.escolhas.fim);
+  marcar('musicas-opcoes', estado.escolhas.musicas);
+
+  atualizarResumo();
+}
+
 function atualizarResumo() {
   const total = categoriasEscolhidas().length;
   const modo = estado.config.modos.find((m) => m.id === estado.escolhas.modo);
+  const musical = Boolean(modo && modo.musical);
   $('resumo-config').innerHTML = `
-    <span>${plural(total, 'categoria', 'categorias')}</span>
+    ${musical
+      ? `<span>🔊 Pergunta: <b>${textoPerguntar(estado.escolhas.perguntar)}</b></span>`
+      : `<span>${plural(total, 'categoria', 'categorias')}</span>`}
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
-    <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
+    ${resumoDoFim(estado.escolhas)}
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
     ${modo && modo.equipes ? '<span>👥 <b>4+</b> jogadores, em equipes</span>' : ''}`;
 
-  $('btn-criar').disabled = total === 0;
+  // Os modos musicais nao usam as categorias: nao ha o que marcar.
+  $('btn-criar').disabled = !musical && total === 0;
 }
 
 $('btn-criar').addEventListener('click', () => {
@@ -663,7 +783,8 @@ $('btn-criar').addEventListener('click', () => {
     mostrarTela('tela-lobby');
     return avisar('aviso-lobby', 'Digite um nickname com pelo menos 2 caracteres.');
   }
-  if (categoriasEscolhidas().length === 0) {
+  const musical = modoMusical(estado.escolhas.modo);
+  if (!musical && categoriasEscolhidas().length === 0) {
     return avisar('aviso-config', 'Escolha pelo menos uma categoria.');
   }
 
@@ -677,7 +798,11 @@ $('btn-criar').addEventListener('click', () => {
     subs: [...estado.escolhas.subs].filter((parte) => !marcadas.has(parte.split(':')[0])),
     modo: estado.escolhas.modo,
     metaPontos: estado.escolhas.metaPontos,
-    segundosPorPergunta: estado.escolhas.segundosPorPergunta
+    segundosPorPergunta: estado.escolhas.segundosPorPergunta,
+    // So os modos musicais leem isto; nos outros o servidor ignora.
+    perguntar: estado.escolhas.perguntar,
+    fim: estado.escolhas.fim,
+    musicas: estado.escolhas.musicas
   };
 
   socket.emit('sala:criar', { nickname, config, cliente: carteirinha() }, (resposta) => {
@@ -709,12 +834,15 @@ function renderizarSala() {
   const modo = estado.config.modos.find((m) => m.id === sala.config.modo);
   // Categoria que entrou só com uma parte também conta.
   const emJogo = [...new Set([...sala.config.categorias, ...(sala.config.subs || []).map((s) => s.split(':')[0])])];
+  const musical = Boolean(modo && modo.musical);
   $('resumo-sala').innerHTML = `
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
-    <span>Meta <b>${sala.config.metaPontos} pts</b></span>
+    ${resumoDoFim(sala.config)}
     <span><b>${sala.config.segundosPorPergunta}s</b> por pergunta</span>
-    <span>${plural(emJogo.length, 'categoria', 'categorias')}</span>`;
-  $('resumo-sala').title = emJogo.map(nomeCategoria).join(', ');
+    ${musical
+      ? `<span>🔊 Pergunta: <b>${textoPerguntar(sala.config.perguntar)}</b></span>`
+      : `<span>${plural(emJogo.length, 'categoria', 'categorias')}</span>`}`;
+  $('resumo-sala').title = musical ? '' : emJogo.map(nomeCategoria).join(', ');
 
   // Nos modos em equipe a sala vira um time por caixa; nos outros, uma lista só.
   const porEquipes = Boolean(modo && modo.equipes);
@@ -967,6 +1095,9 @@ function sairDaSala() {
     estado.eu = null;
     estado.sala = null;
     pararAnimacao();
+    // Saiu com a musica tocando: ela nao segue no saguao.
+    pararAudio();
+    montarOpcoes(null);
     mostrarTela('tela-lobby');
   });
 }
@@ -1085,11 +1216,22 @@ socket.on('rodada:categoria', (dados) => {
   mostrarTela('tela-jogo');
   jogo.hidden = true;
   revelacao.hidden = false;
+  montarOpcoes(null);
 
-  $('revelacao-rodada').textContent = `Rodada ${dados.rodada}`;
+  // Nos modos musicais cada rodada e uma musica — e, na partida por
+  // musicas, a tela ja diz quantas faltam.
+  const config = estado.sala?.config;
+  const musical = Boolean(config) && modoMusical(config.modo);
+  $('revelacao-rodada').textContent = porMusicas(config)
+    ? `Musica ${dados.rodada} de ${config.musicas}`
+    : `${musical ? 'Musica' : 'Rodada'} ${dados.rodada}`;
+  $('pular-rev-texto').textContent = musical ? 'Pular musica' : 'Pular categoria';
   $('revelacao-icone').textContent = dados.categoria.icone;
   $('revelacao-nome').textContent = dados.categoria.nome;
   $('revelacao-nome').style.color = '';
+
+  // O trecho ja comeca a baixar: quando a pergunta abrir, toca na hora.
+  prepararAudio(dados.audio);
 
   contarTempo($('revelacao-barra'), dados.duracaoMs, false);
   contarSegundos($('revelacao-num'), dados.duracaoMs);
@@ -1124,9 +1266,7 @@ socket.on('rodada:pergunta', (dados) => {
 
   estado.acertou = false;
 
-  $('jogo-codigo').textContent = estado.sala?.codigo || '----';
-  $('jogo-rodada').textContent = dados.rodada;
-  $('jogo-meta').textContent = `${estado.sala?.config.metaPontos ?? '—'} pts`;
+  escreverTopo(dados.rodada, estado.sala?.config);
 
   // A categoria fica pequena, logo acima da pergunta.
   $('pergunta-categoria').style.setProperty('--cor-categoria', dados.categoria.cor);
@@ -1154,9 +1294,15 @@ socket.on('rodada:pergunta', (dados) => {
   mostrarDicas(dados.veni);
 
   // Mais ou Menos Pontos: a escala fica a vista, senao ninguem sabe se vale
-  // a pena arriscar o nome dificil.
+  // a pena arriscar o nome dificil. Nos modos musicais, a regra da rodada.
   const escala = $('ranking-aviso');
-  escala.hidden = !dados.ranking;
+  escala.hidden = !dados.ranking && !dados.musical;
+  escala.title = '';
+  if (dados.musical) {
+    escala.textContent = dados.musical.modo === 'corrida'
+      ? `Corrida: quem escrever a resposta primeiro leva ${dados.musical.pontos} pontos e fecha a rodada.`
+      : `Clique na certa: quanto mais rapido, mais pontos — de ${dados.musical.pontos} ate 1. Errar vale zero, e vale o primeiro clique.`;
+  }
   if (dados.ranking) {
     const ja = dados.ranking.jaDitos || [];
     escala.textContent = `Volta ${dados.ranking.volta} de ${dados.ranking.voltas} nesta lista. `
@@ -1220,13 +1366,23 @@ socket.on('rodada:pergunta', (dados) => {
   if (dados.presente) abrirEntregaDoPresente(dados.presente);
   else { $('presente').hidden = true; $('segredo').hidden = true; }
 
-  if (!dados.presente) mensagemSistema(`Rodada ${dados.rodada} · ${dados.categoria.nome}`);
+  if (!dados.presente) {
+    mensagemSistema(`${dados.musical ? 'Musica' : 'Rodada'} ${dados.rodada} · ${dados.categoria.nome}`);
+  }
 
   // 1 eh bom 2 ok 3 eh demais: aqui o campo nao e chat, e um palpite fechado — ele so
   // aparece para a mesa quando o tempo da dica acaba.
   if (dados.veni) {
     inputChat.placeholder = 'Trave sua resposta — ninguem ve ate a janela fechar…';
     $('status-respostas').textContent = 'Ninguem palpitou ainda.';
+  }
+
+  // Qual e a musica: a resposta e um clique, e o chat fica fechado enquanto
+  // a musica toca — uma frase solta entregaria a opcao certa.
+  montarOpcoes(dados.opcoes);
+  if (dados.opcoes) {
+    trancarChat('Escolha uma das opcoes acima…');
+    $('status-respostas').textContent = 'Ninguem escolheu ainda.';
   }
 
   pararContagem();
@@ -1380,8 +1536,123 @@ function limparTabuleiro() {
   $('segredo').hidden = true;
   $('mascara').textContent = '';
   $('status-respostas').textContent = '';
+  montarOpcoes(null);
   montarAudio(null);
 }
+
+/* --------------------------- Qual e a musica --------------------------- */
+
+const LETRAS_OPCAO = ['A', 'B', 'C', 'D'];
+
+/**
+ * As quatro opcoes da rodada, cada uma um botao. `null` esconde o painel.
+ *
+ * O clique vale uma vez so: ao clicar, o painel trava na hora, sem esperar
+ * o servidor — senao um segundo clique nervoso ainda iria embora.
+ */
+function montarOpcoes(opcoes) {
+  const caixa = $('opcoes');
+  caixa.innerHTML = '';
+  caixa.classList.remove('fechadas', 'reveladas');
+  caixa.hidden = !opcoes;
+  estado.opcoes = opcoes ? { textos: opcoes, minha: null, fechadas: false } : null;
+  if (!opcoes) return;
+
+  opcoes.forEach((texto, i) => {
+    const botao = criar('button', 'opcao');
+    botao.type = 'button';
+    botao.dataset.indice = String(i);
+    botao.innerHTML = `
+      <span class="opcao__letra">${LETRAS_OPCAO[i] || i + 1}</span>
+      <span class="opcao__texto">${escapar(texto)}</span>
+      <span class="opcao__quem"></span>`;
+    botao.addEventListener('click', () => escolherOpcao(i));
+    caixa.appendChild(botao);
+  });
+}
+
+function escolherOpcao(indice) {
+  const opcoes = estado.opcoes;
+  if (!opcoes || opcoes.fechadas || opcoes.minha !== null) return;
+
+  opcoes.minha = indice;
+  marcarMinhaOpcao();
+  socket.emit('sala:escolher', { opcao: indice }, (resposta) => {
+    if (!resposta?.erro) return;
+    // Recusado (a rodada fechou, ou entrei com ela no ar): destrava o painel.
+    if (estado.opcoes === opcoes) {
+      opcoes.minha = null;
+      marcarMinhaOpcao();
+    }
+    avisoParticular(resposta.erro);
+  });
+}
+
+/** Destaca o meu clique e apaga as outras opcoes. */
+function marcarMinhaOpcao() {
+  const opcoes = estado.opcoes;
+  const caixa = $('opcoes');
+  const travado = Boolean(opcoes) && (opcoes.minha !== null || opcoes.fechadas);
+  caixa.classList.toggle('fechadas', travado);
+  caixa.querySelectorAll('.opcao').forEach((botao) => {
+    botao.classList.toggle('minha', Boolean(opcoes) && Number(botao.dataset.indice) === opcoes.minha);
+    botao.disabled = travado;
+  });
+}
+
+/**
+ * Fim da rodada: a certa acende, a minha errada fica vermelha e cada opcao
+ * mostra quem marcou nela. Ate aqui ninguem sabia o clique de ninguem.
+ */
+function revelarOpcoes(escolhas) {
+  if (!escolhas) return;
+  if (!estado.opcoes) montarOpcoes(escolhas.opcoes);
+  const opcoes = estado.opcoes;
+  opcoes.fechadas = true;
+  marcarMinhaOpcao();
+
+  const caixa = $('opcoes');
+  caixa.classList.add('reveladas');
+  caixa.querySelectorAll('.opcao').forEach((botao) => {
+    const i = Number(botao.dataset.indice);
+    botao.classList.toggle('certa', i === escolhas.certa);
+    botao.classList.toggle('errada', i !== escolhas.certa && i === opcoes.minha);
+    const quem = escolhas.quem.filter((q) => q.indice === i);
+    const lugar = botao.querySelector('.opcao__quem');
+    lugar.textContent = quem.map((q) => q.avatar).join(' ');
+    lugar.title = quem.map((q) => q.nickname).join(', ');
+  });
+}
+
+// No computador, 1 a 4 (ou A a D) escolhem sem tirar a mao do teclado.
+document.addEventListener('keydown', (evento) => {
+  const opcoes = estado.opcoes;
+  if (!opcoes || opcoes.fechadas || opcoes.minha !== null) return;
+  if (evento.ctrlKey || evento.metaKey || evento.altKey) return;
+  if (evento.target instanceof HTMLInputElement || evento.target instanceof HTMLTextAreaElement) return;
+  if (!$('tela-jogo').classList.contains('ativa') || $('opcoes').hidden) return;
+
+  const tecla = evento.key.toUpperCase();
+  let indice = ['1', '2', '3', '4'].indexOf(tecla);
+  if (indice < 0) indice = LETRAS_OPCAO.indexOf(tecla);
+  if (indice < 0 || indice >= opcoes.textos.length) return;
+  evento.preventDefault();
+  escolherOpcao(indice);
+});
+
+// Quantos ja clicaram — nunca em que. O placar pisca no avatar de quem foi.
+socket.on('musica:escolheu', (dados) => {
+  $('status-respostas').textContent = dados.quantos >= dados.total
+    ? 'Todo mundo ja escolheu.'
+    : `${dados.quantos} de ${dados.total} ja escolheram`;
+
+  const item = document.querySelector(`.placar__item[data-id="${dados.jogadorId}"]`);
+  if (item) {
+    item.classList.remove('respondeu');
+    void item.offsetWidth; // reinicia a animação
+    item.classList.add('respondeu');
+  }
+});
 
 /* ------------------------ 1 eh bom 2 ok 3 eh demais -------------------------- */
 
@@ -1500,9 +1771,7 @@ socket.on('leilao:comeco', (dados) => {
     maxAposta: dados.maxAposta, reverso: Boolean(dados.reverso), fora: []
   };
 
-  $('jogo-codigo').textContent = estado.sala?.codigo || '----';
-  $('jogo-rodada').textContent = dados.rodada;
-  $('jogo-meta').textContent = `${estado.sala?.config.metaPontos ?? '—'} pts`;
+  escreverTopo(dados.rodada, estado.sala?.config);
 
   $('pergunta-categoria').style.setProperty('--cor-categoria', dandoDicas() ? '#38bdf8' : '#f59e0b');
   $('pergunta-categoria-icone').textContent = dandoDicas() ? '💡' : (leilaoGeral() ? '🔨' : '🎁');
@@ -1897,7 +2166,9 @@ function montarAudio(url) {
   caixa.hidden = false;
   caixa.classList.remove('tocando', 'travado');
   $('tocador-aviso').textContent = '';
-  player.src = url;
+  // O mesmo endereco ja veio na tela da categoria e esta baixado (ou
+  // baixando): trocar o src de novo jogaria isso fora.
+  if (player.getAttribute('src') !== url) player.src = url;
   player.currentTime = 0;
 
   player.play()
@@ -1907,6 +2178,21 @@ function montarAudio(url) {
       caixa.classList.add('travado');
       $('tocador-aviso').textContent = 'Toque para ouvir';
     });
+}
+
+/**
+ * Comeca a baixar o trecho enquanto a categoria esta na tela, sem tocar.
+ *
+ * Sem isto o download so comecava quando a pergunta abria, e na Corrida
+ * musical quem tinha internet lenta largava segundos atras dos outros.
+ */
+function prepararAudio(url) {
+  const player = $('tocador-audio');
+  pararAudio();
+  if (!url) return;
+  player.preload = 'auto';
+  player.src = url;
+  player.load();
 }
 
 function marcarTocando(sim) {
@@ -2048,7 +2334,9 @@ formChat.addEventListener('submit', (evento) => {
     } else if (resposta.veredito === 'bloqueado') {
       avisoParticular(resposta.motivo === 'chances'
         ? 'Suas chances acabaram nesta pergunta. Segurei a mensagem para nao entregar a resposta.'
-        : 'Segurei essa mensagem para nao entregar a resposta.');
+        : resposta.motivo === 'corrida'
+          ? 'Tarde demais: alguem acertou primeiro e levou a rodada.'
+          : 'Segurei essa mensagem para nao entregar a resposta.');
 
     } else if (resposta.veredito === 'repetido') {
       avisoParticular(`Voce ja tinha dito "${resposta.item}". Tente outra.`);
@@ -2112,8 +2400,13 @@ function mostrarChances(restam) {
 }
 
 socket.on('rodada:acertou', (dados) => {
-  $('status-respostas').textContent =
-    `${dados.totalAcertos} de ${dados.totalJogadores} ja acertaram`;
+  // Corrida musical: o primeiro acerto ja fecha a rodada, entao a conta de
+  // "quantos acertaram" nao diz nada — o que importa e quem chegou antes.
+  const corrida = estado.sala?.config.modo === 'corrida-musical';
+  const quem = (dados.placar || []).find((j) => j.id === dados.jogadorId);
+  $('status-respostas').textContent = corrida
+    ? `${quem ? quem.nickname : 'Alguem'} acertou primeiro!`
+    : `${dados.totalAcertos} de ${dados.totalJogadores} ja acertaram`;
 
   const item = document.querySelector(`.placar__item[data-id="${dados.jogadorId}"]`);
   if (item) {
@@ -2149,6 +2442,12 @@ socket.on('rodada:resultado', (dados) => {
     estado.presente = null;
     destrancarChat('Digite uma mensagem…');
   }
+  // Qual e a musica: as opcoes ficam na tela com a certa acesa e quem marcou
+  // o que; o chat, fechado durante a musica, volta para todos.
+  if (dados.escolhas) {
+    revelarOpcoes(dados.escolhas);
+    destrancarChat('Digite uma mensagem…');
+  }
 
   // O Presente Grego nao tem "resposta certa": tem uma aposta que saiu ou nao.
   $('resultado-rotulo').textContent = dados.titulo || 'Resposta certa';
@@ -2161,8 +2460,12 @@ socket.on('rodada:resultado', (dados) => {
              + 'Nao altera a pontuacao.';
 
   // O que ainda cabe contar da rodada: as dicas que foram gastas, uma amostra
-  // do repertório aberto ou as outras grafias que valiam.
+  // do repertório aberto ou as outras grafias que valiam. Nos modos musicais
+  // vem antes a ficha da musica: perguntando quem canta, a mesa tambem quer
+  // saber o nome.
   const rodape = [];
+  const ficha = dados.musica ? [dados.musica.nome, dados.musica.artista].filter(Boolean).join(' · ') : '';
+  if (ficha) rodape.push(`🎵 ${ficha}`);
   if (dados.dicasDadas && dados.dicasDadas.length) {
     rodape.push('As dicas foram: ' + dados.dicasDadas.join(' · '));
   }
@@ -2184,10 +2487,16 @@ socket.on('rodada:resultado', (dados) => {
   for (const detalhe of dados.detalhes) {
     const item = criar('li', 'resultado__item ' + (detalhe.acertou ? 'acertou' : 'errou'));
     // No Presente Grego quase ninguem responde: o "nao acertou" pelo relogio
-    // nao diz nada, e quem conta a historia e o papel na rodada.
-    const tempo = dados.presente
+    // nao diz nada, e quem conta a historia e o papel na rodada. No Qual e a
+    // musica, quem errou mostra a letra que marcou.
+    let tempo = dados.presente
       ? (PAPEIS[detalhe.papel] || '—')
       : (detalhe.ms === null ? 'nao acertou' : `${(detalhe.ms / 1000).toFixed(1)}s`);
+    if (dados.escolhas && detalhe.ms === null) {
+      tempo = detalhe.escolha === null || detalhe.escolha === undefined
+        ? 'nao escolheu'
+        : `marcou ${LETRAS_OPCAO[detalhe.escolha] || detalhe.escolha + 1}`;
+    }
 
     const pedia = detalhe.necessarias || 1;
     const conseguiu = detalhe.itens || [];
@@ -2212,8 +2521,11 @@ socket.on('rodada:resultado', (dados) => {
 
   $('resultado').hidden = false;
   $('proxima').hidden = Boolean(dados.acabou);
+  $('proxima-o-que').textContent = dados.musica ? 'musica' : 'pergunta';
   if (!dados.acabou) contarSegundos($('resultado-num'), dados.duracaoMs);
-  $('status-respostas').textContent = dados.acabou ? 'Alguem bateu a meta!' : '';
+  $('status-respostas').textContent = dados.acabou
+    ? (porMusicas(estado.sala?.config) ? 'Era a ultima musica!' : 'Alguem bateu a meta!')
+    : '';
   inputChat.placeholder = 'Digite uma mensagem…';
 
   renderizarPlacar(dados.placar);
@@ -2256,12 +2568,31 @@ socket.on('jogo:fim', (dados) => {
   mostrarTela('tela-fim');
 });
 
+/** "Ana", "Ana e Bia", "Ana, Bia e Caio". */
+function juntarNomes(nomes) {
+  return nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}` : (nomes[0] || '');
+}
+
 function renderizarFim(placar, meta, rodadas) {
   const campeao = placar[0];
-  $('fim-titulo').textContent = campeao ? `${campeao.nickname} venceu!` : 'Fim de jogo!';
-  $('fim-sub').textContent = campeao
-    ? `${campeao.pontos} pontos · meta de ${meta} pts · ${plural(rodadas ?? 0, 'rodada', 'rodadas')}`
-    : '';
+  const config = estado.sala?.config;
+  if (porMusicas(config)) {
+    // Partida por musicas nao tem meta: vence quem fez mais pontos, e o
+    // empate no topo e de todos os empatados.
+    const topo = campeao ? campeao.pontos : 0;
+    const empatados = placar.filter((j) => j.pontos === topo).map((j) => j.nickname);
+    $('fim-titulo').textContent = !campeao || topo === 0
+      ? 'Fim de jogo!'
+      : empatados.length > 1 ? `Empate: ${juntarNomes(empatados)}!` : `${campeao.nickname} venceu!`;
+    $('fim-sub').textContent = campeao
+      ? `${plural(topo, 'ponto', 'pontos')} · ${plural(rodadas ?? config.musicas, 'musica', 'musicas')}`
+      : '';
+  } else {
+    $('fim-titulo').textContent = campeao ? `${campeao.nickname} venceu!` : 'Fim de jogo!';
+    $('fim-sub').textContent = campeao
+      ? `${campeao.pontos} pontos · meta de ${meta} pts · ${plural(rodadas ?? 0, 'rodada', 'rodadas')}`
+      : '';
+  }
 
   // Pódio: 2º, 1º, 3º (nessa ordem visual)
   const podio = $('podio');
@@ -2330,12 +2661,12 @@ function abrirTelaDaSala(sala) {
   revelacao.hidden = true;
   jogo.hidden = false;
   limparTabuleiro();
-  $('jogo-codigo').textContent = sala.codigo;
-  $('jogo-rodada').textContent = sala.rodada;
-  $('jogo-meta').textContent = `${sala.config.metaPontos} pts`;
+  escreverTopo(sala.rodada, sala.config);
   $('pergunta-categoria-icone').textContent = '⏳';
   $('pergunta-categoria-nome').textContent = 'Entrando';
-  $('pergunta-texto').textContent = 'Voce entra na proxima rodada.';
+  $('pergunta-texto').textContent = modoMusical(sala.config.modo)
+    ? 'Voce entra na proxima musica.'
+    : 'Voce entra na proxima rodada.';
   $('pergunta-texto').classList.add('pergunta__texto--segredo');
   $('presente').hidden = true;
   renderizarPlacar(sala.jogadores);
@@ -2406,6 +2737,7 @@ socket.on('connect', () => {
 function caiuFora(aviso) {
   salaLembrada.esquecer();
   pararAnimacao();
+  pararAudio();
   mostrarTela('tela-lobby');
   avisar('aviso-lobby', aviso);
 }

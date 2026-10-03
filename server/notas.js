@@ -17,6 +17,22 @@
 
 const NOTAS = [
   {
+    versao: '1.19',
+    data: '2026-10-03',
+    titulo: 'Dois modos de musica: Corrida musical e Qual e a musica',
+    itens: [
+      'Corrida musical: toca o comeco de uma musica e quem escrever a resposta primeiro no chat leva 10 pontos. A rodada acaba no primeiro acerto, e cada um tem 5 chances por musica.',
+      'Qual e a musica: toca o comeco de uma musica e aparecem 4 opcoes. Quanto mais rapido o clique na certa, mais pontos, de 10 ate 1. Errar vale zero.',
+      'No Qual e a musica cada um clica uma vez so, e ninguem ve a escolha do outro ate a musica acabar. No fim, cada opcao mostra quem marcou nela. No computador, as teclas 1 a 4 tambem escolhem.',
+      'As opcoes erradas sao do mesmo estilo da certa: sertanejo com sertanejo, funk com funk, rock com rock. E nunca aparece como errada quem tambem canta a musica.',
+      'Nos dois modos o lider escolhe o que perguntar: o nome da musica, quem canta ou os dois, meio a meio.',
+      'A partida pode acabar na pontuacao, como sempre, ou depois de um numero de musicas, de 3 a 50. Nesse caso vence quem fez mais pontos, e empate no topo e vitoria de todos os empatados.',
+      'As musicas sao as 93 de Ouvir musicas, sem repetir na mesma partida, e comecam pelas mais conhecidas.',
+      'O audio passou a chegar por um endereco sorteado. Antes o nome do arquivo trazia o nome da musica, e dava para ver a resposta no navegador.',
+      'O trecho comeca a baixar enquanto a categoria esta na tela, entao toca na hora para todo mundo quando a pergunta abre.'
+    ]
+  },
+  {
     versao: '1.18',
     data: '2026-09-26',
     titulo: 'Filmes em emojis e 246 perguntas de cinema',
