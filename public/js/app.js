@@ -231,6 +231,256 @@ $('btn-abrir-perfil').addEventListener('click', () => {
 });
 $('btn-voltar-perfil').addEventListener('click', () => mostrarTela('tela-lobby'));
 
+/* ---------------------------- Estatisticas ---------------------------- *
+ *
+ * Uma pagina de perguntas por vez, com os totais do recorte inteiro em cima.
+ * Filtro novo pede a primeira pagina de novo; "Mostrar mais" pede a seguinte
+ * e junta embaixo. O servidor nao manda as respostas.
+ */
+
+const abaEstatisticas = {
+  pagina: 0,
+  carregadas: 0,
+  pedido: 0,      // so vale a resposta do ultimo pedido: a busca dispara varios
+  espera: null,   // a busca espera a pessoa parar de digitar
+  audio: null,
+  tocando: null   // o botao do trecho que esta tocando
+};
+
+// Cada coluna ordena num sentido e, clicada de novo, no contrario.
+const ORDENS_DA_COLUNA = {
+  vezes: ['vezes', 'menos-vezes'],
+  acerto: ['acerto', 'menos-acerto'],
+  rapidas: ['rapidas', 'lentas'],
+  dificuldade: ['dificuldade', 'menos-dificuldade']
+};
+const ORDENS_CRESCENTES = new Set(['menos-vezes', 'menos-acerto', 'rapidas', 'menos-dificuldade']);
+
+const milhar = (n) => Number(n || 0).toLocaleString('pt-BR');
+const emSegundos = (ms) => (ms === null || ms === undefined ? '—'
+  : `${(ms / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s`);
+
+$('btn-abrir-estatisticas').addEventListener('click', () => {
+  montarCategoriasDaAba();
+  mostrarTela('tela-estatisticas');
+  carregarEstatisticas();
+});
+$('btn-voltar-estatisticas').addEventListener('click', () => {
+  pararTrecho();
+  mostrarTela('tela-lobby');
+});
+
+$('est-busca').addEventListener('input', () => {
+  clearTimeout(abaEstatisticas.espera);
+  abaEstatisticas.espera = setTimeout(carregarEstatisticas, 250);
+});
+$('est-busca').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  clearTimeout(abaEstatisticas.espera);
+  e.target.blur(); // no celular, fecha o teclado para mostrar a lista
+  carregarEstatisticas();
+});
+for (const id of ['est-categoria', 'est-ordem', 'est-feitas']) {
+  $(id).addEventListener('change', () => carregarEstatisticas());
+}
+$('est-mais').addEventListener('click', () => carregarEstatisticas({ mais: true }));
+
+for (const botao of document.querySelectorAll('#est-tabela th[data-ordem] button')) {
+  botao.addEventListener('click', () => {
+    const [primeira, segunda] = ORDENS_DA_COLUNA[botao.parentElement.dataset.ordem];
+    $('est-ordem').value = $('est-ordem').value === primeira ? segunda : primeira;
+    carregarEstatisticas();
+  });
+}
+
+/** As categorias e as partes delas, uma vez so (a configuracao nao muda). */
+function montarCategoriasDaAba() {
+  const select = $('est-categoria');
+  if (select.options.length > 1 || !estado.config) return;
+  for (const c of estado.config.categorias) {
+    select.add(new Option(`${c.icone} ${c.nome}`, c.id));
+    for (const s of c.subs || []) {
+      select.add(new Option(`   ${s.icone} ${s.nome}`, `${c.id}:${s.id}`));
+    }
+  }
+}
+
+async function carregarEstatisticas({ mais = false } = {}) {
+  const aba = abaEstatisticas;
+  const pedido = ++aba.pedido;
+  const pagina = mais ? aba.pagina + 1 : 0;
+
+  const [categoria, sub] = $('est-categoria').value.split(':');
+  const busca = $('est-busca').value.trim();
+  const params = new URLSearchParams({ ordem: $('est-ordem').value, pagina: String(pagina) });
+  if (categoria) params.set('categoria', categoria);
+  if (sub) params.set('sub', sub);
+  if (busca) params.set('busca', busca);
+  if ($('est-feitas').checked) params.set('feitas', '1');
+
+  marcarOrdemNaTabela();
+  $('est-mais').disabled = true;
+  $('est-tabela').setAttribute('aria-busy', 'true');
+
+  let dados;
+  try {
+    const resposta = await fetch(`/api/estatisticas?${params}`);
+    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+    dados = await resposta.json();
+  } catch {
+    if (pedido !== aba.pedido) return;
+    $('est-tabela').removeAttribute('aria-busy');
+    $('est-mais').disabled = false;
+    if (mais) brindar('Nao deu para carregar mais agora. Tente de novo.');
+    else mostrarVazioDaAba('Nao deu para carregar as estatisticas agora. Tente de novo daqui a pouco.');
+    return;
+  }
+  if (pedido !== aba.pedido) return; // chegou depois de um pedido mais novo
+
+  $('est-tabela').removeAttribute('aria-busy');
+  aba.pagina = pagina;
+  const corpo = $('est-linhas');
+  if (!mais) {
+    pararTrecho();
+    corpo.innerHTML = '';
+    aba.carregadas = 0;
+    desenharResumoDaAba(dados.resumo);
+  }
+  for (const linha of dados.linhas) corpo.appendChild(linhaDaAba(linha));
+  aba.carregadas += dados.linhas.length;
+
+  const vazio = dados.total === 0;
+  $('est-tabela').hidden = vazio;
+  if (vazio) {
+    mostrarVazioDaAba($('est-feitas').checked
+      ? 'Nenhuma pergunta deste recorte caiu ainda.'
+      : 'Nenhuma pergunta com esse texto nesta categoria.');
+  } else {
+    $('est-vazio').hidden = true;
+  }
+  $('est-contagem').textContent = vazio ? '' : `Mostrando ${milhar(aba.carregadas)} de ${milhar(dados.total)} perguntas`;
+
+  const faltam = dados.total - aba.carregadas;
+  $('est-mais').hidden = faltam <= 0;
+  $('est-mais').disabled = false;
+  $('est-mais').textContent = `Mostrar mais ${milhar(Math.min(faltam, dados.tamanho))}`;
+}
+
+function mostrarVazioDaAba(texto) {
+  $('est-tabela').hidden = true;
+  $('est-contagem').textContent = '';
+  $('est-mais').hidden = true;
+  $('est-vazio').textContent = texto;
+  $('est-vazio').hidden = false;
+}
+
+/** O cabecalho da coluna em uso fica marcado, com o sentido para o leitor de tela. */
+function marcarOrdemNaTabela() {
+  const ordem = $('est-ordem').value;
+  for (const th of document.querySelectorAll('#est-tabela th[data-ordem]')) {
+    const ativa = ORDENS_DA_COLUNA[th.dataset.ordem].includes(ordem);
+    th.classList.toggle('est-ordenada', ativa);
+    th.classList.toggle('est-ordenada--crescente', ativa && ORDENS_CRESCENTES.has(ordem));
+    if (ativa) th.setAttribute('aria-sort', ORDENS_CRESCENTES.has(ordem) ? 'ascending' : 'descending');
+    else th.removeAttribute('aria-sort');
+  }
+}
+
+function desenharResumoDaAba(r) {
+  const numeros = [
+    [milhar(r.feitas), `de ${milhar(r.perguntas)} perguntas ja cairam`],
+    [milhar(r.vezes), 'vezes que elas cairam'],
+    [r.acerto === null ? '—' : `${r.acerto}%`,
+      r.respostas ? `de acerto, em ${milhar(r.respostas)} respostas` : 'de acerto'],
+    [emSegundos(r.tempoMedioMs), 'tempo medio do acerto']
+  ];
+  $('est-resumo').innerHTML = numeros.map(([valor, rotulo]) => `
+    <div class="perfil-numero">
+      <span class="perfil-numero__valor">${valor}</span>
+      <span class="perfil-numero__rotulo">${rotulo}</span>
+    </div>`).join('');
+}
+
+function linhaDaAba(l) {
+  const tr = criar('tr', 'est-linha' + (l.vezes ? '' : ' est-linha--nunca'));
+  const c = categoriaDe(l.categoria);
+  const sub = l.sub && (c.subs || []).find((s) => s.id === l.sub);
+  const nivel = (estado.config?.niveis || []).find((n) => n.nome === l.nivel);
+
+  const acerto = l.acerto === null ? '<span class="est-sem">—</span>' : `
+    <span class="est-acerto">
+      <span class="est-barra" aria-hidden="true"><span style="width:${l.acerto}%"></span></span>
+      <span>${l.acerto}%</span>
+    </span>
+    <span class="est-detalhe">${milhar(l.acertos)} de ${milhar(l.respostas)}</span>`;
+
+  tr.innerHTML = `
+    <td class="est-col-pergunta">
+      <div class="est-pergunta">
+        <div class="est-pergunta__textos">
+          <span class="est-pergunta__texto">${escapar(l.pergunta)}</span>
+          <span class="est-pergunta__onde">${c.icone} ${escapar(c.nome)}${
+            sub ? ` · ${sub.icone} ${escapar(sub.nome)}` : ''}</span>
+        </div>
+      </div>
+    </td>
+    <td class="est-num" data-rotulo="Vezes">${l.vezes ? milhar(l.vezes) : '<span class="est-sem">0</span>'}</td>
+    <td class="est-num" data-rotulo="Acerto">${acerto}</td>
+    <td class="est-num" data-rotulo="Tempo">${l.tempoMedioMs === null
+      ? '<span class="est-sem">—</span>' : emSegundos(l.tempoMedioMs)}</td>
+    <td class="est-num" data-rotulo="Dificuldade">
+      <span class="est-nivel"><i style="background:${nivel ? nivel.cor : 'var(--texto-fraco)'}"></i>${Math.round(l.dificuldade)}</span>
+      <span class="est-detalhe">${escapar(l.nivel)}</span>
+    </td>`;
+
+  // A imagem e o audio sao o que separa "Que pais e este?" de outro igual.
+  const pergunta = tr.querySelector('.est-pergunta');
+  if (l.imagem) {
+    const img = criar('img', 'est-miniatura');
+    img.src = l.imagem;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.addEventListener('error', () => img.remove());
+    pergunta.prepend(img);
+  } else if (l.audio) {
+    const botao = criar('button', 'est-trecho');
+    botao.type = 'button';
+    botao.textContent = '▶\uFE0E';
+    botao.setAttribute('aria-label', 'Ouvir o trecho');
+    botao.addEventListener('click', () => tocarTrecho(botao, l.audio));
+    pergunta.prepend(botao);
+  }
+  return tr;
+}
+
+function tocarTrecho(botao, url) {
+  const aba = abaEstatisticas;
+  if (aba.tocando === botao) { pararTrecho(); return; }
+  pararTrecho();
+  aba.audio = aba.audio || new Audio();
+  aba.audio.src = url;
+  aba.audio.onended = pararTrecho;
+  // Trocar de trecho no meio interrompe o play anterior: so desmarca se
+  // ainda for este que esta tocando.
+  aba.audio.play().catch(() => { if (aba.tocando === botao) pararTrecho(); });
+  aba.tocando = botao;
+  botao.textContent = '■';
+  botao.setAttribute('aria-label', 'Parar o trecho');
+  botao.classList.add('est-trecho--tocando');
+}
+
+function pararTrecho() {
+  const aba = abaEstatisticas;
+  if (aba.audio) aba.audio.pause();
+  if (aba.tocando) {
+    aba.tocando.textContent = '▶\uFE0E';
+    aba.tocando.setAttribute('aria-label', 'Ouvir o trecho');
+    aba.tocando.classList.remove('est-trecho--tocando');
+  }
+  aba.tocando = null;
+}
+
 /**
  * Login com Google, opcional.
  *

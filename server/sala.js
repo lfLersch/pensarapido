@@ -305,15 +305,18 @@ function serveDeAlvo(resposta) {
   return texto.split(/\s+/).length <= 3 && normalizar(texto).length >= 3;
 }
 
-/** Índice de todas as perguntas, para o painel de dificuldades. */
+/** Índice de todas as perguntas, para o painel de dificuldades e a aba Estatisticas. */
 function indicePerguntas() {
   const mapa = new Map();
   for (const categoria of CATEGORIAS) {
     for (const q of QUESTOES[categoria.id] || []) {
       mapa.set(idDaPergunta(categoria.id, q), {
         categoria: categoria.id,
+        sub: q.sub || null,
         pergunta: q.pergunta,
         resposta: q.resposta,
+        imagem: q.imagem || null,
+        audio: q.audio || null,
         base: q.dif ?? 40
       });
     }
