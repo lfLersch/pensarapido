@@ -13,7 +13,6 @@
  * entrega sozinho; no meio de tres sertanejos, so quem conhece acerta.
  */
 
-const crypto = require('crypto');
 const { QUESTOES } = require('./questions');
 const { avaliar } = require('./comparar');
 
@@ -213,32 +212,6 @@ function opcoesPara(musica, tipo, catalogo = CATALOGO, quantas = 4) {
   return { opcoes, certa: opcoes.indexOf(certa.resposta) };
 }
 
-/* -------------------- O endereco do trecho na rodada -------------------- *
- *
- * O arquivo se chama "trecho-yellow.mp3": mandar esse endereco para a tela e
- * entregar a resposta para quem abre o inspetor. Cada rodada ganha um
- * endereco sorteado que so o servidor sabe ligar ao arquivo.
- */
-const MS_VALIDADE_ENDERECO = 30 * 60 * 1000;
-const enderecos = new Map(); // codigo -> { audio, criadoEm }
-
-function enderecoDoTrecho(audio) {
-  if (!audio) return null;
-  const agora = Date.now();
-  for (const [codigo, registro] of enderecos) {
-    if (agora - registro.criadoEm > MS_VALIDADE_ENDERECO) enderecos.delete(codigo);
-  }
-  const codigo = crypto.randomBytes(12).toString('base64url');
-  enderecos.set(codigo, { audio, criadoEm: agora });
-  return `/trecho/${codigo}`;
-}
-
-/** O arquivo por tras de um endereco sorteado, ou null se ele nao existe (mais). */
-function audioDoEndereco(codigo) {
-  const registro = enderecos.get(String(codigo || ''));
-  return registro ? registro.audio : null;
-}
-
 /* ---------------------------- Configuracao ---------------------------- */
 
 const MUSICAS_MIN = 3;
@@ -266,6 +239,5 @@ function configMusical(bruta = {}) {
 module.exports = {
   CATALOGO, ESTILOS, PERGUNTAR,
   MUSICAS_MIN, MUSICAS_MAX, MUSICAS_PADRAO, MUSICAS_SUGERIDAS,
-  montarCatalogo, musicasPara, opcoesPara, trechoDe, jeitoDe,
-  enderecoDoTrecho, audioDoEndereco, configMusical
+  montarCatalogo, musicasPara, opcoesPara, trechoDe, jeitoDe, configMusical
 };

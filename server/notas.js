@@ -21,15 +21,19 @@ const NOTAS = [
     data: '2026-10-03',
     titulo: 'Dois modos de musica: Corrida musical e Qual e a musica',
     itens: [
-      'Corrida musical: toca o comeco de uma musica e quem escrever a resposta primeiro no chat leva 10 pontos. A rodada acaba no primeiro acerto, e cada um tem 5 chances por musica.',
-      'Qual e a musica: toca o comeco de uma musica e aparecem 4 opcoes. Quanto mais rapido o clique na certa, mais pontos, de 10 ate 1. Errar vale zero.',
+      'Corrida musical: toca uma parte de uma musica e quem escrever a resposta primeiro no chat leva 10 pontos. A musica para no primeiro acerto, e cada um tem 5 chances por musica.',
+      'Qual e a musica: toca uma parte de uma musica e aparecem 4 opcoes. Quanto mais rapido o clique na certa, mais pontos, de 10 ate 1. Errar vale zero, e a musica para quando todo mundo escolheu.',
+      'A musica nao toca mais sempre do comeco: cada rodada sorteia de que ponto ela comeca. Vale para os dois modos novos e para as perguntas de Ouvir musicas em qualquer modo.',
+      'A musica toca ate o limite que o lider escolhe na sala: 10, 15, 20 ou 30 segundos, e 30 se ninguem mexer. Nos modos de musica ele fica no lugar do tempo por pergunta.',
+      'Cada musica ganhou uma dificuldade propria, que anda a cada rodada. A que ninguem reconhece passa a tocar uma parte conhecida, o comeco ou o refrao; a que todo mundo acerta de cara passa a tocar o meio da musica, fora do refrao.',
+      'O resultado da rodada conta que parte da musica tocou, e nos modos de musica o selo de dificuldade passou a ser o da musica.',
       'No Qual e a musica cada um clica uma vez so, e ninguem ve a escolha do outro ate a musica acabar. No fim, cada opcao mostra quem marcou nela. No computador, as teclas 1 a 4 tambem escolhem.',
       'As opcoes erradas sao do mesmo estilo da certa: sertanejo com sertanejo, funk com funk, rock com rock. E nunca aparece como errada quem tambem canta a musica.',
       'Nos dois modos o lider escolhe o que perguntar: o nome da musica, quem canta ou os dois, meio a meio.',
       'A partida pode acabar na pontuacao, como sempre, ou depois de um numero de musicas, de 3 a 50. Nesse caso vence quem fez mais pontos, e empate no topo e vitoria de todos os empatados.',
       'As musicas sao as 93 de Ouvir musicas, sem repetir na mesma partida, e comecam pelas mais conhecidas.',
-      'O audio passou a chegar por um endereco sorteado. Antes o nome do arquivo trazia o nome da musica, e dava para ver a resposta no navegador.',
-      'O trecho comeca a baixar enquanto a categoria esta na tela, entao toca na hora para todo mundo quando a pergunta abre.'
+      'O audio passou a chegar por um endereco sorteado, e os arquivos nao abrem mais pelo nome. Antes o nome do arquivo trazia o nome da musica, e dava para ver a resposta no navegador.',
+      'O trecho comeca a baixar enquanto a categoria esta na tela, ja no ponto sorteado, entao toca na hora para todo mundo quando a pergunta abre.'
     ]
   },
   {

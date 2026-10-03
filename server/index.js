@@ -11,6 +11,7 @@ const {
 } = require('./sala');
 const dificuldade = require('./dificuldade');
 const musicas = require('./musicas');
+const trechos = require('./trechos');
 const usos = require('./usos');
 const perfis = require('./perfis');
 const google = require('./google');
@@ -31,12 +32,17 @@ const servidor = http.createServer(app);
 const io = new Server(servidor);
 
 const PASTA_PUBLICA = path.join(__dirname, '..', 'public');
+
+// Os arquivos de audio so saem pelo endereco sorteado da rodada. Pelo nome
+// ("trecho-yellow.mp3") eles diriam a resposta — e, com a musica inteira na
+// pasta, virariam um acervo aberto para qualquer um baixar.
+app.use('/audio', (_req, res) => res.sendStatus(404));
 app.use(express.static(PASTA_PUBLICA));
 
 // O trecho da rodada, pelo endereco sorteado. O nome do arquivo diria qual e
 // a musica; o codigo nao diz nada, e so o servidor sabe a que arquivo ele leva.
 app.get('/trecho/:codigo', (req, res) => {
-  const audio = musicas.audioDoEndereco(req.params.codigo);
+  const audio = trechos.audioDoEndereco(req.params.codigo);
   if (!audio) return res.sendStatus(404);
   res.set('Cache-Control', 'private, max-age=1800');
   res.type('audio/mpeg');
@@ -60,6 +66,9 @@ app.get('/api/config', (_req, res) => {
       sugeridas: musicas.MUSICAS_SUGERIDAS,
       total: musicas.CATALOGO.length
     },
+    // Quanto a musica toca por rodada: as opcoes que o trecho mais curto
+    // comporta e o padrao (30s).
+    limiteMusica: trechos.limitesDaMusica(),
     niveis: dificuldade.NIVEIS,
     versao: VERSAO,
     notas: NOTAS,
@@ -211,8 +220,14 @@ function validarConfig(bruta) {
   const segundos = Number(bruta.segundosPorPergunta);
   const segundosPorPergunta = SEGUNDOS_PERMITIDOS.includes(segundos) ? segundos : 20;
 
+  // Quanto a musica toca nas perguntas de audio: dos modos musicais e de
+  // Ouvir musicas em qualquer modo. Fora das opcoes, fica o padrao.
+  const limites = trechos.limitesDaMusica();
+  const pedido = Number(bruta.segundosMusica);
+  const segundosMusica = limites.opcoes.includes(pedido) ? pedido : limites.padrao;
+
   return {
-    config: { ...escolha, modo: modo.id, metaPontos, segundosPorPergunta, ...musical }
+    config: { ...escolha, modo: modo.id, metaPontos, segundosPorPergunta, segundosMusica, ...musical }
   };
 }
 

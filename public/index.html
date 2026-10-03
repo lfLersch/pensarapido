@@ -199,9 +199,17 @@
         </div>
       </div>
 
-      <div class="bloco">
+      <div class="bloco" id="bloco-tempo">
         <h3 class="bloco__titulo">Tempo por pergunta</h3>
         <div class="meta__opcoes" id="tempo-opcoes"></div>
+      </div>
+
+      <!-- Quanto a musica toca: nos modos musicais e nas perguntas de Ouvir
+           musicas. Ela comeca num ponto sorteado e para quando a rodada fecha. -->
+      <div class="bloco" id="bloco-tempo-musica" hidden>
+        <h3 class="bloco__titulo" id="tempo-musica-titulo">Tempo de cada musica</h3>
+        <p class="bloco__dica" id="tempo-musica-dica"></p>
+        <div class="meta__opcoes" id="tempo-musica-opcoes"></div>
       </div>
 
       <p class="aviso" id="aviso-config" role="alert"></p>

@@ -95,6 +95,7 @@ e que a versão do topo seja a do jogo.
 | Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical** ou **Qual é a música** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
+| Tempo da música | 10s / 15s / 20s / **30s (padrão)** — só as opções que o trecho mais curto comporta. Nos modos musicais fica no lugar do tempo por pergunta; nos outros, aparece quando Ouvir músicas está marcada |
 | O que perguntar (modos musicais) | Nome da música, Quem canta ou **Os dois (padrão)** |
 | A partida acaba (modos musicais) | **Na pontuação (padrão)** ou num número de músicas: 5 / 10 / 15 / 20, ou um valor livre entre 3 e 50 |
 
@@ -636,9 +637,10 @@ parceiro escolheu. Se quem dá as dicas ou quem adivinha sai no meio, a rodada �
 
 ### Corrida musical
 
-Toca o começo de uma música e **quem escrever a resposta primeiro no chat
-leva 10 pontos**. Não há segundo lugar: o primeiro acerto fecha a rodada na
-hora e a resposta aparece para todo mundo.
+Toca uma parte sorteada de uma música e **quem escrever a resposta primeiro
+no chat leva 10 pontos**. Não há segundo lugar: o primeiro acerto fecha a
+rodada na hora, a música para e a resposta aparece para todo mundo. Sem
+acerto, ela toca até o [limite da sala](#de-que-parte-da-música).
 
 - A resposta é conferida como no Modo Tempo: acento, maiúscula e pontuação
   não contam, o "quase" mostra onde foi o erro, e na pergunta de quem canta o
@@ -650,22 +652,23 @@ hora e a resposta aparece para todo mundo.
 
 ### Qual é a música
 
-Toca o começo de uma música e aparecem **quatro opções**. Cada um clica
-**uma vez**, e **quanto mais rápido, mais pontos**: a rodada é fatiada em
-dez partes iguais e cada parte custa 1 ponto.
+Toca uma parte sorteada de uma música e aparecem **quatro opções**. Cada um
+clica **uma vez**, e **quanto mais rápido, mais pontos**: a rodada é fatiada
+em dez partes iguais e cada parte custa 1 ponto. A música toca até todo mundo
+escolher, ou até o [limite da sala](#de-que-parte-da-música).
 
-| Clicou na certa (rodada de 20s) | Vale |
+| Clicou na certa (música de 30s, o padrão) | Vale |
 | --- | --- |
-| até 2s | **10** |
-| de 2 a 4s | **9** |
+| até 3s | **10** |
+| de 3 a 6s | **9** |
 | … | … |
-| de 10 a 12s | **5** |
-| nos 2 últimos segundos | **1** |
+| de 15 a 18s | **5** |
+| nos 3 últimos segundos | **1** |
 | na errada, ou não clicou | **0** |
 
-A escala acompanha o tempo escolhido para a sala: numa rodada de 30s cada
-ponto dura 3 segundos. Diferente do Modo Tempo, não há desconto de fila — cada
-um corre contra o relógio, não contra os outros.
+A escala acompanha o tempo da música escolhido para a sala: com 20s, cada
+ponto dura 2 segundos. Diferente do Modo Tempo, não há desconto de fila —
+cada um corre contra o relógio, não contra os outros.
 
 - **Ninguém vê o clique do outro.** O servidor só conta para a mesa
   *quantos* já escolheram. Os pontos também só entram no fim: com o placar
@@ -719,10 +722,91 @@ tocou menos nas outras partidas vem antes, somando as duas perguntas dele — e 
 [dificuldade crescente](#dificuldade-crescente): a partida começa pelas
 músicas mais conhecidas.
 
-Nenhum dos dois modos **alimenta a dificuldade adaptativa** nem a nota por
-categoria: na Corrida só uma pessoa acerta, e quem sabia mas chegou depois não
-errou; no Qual é a música, o chute entre quatro opções faria a música parecer
-mais fácil do que é para quem digita a resposta.
+Nenhum dos dois modos **alimenta a dificuldade adaptativa da pergunta** nem a
+nota por categoria: na Corrida só uma pessoa acerta, e quem sabia mas chegou
+depois não errou; no Qual é a música, o chute entre quatro opções faria a
+música parecer mais fácil do que é para quem digita a resposta. Os dois
+alimentam, sim, a dificuldade **da música**, que tem uma medida própria para
+cada modo — ver [O avaliador de dificuldade da música](#o-avaliador-de-dificuldade-da-música).
+
+### De que parte da música
+
+A música não toca mais sempre do começo. Cada rodada **sorteia de que ponto
+ela começa**, deixando música para o limite inteiro, e ela toca:
+
+- na **Corrida musical**, até alguém acertar;
+- no **Qual é a música**, até todo mundo escolher;
+- nas perguntas de **Ouvir músicas** dos outros modos (Modo Tempo e a
+  primeira rodada da Escalada), até todo mundo acertar ou gastar as chances;
+- em todos, no máximo até o **limite da sala** — 30 segundos, se ninguém mexer.
+
+O limite é o ajuste *Tempo da música* da sala: 10, 15, 20 ou 30 segundos. Só
+entram as opções que o trecho mais curto comporta — com trechos de 40s,
+oferecer 45s ou 60s seria prometer música que não existe; com trechos longos,
+essas opções aparecem sozinhas.
+
+O sorteio fica entre o começo do arquivo e o último ponto que ainda deixa o
+limite inteiro de música, antes dos 2 segundos finais (a saída suave do
+trecho). Com os trechos de hoje — os 40 primeiros segundos de cada música — e
+o limite de 30s, isso cobre só os primeiros 8 segundos. **Para cair em
+qualquer parte da música, os trechos precisam ser longos**: ver
+[Gerar os trechos](#gerar-os-trechos-a-partir-das-músicas-inteiras).
+
+A duração de cada trecho é lida do próprio MP3 (a etiqueta *Info* que o
+ffmpeg grava diz quantos quadros ele tem), em
+[`server/trechos.js`](server/trechos.js). O ponto sorteado vai junto com a
+tela da categoria, e o trecho já baixa posicionado nele. No meio da música a
+entrada é suave: 400 ms do silêncio ao volume cheio, porque o ponto sorteado
+pode cair no meio de uma palavra.
+
+#### O avaliador de dificuldade da música
+
+**Que parte entra no sorteio é o avaliador quem diz.** Cada música tem uma
+dificuldade própria, de 0 a 100, que anda a cada rodada em que ela toca — em
+qualquer modo, somando a pergunta do nome e a de quem canta. Ela parte da
+média do `dif` das duas perguntas e segue a mesma média móvel da
+[dificuldade adaptativa](#dificuldade-adaptativa), com a medida de cada modo:
+
+| Modo | O que a rodada mede |
+| --- | --- |
+| Ouvir músicas (Modo Tempo, Escalada) | quantos acertaram, e quando |
+| Corrida musical | se a sala reconheceu, e quando o primeiro reconheceu |
+| Qual é a música | quantos acertaram descontado o chute (1 em 4 acerta sem saber), e quando |
+
+E a dificuldade escolhe a parte:
+
+| Dificuldade da música | Toca |
+| --- | --- |
+| 65 ou mais | sempre uma parte conhecida: o começo ou o refrão |
+| de 45 a 65 | parte conhecida numa fração das rodadas, que cresce até sempre |
+| de 35 a 45 | qualquer ponto |
+| de 15 a 35 | o meio da música, fora do refrão, numa fração que cresce |
+| menos de 15 | sempre o meio |
+
+É um termostato: a música que ninguém reconhece passa a tocar o refrão, a
+que todo mundo acerta de cara passa a tocar a estrofe do meio, e as duas
+voltam para o meio-termo. A mudança é gradual para a música não pular de um
+lado para o outro a cada rodada, e a que tocou menos de 2 vezes ainda não tem
+medida: sai em qualquer ponto. O resultado da rodada conta que parte tocou
+(*"tocou o refrão"*), e nos modos musicais o selo de dificuldade é o da
+música — o da pergunta, ali, só é lido.
+
+O **meio** começa depois da introdução (15 s ou um quinto da música, o que for
+mais), e a janela tocada não encosta em nenhum refrão. O refrão entra com 1 s
+de respiro antes, para a primeira palavra não cortar.
+
+**Os refrões precisam estar marcados**, em segundos do arquivo, em
+[`server/marcas.js`](server/marcas.js):
+
+```js
+'yellow': { refrao: [[52, 70], [110, 128]] },   // cada refrão: [início, fim]
+'wish-you-were-here': { comeco: 17 },           // começa de verdade aos 17 s
+```
+
+Por enquanto o arquivo está vazio: os trechos de 40 s mal chegam ao primeiro
+refrão. Até as marcações entrarem, junto com as músicas inteiras, a parte
+conhecida é o começo, e o meio pode cair no refrão. O avaliador fica em
+[`server/avaliador.js`](server/avaliador.js).
 
 ### Partida por número de músicas
 
@@ -1062,6 +1146,9 @@ server/
   comparar.js    normalização e a régua de acerto / quase / chat
   escalada.js    listas de resposta múltipla do Modo Escalada
   musicas.js     os trechos dos modos musicais, o estilo de cada um e as 4 opções
+  trechos.js     duração de cada MP3, o ponto de partida sorteado e o endereço da rodada
+  avaliador.js   dificuldade de cada música, que escolhe de que parte ela toca
+  marcas.js      onde ficam o começo e os refrões de cada música
   banco.js       conexão com o Postgres (só com DATABASE_URL)
   dificuldade.js dificuldade adaptativa e persistência das estatísticas
   questions.js   banco de perguntas por categoria
@@ -1258,8 +1345,8 @@ transparente sumiria na tela escura do jogo.
 
 ### Categoria Ouvir músicas
 
-A categoria **Ouvir músicas** toca os 40 primeiros segundos de uma música. São 93
-músicas, do rock ao sertanejo e ao funk (Yellow, Waka Waka, Billie Jean, Racionais e
+A categoria **Ouvir músicas** toca uma parte sorteada de uma música — ver
+[De que parte da música](#de-que-parte-da-música). São 93 músicas, do rock ao sertanejo e ao funk (Yellow, Waka Waka, Billie Jean, Racionais e
 outras), e cada trecho tem **duas perguntas**: *"Qual é o nome desta música?"* e
 *"Quem canta esta música?"* — ou *"Qual banda canta…"*, para banda não ganhar
 atalho de sobrenome ("Park" valendo por Linkin Park). Em dueto vale qualquer um
@@ -1269,15 +1356,18 @@ dos dois nomes.
   que está no `.gitignore` e **não vai para o repositório**.
 - O jogo usa só os trechos, em `public/audio/trecho-*.mp3` (MP3 de 112 kbps,
   ~550 KB cada, todos no mesmo volume e com entrada e saída suaves).
-- O trecho é sempre o começo da música, de 0:00 a 0:40 (Wish You Were Here, de 0:17 a 0:57). Dá para trocar o de
-  qualquer música por outro ponto, escolhendo o segundo na mão.
+- Hoje cada trecho são os 40 primeiros segundos da música (Wish You Were
+  Here, de 0:17 a 0:57), e a rodada toca de um ponto sorteado dentro dele.
+  Para a rodada poder cair em qualquer parte da música, gere trechos longos
+  com `npm run trechos` (abaixo).
 - Quando o navegador bloqueia o som automático, o tocador pede um toque.
 - **O endereço do áudio não entrega a música.** O arquivo se chama
   `trecho-yellow.mp3`, e mandar esse endereço para a tela era mostrar a
   resposta para quem abrisse o inspetor. Cada rodada ganha um endereço
   sorteado (`/trecho/<código>`) que só o servidor sabe ligar ao arquivo; ele
-  vale por 30 minutos. O tamanho do arquivo continua sendo o dele: quem baixar
-  os 93 trechos e montar uma tabela de tamanhos ainda descobre a música. O
+  vale por 30 minutos. Pelo nome (`/audio/trecho-yellow.mp3`) os arquivos não
+  abrem mais. O tamanho do arquivo continua sendo o dele: quem juntar os 93
+  trechos jogando e montar uma tabela de tamanhos ainda descobre a música. O
   endereço sorteado tira a resposta do inspetor, não de quem tiver esse
   trabalho todo.
 - **O trecho começa a baixar na tela da categoria.** O endereço já vai junto
@@ -1292,7 +1382,37 @@ trecho e anotam o estilo dele em [`server/musicas.js`](server/musicas.js).
 opções erradas do Qual é a música.
 
 > São músicas com direito autoral. Para jogar entre amigos tudo bem, mas no site
-> público os trechos ficam acessíveis para qualquer um.
+> público os trechos ficam acessíveis para qualquer um que esteja numa partida —
+> e, com a música inteira na pasta, é a música inteira.
+
+#### Gerar os trechos a partir das músicas inteiras
+
+As músicas inteiras ficam só no computador de quem cuida do jogo, em
+`public/musicas/` (fora do git). Para a rodada tocar de qualquer parte delas,
+os trechos de `public/audio` precisam ser longos — e quem os gera é
+`npm run trechos`, que precisa do ffmpeg:
+
+```bash
+npm run trechos                        # a música inteira, a 96 kbps
+npm run trechos -- --segundos 150      # só os primeiros 2:30 de cada uma
+npm run trechos -- --kbps 128          # mais qualidade, mais peso
+npm run trechos -- --so yellow,baby    # só esses trechos
+npm run trechos -- --listar            # só mostra que arquivo vira que trecho
+```
+
+- **Que arquivo é de que música:** o script procura o título no nome do
+  arquivo — sem acento, maiúscula nem pontuação, valendo também o nome das
+  pastas (`Coldplay/Parachutes/05 Yellow.flac` serve). O artista desempata: são
+  dois *Perfect*, o do Ed Sheeran e o do Simple Plan. O que o nome não resolver
+  vai em `public/musicas/mapa.json`: `{ "yellow": "pasta/arquivo.flac" }`.
+- **Todos no mesmo volume** (loudnorm), e **sem etiqueta nenhuma**: título e
+  artista gravados no MP3 entregariam a resposta para quem baixasse o arquivo.
+- **O peso:** a 96 kbps, uma música de 3:30 dá uns 2,5 MB, e as 93 passam de
+  200 MB no repositório (hoje são 50 MB). Com `--segundos 150` fica perto de
+  170 MB.
+- Se um arquivo falhar, o trecho antigo dele continua lá. Depois é só conferir
+  e fazer o commit de `public/audio`; o limite da sala passa a oferecer 45s e
+  60s sozinho quando todos os trechos comportarem.
 
 ### Categoria Música — perguntas de letra
 
@@ -1377,7 +1497,12 @@ os **modos musicais** (todo trecho com estilo, as quatro opções sem nenhuma
 errada que também seja resposta, o endereço do áudio que não entrega a música,
 o primeiro acerto que fecha a Corrida, o clique único que só pontua no fim,
 a escala de 10 a 1, a partida por músicas, o empate no topo e o "os dois" que
-pergunta metade de cada)
+pergunta metade de cada), o **ponto de partida da música** (a duração lida
+de cada MP3, o sorteio que sempre deixa o limite inteiro de música, as opções
+de limite que o trecho mais curto comporta e a rodada de música que dura o
+limite em qualquer modo), o **avaliador da música** (a parte conhecida e o meio
+que nunca encosta no refrão, a dificuldade que sobe quando ninguém reconhece,
+o desconto do chute nas quatro opções e a passagem gradual entre os regimes)
 e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim

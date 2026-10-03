@@ -6,6 +6,9 @@ const { paraRodada, itemDe } = require('./escalada');
 const { PALAVRAS } = require('./dicas');
 const { RANKINGS } = require('./rankings');
 const musicas = require('./musicas');
+const trechos = require('./trechos');
+const avaliador = require('./avaliador');
+const { marcasDe } = require('./marcas');
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
 const perfis = require('./perfis');
@@ -411,9 +414,11 @@ class Sala {
   /**
    * @param {string} codigo
    * @param {{categorias:string[], modo:string, metaPontos:number, segundosPorPergunta:number,
-   *          perguntar?:string, fim?:string, musicas?:number|null}} config
-   *        `perguntar`, `fim` e `musicas` so existem nos modos musicais: o que
-   *        perguntar sobre o trecho e se a partida acaba na meta ou na musica N.
+   *          segundosMusica?:number, perguntar?:string, fim?:string, musicas?:number|null}} config
+   *        `segundosMusica` e quanto a musica toca nas perguntas de audio (30s
+   *        se faltar). `perguntar`, `fim` e `musicas` so existem nos modos
+   *        musicais: o que perguntar sobre o trecho e se a partida acaba na
+   *        meta ou na musica N.
    * @param {(evento:string, dados:any)=>void} emitir  publica um evento na sala
    * @param {(socketId:string, evento:string, dados:any)=>void} [emitirPara]
    *        fala com uma pessoa so. No Presente Grego a pergunta vai por aqui:
@@ -1896,9 +1901,7 @@ class Sala {
     }
 
     const categoria = this.perguntaAtual.categoria;
-    // O arquivo do trecho tem o nome da musica: para a tela vai um endereco
-    // sorteado, que so o servidor liga ao arquivo (ver musicas.js).
-    this.perguntaAtual.enderecoAudio = musicas.enderecoDoTrecho(this.perguntaAtual.audio);
+    this.prepararMusica(this.perguntaAtual);
 
     this.acertos = new Map();
     this.progresso = new Map();
@@ -1919,18 +1922,79 @@ class Sala {
       rodada: this.rodada,
       categoria,
       duracaoMs: MS_REVELACAO,
-      // O trecho comeca a baixar enquanto a categoria esta na tela: quando a
-      // pergunta abre ele toca na hora, para todo mundo junto. Na Corrida
-      // musical, quem tem internet lenta largava atras.
+      // O trecho comeca a baixar enquanto a categoria esta na tela, ja no
+      // ponto sorteado: quando a pergunta abre ele toca na hora, para todo
+      // mundo junto. Na Corrida musical, quem tem internet lenta largava atras.
       audio: this.perguntaAtual.enderecoAudio || null,
+      audioInicioMs: this.perguntaAtual.inicioAudioMs || 0,
       placar: this.placar()
     });
 
     this.agendar(() => this.mostrarPergunta(), MS_REVELACAO);
   }
 
+  /** Quanto a musica pode tocar numa rodada: o limite da sala, 30s se nao veio nenhum. */
+  limiteDaMusicaMs() {
+    return (this.config.segundosMusica || trechos.LIMITE_PADRAO) * 1000;
+  }
+
+  /**
+   * Pergunta com audio: endereco, ponto de partida e quanto ela toca.
+   *
+   * O arquivo se chama "trecho-yellow.mp3", entao para a tela vai um endereco
+   * sorteado que so o servidor liga ao arquivo. E a musica nao toca mais do
+   * comeco: cada rodada sorteia de onde, deixando musica para o limite
+   * inteiro — ela toca ate alguem acertar, todo mundo escolher ou o limite
+   * chegar. Que parte entra no sorteio e o avaliador quem diz: musica que
+   * ficou dificil toca parte conhecida, a que ficou facil toca o meio.
+   */
+  prepararMusica(pergunta) {
+    pergunta.enderecoAudio = trechos.enderecoDoTrecho(pergunta.audio);
+    if (!pergunta.audio) return;
+    const limite = this.limiteDaMusicaMs();
+    pergunta.trecho = musicas.trechoDe(pergunta.audio);
+    const regime = avaliador.regimeDaMusica(pergunta.trecho);
+    const escolha = trechos.escolherInicio(pergunta.audio, limite, regime, marcasDe(pergunta.trecho));
+    pergunta.inicioAudioMs = escolha.inicioMs;
+    pergunta.parteAudio = escolha.parte;
+    pergunta.duracaoAudioMs = trechos.tempoTocando(pergunta.audio, escolha.inicioMs, limite);
+  }
+
+  /**
+   * O avaliador aprende com a rodada de musica: quem a reconheceu, e quando.
+   *
+   * Cada modo mede do seu jeito. Na Corrida so o primeiro acerta, entao a
+   * pergunta e se a sala reconheceu e em quanto tempo; no Qual e a musica um
+   * clique na sorte acerta uma vez em quatro, e isso e descontado; nos outros,
+   * todo mundo digita e vale quantos acertaram.
+   *
+   * @returns {number|null} a dificuldade nova da musica
+   */
+  anotarMusica() {
+    const pergunta = this.perguntaAtual;
+    if (!pergunta || !pergunta.audio || !pergunta.trecho) return null;
+    const tempos = [...this.acertos.values()].map((a) => a.ms).filter(Number.isFinite);
+    let medida;
+    if (this.ehCorrida()) {
+      medida = { participantes: 1, tempos: tempos.length ? [Math.min(...tempos)] : [] };
+    } else if (this.ehQualMusica()) {
+      medida = {
+        participantes: Math.max(1, this.esperadosNaEscolha().length),
+        tempos,
+        chute: 1 / pergunta.opcoes.length
+      };
+    } else {
+      medida = { participantes: Math.max(this.jogadoresNaRodada, this.acertos.size, 1), tempos };
+    }
+    return avaliador.anotarRodada(pergunta.trecho, { ...medida, duracaoMs: this.duracaoDaRodada() });
+  }
+
   /** Quanto tempo a rodada atual fica no ar. */
   duracaoDaRodada() {
+    // Pergunta de musica: a rodada dura o que a musica toca — o limite da
+    // sala, ou o que sobrar do trecho, se ele acabar antes.
+    if (this.perguntaAtual.audio) return this.perguntaAtual.duracaoAudioMs || this.limiteDaMusicaMs();
+
     const base = this.config.segundosPorPergunta * 1000;
     const extras = Math.max(0, (this.perguntaAtual.necessarias || 1) - 1);
 
@@ -1972,6 +2036,8 @@ class Sala {
       pergunta: this.perguntaAtual.pergunta,
       imagem: this.perguntaAtual.imagem,
       audio: this.perguntaAtual.enderecoAudio || null,
+      // De que ponto do trecho a musica toca: sorteado a cada rodada.
+      audioInicioMs: this.perguntaAtual.inicioAudioMs || 0,
       letra: this.perguntaAtual.letra,
       necessarias: this.perguntaAtual.necessarias,
       // Qual e a musica: as quatro opcoes, sem dizer qual e a certa.
@@ -3418,8 +3484,15 @@ class Sala {
       : dificuldade.registrar(this.perguntaAtual.id, this.perguntaAtual.difBase, {
           jogadores: participantes,
           tempos,
-          duracaoMs: this.config.segundosPorPergunta * 1000
+          // A de Ouvir musicas dura o que a musica toca, e nao o tempo por pergunta.
+          duracaoMs: this.perguntaAtual.audio ? this.duracaoDaRodada() : this.config.segundosPorPergunta * 1000
         });
+
+    // O avaliador das musicas aprende com toda rodada que tocou musica, em
+    // qualquer modo. Nos modos musicais e a dificuldade dela que a tela
+    // mostra: a da pergunta, ali, so e lida.
+    const difMusica = this.anotarMusica();
+    const difNaTela = this.ehMusical() && difMusica !== null ? difMusica : novaDificuldade;
 
     const pergunta = this.perguntaAtual;
 
@@ -3553,12 +3626,15 @@ class Sala {
       aceita: this.ehQualMusica() ? [] : pergunta.aceita,
       // Corrida musical e Qual e a musica: o nome e quem canta.
       musica: pergunta.musica || null,
+      // Toda rodada de musica: que parte tocou — o comeco, o refrao, o meio
+      // ou um ponto qualquer. E o avaliador quem escolhe.
+      parteAudio: pergunta.parteAudio || null,
       // Qual e a musica: as opcoes, a certa e quem marcou o que.
       escolhas: this.resumoDasEscolhas(),
       dificuldade: {
-        valor: Math.round(novaDificuldade),
-        nivel: dificuldade.nivelDe(novaDificuldade).nome,
-        cor: dificuldade.nivelDe(novaDificuldade).cor
+        valor: Math.round(difNaTela),
+        nivel: dificuldade.nivelDe(difNaTela).nome,
+        cor: dificuldade.nivelDe(difNaTela).cor
       },
       detalhes,
       placar: this.placar(),

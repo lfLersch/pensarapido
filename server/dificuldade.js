@@ -191,15 +191,35 @@ function registrar(id, base, { jogadores, tempos, duracaoMs }) {
   if (!jogadores || jogadores < 1 || !duracaoMs) return dificuldadeDe(id, base);
 
   const acertos = tempos.length;
-  const parteAcerto = 1 - acertos / jogadores;
 
   // Quem não acertou conta como se tivesse levado a rodada inteira.
   const parteTempo = acertos === 0
     ? 1
     : tempos.reduce((soma, ms) => soma + Math.min(1, ms / duracaoMs), 0) / acertos;
 
-  const observada = 100 * (PESO_ACERTO * parteAcerto + PESO_TEMPO * parteTempo);
+  return registrarObservada(id, base, dificuldadeObservada(acertos / jogadores, parteTempo),
+    { jogadores, tempos });
+}
 
+/**
+ * A dificuldade que uma rodada mostrou, de 0 a 100.
+ *
+ * @param {number} fracaoAcerto  de 0 a 1: quanto da mesa acertou
+ * @param {number} fracaoTempo   de 0 a 1: quanto da rodada o acerto levou, em media
+ */
+function dificuldadeObservada(fracaoAcerto, fracaoTempo) {
+  return 100 * (PESO_ACERTO * (1 - fracaoAcerto) + PESO_TEMPO * fracaoTempo);
+}
+
+/**
+ * Leva para a media movel uma dificuldade ja medida.
+ *
+ * E o fim do `registrar`, separado para quem mede a rodada de outro jeito:
+ * o avaliador das musicas desconta o chute das quatro opcoes e, na Corrida,
+ * olha para a sala inteira, nao para cada pessoa.
+ */
+function registrarObservada(id, base, observada, { jogadores = 0, tempos = [] } = {}) {
+  const acertos = tempos.length;
   const anterior = estatisticas.get(id) || {
     vezes: 0, jogadores: 0, acertos: 0, dificuldade: base, tempoMedio: 0
   };
@@ -252,5 +272,6 @@ const pronto = carregar();
 process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 
 module.exports = {
-  idDe, registrar, dificuldadeDe, estatisticaDe, nivelDe, resumo, salvar, pronto, NIVEIS
+  idDe, registrar, registrarObservada, dificuldadeObservada, dificuldadeDe, estatisticaDe,
+  nivelDe, resumo, salvar, pronto, NIVEIS
 };

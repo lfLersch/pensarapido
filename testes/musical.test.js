@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const { Sala, pontosPorRapidez, PONTOS_CORRIDA } = require('../server/sala.js');
 const musicas = require('../server/musicas.js');
+const trechos = require('../server/trechos.js');
 const dificuldade = require('../server/dificuldade.js');
 const { avaliar, normalizar } = require('../server/comparar.js');
 
@@ -43,6 +44,8 @@ function salaNoAr(modo, extra = {}, nomes = ['Ana', 'Bia', 'Caio']) {
   const eventos = [];
   const sala = new Sala('MUS1', {
     categorias: ['ouvir'], subs: [], fora: [], modo, metaPontos: 999, segundosPorPergunta: 20,
+    // A musica toca 20s: as contas de pontos abaixo sao de uma rodada de 20s.
+    segundosMusica: 20,
     perguntar: 'os-dois', fim: 'pontos', musicas: null, ...extra
   }, (evento, dados) => eventos.push({ evento, dados }), () => {});
   for (const nome of nomes) sala.entrar(nome.toLowerCase(), nome);
@@ -165,9 +168,9 @@ const ditoNoChat = (eventos) => eventos
     const arquivo = sala.perguntaAtual.audio;
     conferir('a tela recebe um endereco sorteado', /^\/trecho\/[\w-]{12,}$/.test(pergunta.audio), true);
     conferir('  sem o nome do arquivo', pergunta.audio.includes(musicas.trechoDe(arquivo)), false);
-    conferir('  e o servidor sabe a que arquivo ele leva', musicas.audioDoEndereco(pergunta.audio.slice(8)), arquivo);
+    conferir('  e o servidor sabe a que arquivo ele leva', trechos.audioDoEndereco(pergunta.audio.slice(8)), arquivo);
     conferir('  o mesmo da tela da categoria, para baixar antes', categoria.audio, pergunta.audio);
-    conferir('endereco inventado nao leva a nada', musicas.audioDoEndereco('inventado'), null);
+    conferir('endereco inventado nao leva a nada', trechos.audioDoEndereco('inventado'), null);
     sala.destruir();
   }
 
