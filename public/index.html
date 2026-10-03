@@ -57,6 +57,9 @@
       <button class="btn btn--fantasma btn--bloco perfil-atalho" type="button" id="btn-abrir-perfil">
         <span class="btn__icone">🏅</span> Meu perfil e conquistas
       </button>
+      <button class="btn btn--fantasma btn--bloco perfil-atalho perfil-atalho--junto" type="button" id="btn-abrir-estatisticas">
+        <span class="btn__icone">📊</span> Estatisticas das perguntas
+      </button>
 
       <p class="aviso" id="aviso-lobby" role="alert"></p>
 
@@ -118,6 +121,67 @@
 
       <h3 class="salas__titulo perfil-secao">Quem mais venceu</h3>
       <ol class="melhores" id="perfil-melhores"></ol>
+    </div>
+  </section>
+
+  <!-- ======================= 1A2. ESTATISTICAS ======================= -->
+  <section class="tela" id="tela-estatisticas">
+    <div class="caixa caixa--larga">
+      <div class="topo-tela">
+        <button class="btn btn--fantasma btn--icone" id="btn-voltar-estatisticas" aria-label="Voltar">←</button>
+        <div>
+          <h2 class="titulo">Estatisticas</h2>
+          <p class="subtitulo">Quantas vezes cada pergunta caiu, quanto acertam e em quanto tempo.</p>
+        </div>
+      </div>
+
+      <div class="perfil-numeros est-resumo" id="est-resumo" aria-live="polite"></div>
+
+      <div class="est-filtros">
+        <input class="est-campo est-campo--busca" id="est-busca" type="search" maxlength="80"
+               placeholder="Buscar no texto da pergunta" aria-label="Buscar no texto da pergunta"
+               autocomplete="off" spellcheck="false" enterkeyhint="search" />
+        <select class="est-campo" id="est-categoria" aria-label="Categoria">
+          <option value="">Todas as categorias</option>
+        </select>
+        <select class="est-campo" id="est-ordem" aria-label="Ordenar por">
+          <option value="vezes">Mais feitas</option>
+          <option value="menos-vezes">Menos feitas</option>
+          <option value="acerto">Mais acertadas</option>
+          <option value="menos-acerto">Menos acertadas</option>
+          <option value="rapidas">Acerto mais rapido</option>
+          <option value="lentas">Acerto mais lento</option>
+          <option value="dificuldade">Mais dificeis</option>
+          <option value="menos-dificuldade">Mais faceis</option>
+        </select>
+        <label class="est-so-feitas">
+          <input type="checkbox" id="est-feitas" /> So as que ja cairam
+        </label>
+      </div>
+
+      <p class="est-contagem" id="est-contagem"></p>
+      <table class="est-tabela" id="est-tabela">
+        <thead>
+          <tr>
+            <th scope="col" class="est-col-pergunta">Pergunta</th>
+            <th scope="col" class="est-num" data-ordem="vezes"><button type="button">Vezes</button></th>
+            <th scope="col" class="est-num" data-ordem="acerto"><button type="button">Acerto</button></th>
+            <th scope="col" class="est-num" data-ordem="rapidas"><button type="button">Tempo do acerto</button></th>
+            <th scope="col" class="est-num" data-ordem="dificuldade"><button type="button">Dificuldade</button></th>
+          </tr>
+        </thead>
+        <tbody id="est-linhas"></tbody>
+      </table>
+      <p class="painel__vazio est-vazio" id="est-vazio" hidden></p>
+      <button class="btn btn--fantasma btn--bloco est-mais" type="button" id="est-mais" hidden>Mostrar mais</button>
+
+      <p class="perfil-explica est-explica">
+        Vezes conta toda vez que a pergunta entrou em jogo, em qualquer modo. O acerto e o tempo vem das
+        rodadas que medem a pergunta (os leiloes — Presente Grego, Leilao Geral e Dando dicas — e o Mais ou Menos
+        Pontos ficam de fora): acerto e a parte de quem
+        estava na rodada que acertou, e o tempo e quanto levou, em media, do relogio abrir ate o acerto.
+        Com poucas respostas o numero ainda balanca. As respostas nao aparecem aqui, para a aba nao virar cola.
+      </p>
     </div>
   </section>
 

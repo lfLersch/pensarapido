@@ -17,6 +17,17 @@
 
 const NOTAS = [
   {
+    versao: '1.26',
+    data: '2026-10-03',
+    titulo: 'Estatisticas das perguntas',
+    itens: [
+      'O saguao ganhou o botao Estatisticas das perguntas: para cada pergunta, quantas vezes ela ja caiu, quanto acertam e quanto tempo levam, em media, para acertar.',
+      'Da para buscar pelo texto da pergunta, filtrar por categoria ou parte dela e ordenar pelas mais feitas, mais ou menos acertadas, acerto mais rapido ou mais lento, e dificuldade.',
+      'Em cima ficam os totais do que esta filtrado. Pergunta de imagem mostra a imagem, e a de musica tem um botao para ouvir o trecho.',
+      'As respostas nao aparecem, para a aba nao virar cola no meio da partida.'
+    ]
+  },
+  {
     versao: '1.25',
     data: '2026-10-01',
     titulo: 'Pausar o jogo',

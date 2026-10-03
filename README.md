@@ -909,6 +909,34 @@ somando as categorias (a média das notas pesada pelas rodadas); a divisão por
 faixa de dificuldade e a evolução começam do zero, porque não dá para
 refazê-las.
 
+### Estatísticas das perguntas
+
+O saguão tem o botão **Estatísticas das perguntas**, que abre uma tabela com
+todas as perguntas do banco:
+
+- **Vezes** — quantas vezes a pergunta já caiu, em qualquer modo. É o mesmo
+  contador do [rodízio](#rodízio-a-mesma-pergunta-não-volta-tão-cedo).
+- **Acerto** — a parte de quem estava na rodada que acertou ("9 de 12").
+- **Tempo do acerto** — quanto levou, em média, do relógio abrir até o acerto.
+- **Dificuldade** — a [aprendida](#dificuldade-adaptativa), com o nível.
+
+Acerto e tempo vêm das rodadas que medem a pergunta, as mesmas que alimentam a
+dificuldade: os leilões (Presente Grego, Leilão Geral e Dando dicas) e o Mais
+ou Menos Pontos ficam de fora. Em cima ficam os totais do que está filtrado,
+com o acerto e o tempo pesados pelo número de respostas e de acertos.
+
+Dá para buscar no texto da pergunta, filtrar por categoria ou parte dela,
+ordenar (mais feitas, mais ou menos acertadas, acerto mais rápido ou mais
+lento, dificuldade; clicar no cabeçalho da coluna também ordena) e ficar só
+com as que já caíram. A lista vem de 50 em 50. Pergunta de imagem mostra a
+imagem, e a de música tem um botão para ouvir o trecho, porque é isso que
+separa um "Que país é este?" do outro.
+
+**As respostas não aparecem**, e a busca não olha a resposta: a aba é pública
+e, aberta noutra guia, viraria cola no meio da partida. Os números vêm de
+`GET /api/estatisticas` (`categoria`, `sub`, `busca`, `ordem`, `feitas=1`,
+`pagina`, `tamanho` até 100), que `testes/estatisticas.test.js` cobre.
+
 ### Login com Google (opcional)
 
 Com o login, o perfil passa a ser da **conta**, e vale em qualquer aparelho.
@@ -1383,7 +1411,9 @@ as **5 chances por pergunta** (o que gasta, o que não gasta, a resposta certa
 que não vale nem vaza depois da última, a rodada que fecha quando ninguém mais
 pode pontuar e a chance que não volta ao recarregar a página)
 o **círculo entre nota e dificuldade** (a simulação de uma população
-inteira, o que entra na conta da sala e o painel do perfil)
+inteira, o que entra na conta da sala e o painel do perfil),
+a **aba Estatísticas** (os números de cada pergunta, os totais pesados, as
+ordens, as páginas e a resposta que não sai)
 e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim
