@@ -17,6 +17,18 @@
 
 const NOTAS = [
   {
+    versao: '1.29',
+    data: '2026-10-04',
+    titulo: '85 musicas novas: 232 para ouvir',
+    itens: [
+      'Ouvir musicas foi de 147 para 232 musicas.',
+      'Rock e pop: Queen, Nirvana, Bon Jovi, Guns N\' Roses, Eagles, a-ha, Cyndi Lauper, Red Hot Chili Peppers e mais.',
+      'Nacional: Legiao Urbana, Charlie Brown Jr, Skank, Paralamas, Titas, Mamonas, Engenheiros, Armandinho, Papas da Lingua, Fresno, Tim Maia e Roberto Carlos.',
+      'Sertanejo: Marilia Mendonca, Henrique e Juliano, Ze Neto e Cristiano, Chitaozinho e Xororo, Michel Telo, Simone Mendes e mais.',
+      'As musicas que vieram de clipe ou de show perderam o que nao era musica: a cena antes da musica, a conversa e os aplausos do fim.'
+    ]
+  },
+  {
     versao: '1.28',
     data: '2026-10-04',
     titulo: 'Corrida musical, Qual e a musica e 147 musicas',

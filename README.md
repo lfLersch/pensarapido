@@ -1361,7 +1361,7 @@ transparente sumiria na tela escura do jogo.
 ### Categoria Ouvir músicas
 
 A categoria **Ouvir músicas** toca **um pedaço sorteado** de uma música — não
-é sempre o começo. São 147 músicas, do rock ao sertanejo, ao funk e ao rap
+é sempre o começo. São 232 músicas, do rock ao sertanejo, ao funk e ao rap
 nacional (Yellow, Waka Waka, Billie Jean, Racionais, Djonga, Comunidade
 Nin-Jitsu e outras), e cada uma tem **duas perguntas**: *"Qual é o nome desta
 música?"* e *"Quem canta esta música?"* — ou *"Qual banda canta…"*, para banda
@@ -1369,7 +1369,7 @@ não ganhar atalho de sobrenome ("Park" valendo por Linkin Park). Em dueto vale
 qualquer um dos nomes.
 
 - **O arquivo é a música inteira**, em `public/audio/musica-<nome>.mp3`: MP3 de
-  64 kbps mono, todas no mesmo volume (-14 LUFS), uns 1,8 MB por música e 254
+  64 kbps mono, todas no mesmo volume (-14 LUFS), uns 1,7 MB por música e 397
   MB no total. A **taxa é fixa** de propósito: com taxa variável o navegador
   pula para um ponto aproximado do meio da música, e cada um ouviria um pedaço
   diferente.
@@ -1406,6 +1406,16 @@ kbps, mono, taxa fixa, volume igualado), escreva as duas perguntas em
 `questions.js` e acrescente a linha com a duração e o estilo em
 `server/musicas.js`. `testes/musicas.test.js` confere que as três coisas
 batem.
+
+**Clipe e show vêm com sobra.** Música baixada de clipe ou de DVD costuma ter
+cena antes da música, conversa, plateia e créditos. Antes de converter, o que
+não é música sai do arquivo: o volume segundo a segundo mostra onde a música
+começa e acaba (vinheta e fala ficam bem abaixo da música), e a fração de
+instantes de silêncio dentro de cada segundo separa fala (pausa entre as
+sílabas) de música (som contínuo). Fala por cima da banda escapa das duas
+medidas — em "Detalhes", ao vivo, o corte foi feito a mão. Introdução quieta
+de verdade (o violão de Wonderwall) não é sobra: as músicas de álbum ficam
+inteiras.
 
 > São músicas com direito autoral. Para jogar entre amigos tudo bem, mas no site
 > público as músicas inteiras ficam acessíveis para qualquer um.
