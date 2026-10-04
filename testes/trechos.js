@@ -1,125 +1,106 @@
 'use strict';
 
 /*
- * Gera os trechos de public/audio a partir das musicas inteiras de
- * public/musicas (FLAC, fora do git).
+ * Converte o acervo de public/musicas (FLAC ou o que for) em MP3 para o jogo:
+ * public/audio/trecho-<nome>.mp3, com a musica inteira.
  *
- * O jogo sorteia de que ponto do trecho cada rodada toca. Com trechos de 40s
- * o sorteio fica no comeco da musica; com trechos longos — ou a musica
- * inteira —, ele cai em qualquer parte dela.
+ *   npm run trechos                       todas, inteiras, a 96 kbps
+ *   npm run trechos -- --kbps 64          mais leve (uns 2/3 do tamanho)
+ *   npm run trechos -- --segundos 150     so os primeiros 2:30 de cada uma
+ *   npm run trechos -- --de ~/Musicas     outra pasta
+ *   npm run trechos -- --refazer          converte de novo as que ja estao prontas
+ *   npm run trechos -- --catalogo <pasta> grava o catalogo em outro lugar
+ *   npm run trechos -- --mesmo-assim      converte mesmo passando do peso
  *
- *   npm run trechos                        a musica inteira, a 96 kbps
- *   npm run trechos -- --segundos 150      so os primeiros 2:30 de cada uma
- *   npm run trechos -- --kbps 128          mais qualidade, mais peso
- *   npm run trechos -- --so yellow,baby    so essas (o nome do trecho)
- *   npm run trechos -- --listar            so mostra que arquivo vira que trecho
+ * Primeiro cataloga a pasta, como o `npm run catalogo`: sao as etiquetas que
+ * dizem que arquivo e de que musica, quais o jogo ja usa e quais sao novas.
+ * Cada musica vira um MP3 so: entre duplicadas fica a de estudio, com
+ * etiqueta e em FLAC. As do jogo mantem o nome que ja tinham
+ * (trecho-yellow.mp3, que deixa de ser o trecho de 40s e passa a ser a musica
+ * inteira); as novas ganham um nome pelo titulo. O catalogo anota o MP3 de
+ * cada uma, e e por ele que as novas viram pergunta depois.
  *
- * Precisa do ffmpeg. O arquivo de cada musica e achado pelo nome — titulo e
- * artista, sem acento, maiuscula nem pontuacao, valendo tambem o nome das
- * pastas. O que nao der para achar sozinho vai em public/musicas/mapa.json:
+ * Todas saem no mesmo volume e sem etiqueta: titulo e artista gravados no MP3
+ * entregariam a resposta. O que ja foi convertido nao e refeito, entao rodar
+ * de novo depois de baixar mais musicas so converte as novas.
  *
- *   { "yellow": "Coldplay/Parachutes/05 Yellow.flac" }
+ * Antes de converter, faz a conta do peso: os MP3 vao para o git, e o que
+ * entra no historico nao sai mais. Passando de 800 MB, para e mostra quanto
+ * daria com menos kbps ou so o comeco de cada musica.
  *
- * Todos saem no mesmo volume, sem etiqueta nenhuma: titulo e artista
- * gravados no MP3 entregariam a resposta para quem baixasse o arquivo.
+ * Precisa do ffmpeg.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { CATALOGO } = require('../server/musicas');
-const { normalizar } = require('../server/comparar');
 const { duracaoDoMp3 } = require('../server/trechos');
+const { montarCatalogo, escrever, creditos, chaveTitulo, horas } = require('./catalogo');
 
 const RAIZ = path.join(__dirname, '..');
-const EXTENSOES = ['.flac', '.mp3', '.m4a', '.wav', '.ogg', '.opus', '.aac', '.wma', '.aiff'];
+const FAIXA_CURTA = 60; // menos que isto e vinheta, nao musica
+const MB_PESADO = 800;  // o GitHub pede o repositorio inteiro abaixo de 1 GB
 
-const argumento = (nome, padrao) => {
-  const i = process.argv.indexOf(`--${nome}`);
-  const valor = i >= 0 ? process.argv[i + 1] : undefined;
-  return valor !== undefined && !valor.startsWith('--') ? valor : padrao;
-};
+/* ------------------------------ Escolhas ------------------------------ */
 
-const DE = path.resolve(RAIZ, argumento('de', 'public/musicas'));
-const PARA = path.resolve(RAIZ, argumento('para', 'public/audio'));
-const KBPS = Number(argumento('kbps', 96));
-const SEGUNDOS = Number(argumento('segundos', 0)); // 0 = a musica inteira
-const SO = argumento('so', '').split(',').map((s) => s.trim()).filter(Boolean);
-const LISTAR = process.argv.includes('--listar');
+const semAcento = (texto) => String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+const slug = (texto) => semAcento(texto).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
-function sair(mensagem) {
-  console.error(mensagem);
-  process.exit(1);
-}
-
-if (!Number.isInteger(KBPS) || KBPS < 64 || KBPS > 320) sair('--kbps vai de 64 a 320.');
-if (!Number.isFinite(SEGUNDOS) || SEGUNDOS < 0 || (SEGUNDOS > 0 && SEGUNDOS < 15)) {
-  sair('--segundos e 0 (a musica inteira) ou pelo menos 15.');
-}
-if (!fs.existsSync(DE)) sair(`Nao achei ${DE}. E ai que ficam as musicas inteiras (fora do git).`);
-if (!LISTAR && spawnSync('ffmpeg', ['-version']).status !== 0) {
-  sair('Nao achei o ffmpeg. Instale (https://ffmpeg.org) e rode de novo.');
-}
-
-/* ------------------------- Que arquivo e de quem ------------------------- */
-
-/** Todos os arquivos de audio da pasta, com as subpastas (Artista/Album/faixa). */
-function listar(pasta, prefixo = '') {
-  const achados = [];
-  for (const item of fs.readdirSync(pasta, { withFileTypes: true })) {
-    const relativo = path.join(prefixo, item.name);
-    if (item.isDirectory()) achados.push(...listar(path.join(pasta, item.name), relativo));
-    else if (EXTENSOES.includes(path.extname(item.name).toLowerCase())) achados.push(relativo);
-  }
-  return achados;
-}
-
-const arquivos = listar(DE);
-const chaveDe = new Map(arquivos.map((rel) => [rel, normalizar(rel.replace(/\.[^.]+$/, ''))]));
-
-const caminhoDoMapa = path.join(DE, 'mapa.json');
-const mapa = fs.existsSync(caminhoDoMapa) ? JSON.parse(fs.readFileSync(caminhoDoMapa, 'utf8')) : {};
-
-/** As grafias de uma resposta, comparaveis com o nome do arquivo. */
-function grafias(q) {
-  return q ? [q.resposta, ...(q.aceita || [])].map(normalizar).filter((f) => f.length >= 3) : [];
+/**
+ * Entre os arquivos da mesma musica, o melhor para o quiz: gravacao de
+ * estudio, com etiqueta e em FLAC, nessa ordem de importancia.
+ */
+function melhorDe(grupo) {
+  const nota = (m) => (m.versao ? 4 : 0) + (m.etiquetas ? 0 : 2) + (/\.flac$/i.test(m.arquivo) ? 0 : 1);
+  return grupo.slice().sort((a, b) => nota(a) - nota(b))[0];
 }
 
 /**
- * O arquivo de origem de um trecho. O titulo tem que estar no nome; o
- * artista desempata — sao dois "Perfect", o do Ed Sheeran e o do Simple Plan.
+ * O nome do MP3 de cada musica escolhida.
+ *
+ * A do jogo fica com o nome de sempre, que as perguntas ja usam. A nova ganha
+ * o do titulo; se ele ja for de outra musica ("Perfect", "Stay"), entra o
+ * artista no nome, como em trecho-perfect-simple-plan.
  */
-function acharOrigem(musica) {
-  if (mapa[musica.trecho]) return { arquivo: mapa[musica.trecho], como: 'mapa.json' };
-
-  const titulos = [...grafias(musica.nome), normalizar(musica.trecho)];
-  const artistas = grafias(musica.quem);
-  const candidatos = [];
-  for (const rel of arquivos) {
-    const chave = chaveDe.get(rel);
-    if (!titulos.some((t) => chave.includes(t))) continue;
-    candidatos.push({ rel, pontos: artistas.some((a) => chave.includes(a)) ? 2 : 1 });
+function nomear(escolhidas, catalogoDoJogo) {
+  const usados = new Set(catalogoDoJogo.map((m) => m.trecho));
+  for (const m of escolhidas) if (m.trecho) m.slug = m.trecho;
+  for (const m of escolhidas) {
+    if (m.trecho) continue;
+    const titulo = slug(m.titulo) || 'faixa';
+    const primeiro = String(m.artista || '').split(/\s*[,;&/]\s*|\s+(?:feat|ft)\.?\s+/i)[0];
+    let nome = titulo;
+    if (usados.has(nome) && primeiro) nome = `${titulo}-${slug(primeiro)}`;
+    for (let n = 2; usados.has(nome); n++) nome = `${titulo}-${n}`;
+    usados.add(nome);
+    m.slug = nome;
   }
-  if (!candidatos.length) return { erro: 'nenhum arquivo com o titulo no nome' };
-
-  const melhor = Math.max(...candidatos.map((c) => c.pontos));
-  const empate = candidatos.filter((c) => c.pontos === melhor);
-  if (empate.length > 1) return { erro: `mais de um arquivo serve: ${empate.map((c) => c.rel).join(' | ')}` };
-  return { arquivo: empate[0].rel, como: melhor === 2 ? 'titulo e artista' : 'so o titulo' };
 }
 
-/* -------------------------------- Corte -------------------------------- */
+/** Agrupa as entradas do catalogo por musica (artista principal + titulo). */
+function porMusica(musicas) {
+  const grupos = new Map();
+  for (const m of musicas) {
+    const chave = `${[...creditos(m.artista)][0] || ''}|${chaveTitulo(m.titulo)}`;
+    if (!grupos.has(chave)) grupos.set(chave, []);
+    grupos.get(chave).push(m);
+  }
+  return [...grupos.values()];
+}
 
-/** Corta e converte um arquivo, num temporario: se der errado, o trecho antigo fica. */
-function converter(origem, destino) {
+/* ------------------------------- Corte ------------------------------- */
+
+/** Corta e converte um arquivo, num temporario: se der errado, o antigo fica. */
+function converter(origem, destino, { kbps, segundos }) {
   const temporario = `${destino}.novo.mp3`;
   const args = ['-hide_banner', '-loglevel', 'error', '-y', '-i', origem,
     '-vn', '-map_metadata', '-1', '-fflags', '+bitexact'];
-  if (SEGUNDOS > 0) args.push('-t', String(SEGUNDOS));
+  if (segundos > 0) args.push('-t', String(segundos));
   args.push(
     // Todo mundo no mesmo volume, como os trechos antigos.
     '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11',
-    '-ar', '44100', '-ac', '2', '-c:a', 'libmp3lame', '-b:a', `${KBPS}k`,
+    '-ar', '44100', '-ac', '2', '-c:a', 'libmp3lame', '-b:a', `${kbps}k`,
     // Nenhuma etiqueta: o titulo gravado no arquivo seria a resposta.
     '-id3v2_version', '0', '-write_id3v1', '0',
     temporario
@@ -132,70 +113,122 @@ function converter(origem, destino) {
   fs.renameSync(temporario, destino);
 }
 
-/* ------------------------------- Execucao ------------------------------- */
-
-const alvo = SO.length ? CATALOGO.filter((m) => SO.includes(m.trecho)) : CATALOGO;
-if (SO.length && alvo.length !== SO.length) {
-  sair(`Trecho desconhecido: ${SO.filter((t) => !CATALOGO.some((m) => m.trecho === t)).join(', ')}`);
+/** Quantos MB de MP3 as musicas dao, a tantos kbps e cortadas em tantos segundos. */
+function pesoEmMb(musicas, { kbps, segundos }) {
+  const total = musicas.reduce((soma, m) => soma + (segundos ? Math.min(segundos, m.duracao || segundos) : (m.duracao || 0)), 0);
+  return (total * kbps * 1000) / 8 / 1048576;
 }
 
-console.log(`${arquivos.length} arquivos em ${path.relative(RAIZ, DE) || DE}; ${alvo.length} trechos para fazer.`);
-console.log(SEGUNDOS ? `Cada trecho: os primeiros ${SEGUNDOS}s, a ${KBPS} kbps.\n` : `Cada trecho: a musica inteira, a ${KBPS} kbps.\n`);
-
-const usados = new Map(); // arquivo -> trecho
-const faltaram = [];
-let feitos = 0;
-let bytes = 0;
-let menor = Infinity;
-
-for (const musica of alvo) {
-  const achado = acharOrigem(musica);
-  if (achado.erro) {
-    faltaram.push(`${musica.trecho}: ${achado.erro}`);
-    console.log(`FALTA  ${musica.trecho.padEnd(28)} ${achado.erro}`);
-    continue;
-  }
-  if (usados.has(achado.arquivo)) {
-    const erro = `o arquivo ja virou ${usados.get(achado.arquivo)}`;
-    faltaram.push(`${musica.trecho}: ${erro}`);
-    console.log(`FALTA  ${musica.trecho.padEnd(28)} ${erro}`);
-    continue;
-  }
-  usados.set(achado.arquivo, musica.trecho);
-
-  if (LISTAR) {
-    console.log(`ok     ${musica.trecho.padEnd(28)} <- ${achado.arquivo} (${achado.como})`);
-    continue;
-  }
-
-  const destino = path.join(PARA, `trecho-${musica.trecho}.mp3`);
+/** O MP3 de destino ja esta pronto: existe e tem a duracao esperada. */
+function jaPronto(destino, esperado) {
+  if (!fs.existsSync(destino) || !esperado) return false;
   try {
-    converter(path.join(DE, achado.arquivo), destino);
-  } catch (erro) {
-    faltaram.push(`${musica.trecho}: ${erro.message}`);
-    console.log(`ERRO   ${musica.trecho.padEnd(28)} ${erro.message}`);
-    continue;
+    return Math.abs(duracaoDoMp3(destino) - esperado) <= 2;
+  } catch {
+    return false;
   }
-  const segundos = duracaoDoMp3(destino);
-  const tamanho = fs.statSync(destino).size;
-  feitos += 1;
-  bytes += tamanho;
-  menor = Math.min(menor, segundos);
-  const minutos = `${Math.floor(segundos / 60)}:${String(Math.round(segundos % 60)).padStart(2, '0')}`;
-  console.log(`ok     ${musica.trecho.padEnd(28)} ${minutos.padStart(5)}  ${(tamanho / 1048576).toFixed(1).padStart(4)} MB  <- ${achado.arquivo}`);
 }
 
-console.log('');
-if (LISTAR) {
-  console.log(`${usados.size} de ${alvo.length} trechos tem arquivo.`);
-} else {
-  console.log(`${feitos} de ${alvo.length} trechos feitos, ${(bytes / 1048576).toFixed(0)} MB no total.`);
-  if (feitos) {
-    console.log(`O mais curto tem ${Math.floor(menor)}s: o limite da musica na sala vai ate o maior valor que caiba nele.`);
+/* ------------------------------ Execucao ------------------------------ */
+
+function sair(mensagem) {
+  console.error(mensagem);
+  process.exit(1);
+}
+
+const argumento = (nome, padrao) => {
+  const i = process.argv.indexOf(`--${nome}`);
+  const valor = i >= 0 ? process.argv[i + 1] : undefined;
+  return valor !== undefined && !valor.startsWith('--') ? valor : padrao;
+};
+
+if (require.main === module) {
+  const de = path.resolve(RAIZ, argumento('de', 'public/musicas'));
+  const para = path.resolve(RAIZ, argumento('para', 'public/audio'));
+  const kbps = Number(argumento('kbps', 96));
+  const segundos = Number(argumento('segundos', 0)); // 0 = a musica inteira
+  const refazer = process.argv.includes('--refazer');
+  const ondeCatalogo = path.resolve(RAIZ, argumento('catalogo', 'catalogo'));
+
+  if (!Number.isInteger(kbps) || kbps < 48 || kbps > 320) sair('--kbps vai de 48 a 320.');
+  if (!Number.isFinite(segundos) || segundos < 0 || (segundos > 0 && segundos < 45)) {
+    sair('--segundos e 0 (a musica inteira) ou pelo menos 45.');
   }
+  if (!fs.existsSync(de)) sair(`Nao achei ${de}. E ai que ficam as musicas inteiras (fora do git).`);
+  if (spawnSync('ffmpeg', ['-version']).status !== 0) {
+    sair('Nao achei o ffmpeg. Instale (Windows: winget install ffmpeg; Mac: brew install ffmpeg) e rode de novo.');
+  }
+
+  const c = montarCatalogo(de, CATALOGO);
+  if (!c.musicas.length) sair(`Nenhum arquivo de audio em ${de}.`);
+
+  // Uma por musica, e vinheta fica de fora.
+  const escolhidas = [];
+  for (const grupo of porMusica(c.musicas)) {
+    const melhor = melhorDe(grupo);
+    for (const m of grupo) if (m !== melhor) m.igualA = melhor.arquivo;
+    if (melhor.duracao && melhor.duracao < FAIXA_CURTA) continue;
+    escolhidas.push(melhor);
+  }
+  nomear(escolhidas, CATALOGO);
+
+  console.log(`${c.musicas.length} arquivos, ${escolhidas.length} musicas para o jogo.`);
+  const previsto = pesoEmMb(escolhidas, { kbps, segundos });
+  console.log(`${segundos ? `Cada uma: os primeiros ${segundos}s` : 'Cada uma: inteira'}, a ${kbps} kbps — uns ${Math.round(previsto)} MB.\n`);
+  if (previsto > MB_PESADO && !process.argv.includes('--mesmo-assim')) {
+    const opcao = (k, seg) => `  npm run trechos -- --kbps ${k}${seg ? ` --segundos ${seg}` : ''}`.padEnd(48)
+      + `uns ${Math.round(pesoEmMb(escolhidas, { kbps: k, segundos: seg }))} MB`;
+    sair([
+      `Passa de ${MB_PESADO} MB, pesado demais para o git: o GitHub pede o repositorio inteiro abaixo de 1 GB,`,
+      'e o que entra no historico nao sai mais. Escolha um destes:',
+      '',
+      opcao(64, segundos),
+      opcao(kbps, segundos || 150),
+      opcao(64, segundos || 150),
+      '',
+      'ou rode com --mesmo-assim para converter assim mesmo.'
+    ].join('\n'));
+  }
+
+  let feitas = 0;
+  let prontas = 0;
+  const falhas = [];
+  fs.mkdirSync(para, { recursive: true });
+  for (const m of escolhidas) {
+    const destino = path.join(para, `trecho-${m.slug}.mp3`);
+    const esperado = m.duracao ? (segundos ? Math.min(segundos, m.duracao) : m.duracao) : null;
+    m.audio = `/audio/trecho-${m.slug}.mp3`;
+    if (!refazer && jaPronto(destino, esperado)) {
+      prontas += 1;
+      continue;
+    }
+    try {
+      converter(path.join(de, m.arquivo), destino, { kbps, segundos });
+      feitas += 1;
+      console.log(`ok     trecho-${m.slug}.mp3  <- ${m.arquivo}`);
+    } catch (erro) {
+      m.audio = null;
+      falhas.push(`${m.arquivo}: ${erro.message}`);
+      console.log(`ERRO   ${m.arquivo}: ${erro.message}`);
+    }
+  }
+
+  escrever(c, { de, para: ondeCatalogo, por: 'npm run trechos' });
+
+  const mb = escolhidas
+    .map((m) => path.join(para, `trecho-${m.slug}.mp3`))
+    .filter((f) => fs.existsSync(f))
+    .reduce((soma, f) => soma + fs.statSync(f).size, 0) / 1048576;
+  const novas = escolhidas.filter((m) => !m.trecho && m.audio).length;
+  const doJogo = escolhidas.filter((m) => m.trecho && m.audio).length;
+
+  console.log(`\n${feitas} convertidas agora, ${prontas} ja estavam prontas, ${falhas.length} com erro.`);
+  console.log(`${doJogo} das ${CATALOGO.length} musicas do jogo agora estao inteiras; ${novas} sao novas.`);
+  console.log(`${Math.round(mb)} MB de MP3 (${horas(escolhidas.reduce((s, m) => s + (m.duracao || 0), 0))} de musica).`);
+  console.log('\nO catalogo (catalogo/musicas.md) diz que MP3 virou cada musica.');
+  console.log('Musica inteira tem direito autoral: antes do push, confira que o repositorio no GitHub e privado.');
+  console.log('Para enviar: git add catalogo public/audio && git commit -m "Acervo de musicas" && git push');
+  process.exit(falhas.length && !feitas && !prontas ? 1 : 0);
 }
-if (faltaram.length) {
-  console.log(`\nFaltaram ${faltaram.length}. Os trechos antigos deles continuam como estavam.`);
-  console.log('Para os que o nome nao resolveu, ponha em public/musicas/mapa.json: { "trecho": "arquivo.flac" }');
-}
-process.exit(faltaram.length && !feitos && !LISTAR ? 1 : 0);
+
+module.exports = { melhorDe, nomear, porMusica, pesoEmMb, slug };

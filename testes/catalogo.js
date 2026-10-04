@@ -470,13 +470,13 @@ function horas(segundos) {
   return h ? `${h} h ${min} min` : `${min} min`;
 }
 
-function markdown(c, { pasta, data }) {
+function markdown(c, { pasta, data, por = 'npm run catalogo' }) {
   const novas = c.musicas.filter((m) => !m.trecho).length;
   const doJogo = c.trechosSemArquivo.length;
   const linhas = [
     '# Catalogo do acervo',
     '',
-    `Gerado por \`npm run catalogo\` em ${data}, da pasta \`${pasta}\`.`,
+    `Gerado por \`${por}\` em ${data}, da pasta \`${pasta}\`.`,
     '',
     `**${c.musicas.length} musicas** de **${c.artistas} artistas**, ${horas(c.segundos)} de musica.`,
     '',
@@ -499,10 +499,16 @@ function markdown(c, { pasta, data }) {
     }
   }
 
-  linhas.push('## Musicas', '', '| Artista | Musica | Album | Ano | Duracao | No jogo |', '| --- | --- | --- | --- | --- | --- |');
+  // Depois do `npm run trechos`, cada musica diz em que MP3 ela virou.
+  const comMp3 = c.musicas.some((m) => m.audio);
+  linhas.push('## Musicas', '',
+    `| Artista | Musica | Album | Ano | Duracao | No jogo |${comMp3 ? ' MP3 |' : ''}`,
+    `| --- | --- | --- | --- | --- | --- |${comMp3 ? ' --- |' : ''}`);
   for (const m of c.musicas) {
+    const mp3 = m.audio ? path.basename(m.audio) : (m.igualA ? 'duplicada' : '');
     linhas.push(`| ${celula(m.artista || '?')} | ${celula(m.titulo)}${m.versao ? ` _(${m.versao})_` : ''} | ${
-      celula(m.album || '')} | ${m.ano || ''} | ${minutos(m.duracao)} | ${m.trecho ? 'sim' : ''} |`);
+      celula(m.album || '')} | ${m.ano || ''} | ${minutos(m.duracao)} | ${m.trecho ? 'sim' : ''} |${
+      comMp3 ? ` ${mp3} |` : ''}`);
   }
   return `${linhas.join('\n')}\n`;
 }
@@ -517,16 +523,22 @@ function json(c, { pasta, data }) {
   }, null, 2)}\n`;
 }
 
-/** Le a pasta, escreve os dois arquivos e devolve o catalogo. */
-function catalogar({ de, para, catalogoDoJogo }) {
-  const c = montarCatalogo(de, catalogoDoJogo);
+/** Grava catalogo/musicas.md e catalogo/musicas.json. */
+function escrever(c, { de, para, por }) {
   const meta = {
     pasta: path.relative(RAIZ, de).split(path.sep).join('/') || '.',
-    data: new Date().toISOString().slice(0, 10)
+    data: new Date().toISOString().slice(0, 10),
+    por
   };
   fs.mkdirSync(para, { recursive: true });
   fs.writeFileSync(path.join(para, 'musicas.md'), markdown(c, meta), 'utf8');
   fs.writeFileSync(path.join(para, 'musicas.json'), json(c, meta), 'utf8');
+}
+
+/** Le a pasta, escreve os dois arquivos e devolve o catalogo. */
+function catalogar({ de, para, catalogoDoJogo }) {
+  const c = montarCatalogo(de, catalogoDoJogo);
+  escrever(c, { de, para });
   return c;
 }
 
@@ -563,5 +575,5 @@ if (require.main === module) {
 
 module.exports = {
   chaveTitulo, chaveArtista, creditos, mesmoTitulo, limparTitulo, versaoDe, doCaminho,
-  lerEtiquetas, ligarAoJogo, montarCatalogo, catalogar, markdown
+  lerEtiquetas, ligarAoJogo, montarCatalogo, catalogar, escrever, markdown, horas
 };

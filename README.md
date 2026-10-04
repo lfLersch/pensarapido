@@ -749,8 +749,8 @@ O sorteio fica entre o começo do arquivo e o último ponto que ainda deixa o
 limite inteiro de música, antes dos 2 segundos finais (a saída suave do
 trecho). Com os trechos de hoje — os 40 primeiros segundos de cada música — e
 o limite de 30s, isso cobre só os primeiros 8 segundos. **Para cair em
-qualquer parte da música, os trechos precisam ser longos**: ver
-[Gerar os trechos](#gerar-os-trechos-a-partir-das-músicas-inteiras).
+qualquer parte da música, o jogo precisa das músicas inteiras**: ver
+[Converter as músicas inteiras](#converter-as-músicas-inteiras-para-o-jogo).
 
 A duração de cada trecho é lida do próprio MP3 (a etiqueta *Info* que o
 ffmpeg grava diz quantos quadros ele tem), em
@@ -1358,8 +1358,8 @@ dos dois nomes.
   ~550 KB cada, todos no mesmo volume e com entrada e saída suaves).
 - Hoje cada trecho são os 40 primeiros segundos da música (Wish You Were
   Here, de 0:17 a 0:57), e a rodada toca de um ponto sorteado dentro dele.
-  Para a rodada poder cair em qualquer parte da música, gere trechos longos
-  com `npm run trechos` (abaixo).
+  Para a rodada poder cair em qualquer parte da música, converta as músicas
+  inteiras com `npm run trechos` ([abaixo](#converter-as-músicas-inteiras-para-o-jogo)).
 - Quando o navegador bloqueia o som automático, o tocador pede um toque.
 - **O endereço do áudio não entrega a música.** O arquivo se chama
   `trecho-yellow.mp3`, e mandar esse endereço para a tela era mostrar a
@@ -1385,34 +1385,51 @@ opções erradas do Qual é a música.
 > público os trechos ficam acessíveis para qualquer um que esteja numa partida —
 > e, com a música inteira na pasta, é a música inteira.
 
-#### Gerar os trechos a partir das músicas inteiras
+#### Converter as músicas inteiras para o jogo
 
 As músicas inteiras ficam só no computador de quem cuida do jogo, em
-`public/musicas/` (fora do git). Para a rodada tocar de qualquer parte delas,
-os trechos de `public/audio` precisam ser longos — e quem os gera é
-`npm run trechos`, que precisa do ffmpeg:
+`public/musicas/` (fora do git), e em FLAC pesam dezenas de MB cada.
+`npm run trechos` converte **todas** para MP3 em `public/audio/`, que vai para
+o repositório. Precisa do ffmpeg (Windows: `winget install ffmpeg`; Mac:
+`brew install ffmpeg`).
 
 ```bash
-npm run trechos                        # a música inteira, a 96 kbps
+npm run trechos                        # todas, inteiras, a 96 kbps
+npm run trechos -- --kbps 64           # mais leve (uns 2/3 do tamanho)
 npm run trechos -- --segundos 150      # só os primeiros 2:30 de cada uma
-npm run trechos -- --kbps 128          # mais qualidade, mais peso
-npm run trechos -- --so yellow,baby    # só esses trechos
-npm run trechos -- --listar            # só mostra que arquivo vira que trecho
+npm run trechos -- --de ~/Musicas      # outra pasta
+npm run trechos -- --refazer           # converte de novo as que já estão prontas
 ```
 
-- **Que arquivo é de que música:** o script procura o título no nome do
-  arquivo — sem acento, maiúscula nem pontuação, valendo também o nome das
-  pastas (`Coldplay/Parachutes/05 Yellow.flac` serve). O artista desempata: são
-  dois *Perfect*, o do Ed Sheeran e o do Simple Plan. O que o nome não resolver
-  vai em `public/musicas/mapa.json`: `{ "yellow": "pasta/arquivo.flac" }`.
-- **Todos no mesmo volume** (loudnorm), e **sem etiqueta nenhuma**: título e
+- **Que arquivo é de que música:** primeiro o script monta o
+  [catálogo](#o-catálogo-do-acervo), pelas etiquetas do arquivo (ou pelo nome,
+  quando não tem). As 93 músicas do jogo mantêm o nome que já tinham —
+  `trecho-yellow.mp3` deixa de ser o trecho de 40s e passa a ser a música
+  inteira —, e as novas ganham o nome do título (`trecho-infiel.mp3`; se o
+  título repetir, entra o artista: `trecho-stay-rihanna.mp3`). O catálogo
+  anota o MP3 de cada uma, e é por ele que as novas viram pergunta depois.
+- **Uma por música:** entre duplicadas fica a gravação de estúdio, com
+  etiqueta e em FLAC; faixa de menos de 1 minuto é vinheta e fica de fora.
+- **Todas no mesmo volume** (loudnorm), e **sem etiqueta nenhuma**: título e
   artista gravados no MP3 entregariam a resposta para quem baixasse o arquivo.
-- **O peso:** a 96 kbps, uma música de 3:30 dá uns 2,5 MB, e as 93 passam de
-  200 MB no repositório (hoje são 50 MB). Com `--segundos 150` fica perto de
-  170 MB.
-- Se um arquivo falhar, o trecho antigo dele continua lá. Depois é só conferir
-  e fazer o commit de `public/audio`; o limite da sala passa a oferecer 45s e
-  60s sozinho quando todos os trechos comportarem.
+- **O peso:** a 96 kbps, uma música de 3:30 dá uns 2,5 MB — cem músicas, uns
+  240 MB. Antes de converter o script faz a conta, e se passar de 800 MB para
+  e mostra quanto daria com `--kbps 64` ou com `--segundos 150`
+  (`--mesmo-assim` segue do jeito pedido). Vale escolher antes do primeiro
+  commit: o que entra no histórico do git não sai mais.
+- **Rodar de novo** depois de baixar mais músicas só converte as novas. Se
+  um arquivo falhar, o MP3 antigo dele continua lá.
+- O limite da sala passa a oferecer 45s e 60s sozinho quando todas as músicas
+  do jogo comportarem.
+
+Depois é só enviar — com o repositório **privado** no GitHub, porque são
+músicas inteiras com direito autoral:
+
+```bash
+git add catalogo public/audio
+git commit -m "Acervo de musicas"
+git push
+```
 
 #### O catálogo do acervo
 
@@ -1423,6 +1440,9 @@ arquivos pequenos, que podem ir para o repositório:
 - `catalogo/musicas.md`, para ler: as músicas por artista, com álbum, ano e
   duração, e quais das 93 do jogo já têm o arquivo inteiro;
 - `catalogo/musicas.json`, a mesma coisa para o jogo e para os scripts.
+
+Depois do `npm run trechos`, que monta o mesmo catálogo, cada música diz
+também em que MP3 virou.
 
 Título, artista, álbum, ano e duração saem das **etiquetas** do arquivo — FLAC
 e MP3 lidos pelo próprio script, os outros formatos pelo ffprobe, se ele estiver
@@ -1525,8 +1545,10 @@ de cada MP3, o sorteio que sempre deixa o limite inteiro de música, as opções
 de limite que o trecho mais curto comporta e a rodada de música que dura o
 limite em qualquer modo), o **avaliador da música** (a parte conhecida e o meio
 que nunca encosta no refrão, a dificuldade que sobe quando ninguém reconhece,
-o desconto do chute nas quatro opções e a passagem gradual entre os regimes)
-e a regra de nomes:
+o desconto do chute nas quatro opções e a passagem gradual entre os regimes),
+o **catálogo do acervo** (etiquetas de FLAC e de MP3, o nome tirado do caminho,
+as 93 músicas do jogo que se reconhecem, a duplicada que fica e o nome e o peso
+dos MP3) e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim
 que "Silva", "Ronaldo", "Müller", "Costa" e "Martínez" saíram das variantes).
