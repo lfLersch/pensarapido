@@ -12,7 +12,8 @@
     "checar-letras": "node testes/letras.js",
     "creditos": "node testes/creditos.js",
     "imagens-locais": "node testes/imagens-locais.js",
-    "trechos": "node testes/trechos.js"
+    "trechos": "node testes/trechos.js",
+    "catalogo": "node testes/catalogo.js"
   },
   "dependencies": {
     "express": "^4.19.2",

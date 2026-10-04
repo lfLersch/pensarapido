@@ -1414,6 +1414,29 @@ npm run trechos -- --listar            # só mostra que arquivo vira que trecho
   e fazer o commit de `public/audio`; o limite da sala passa a oferecer 45s e
   60s sozinho quando todos os trechos comportarem.
 
+#### O catálogo do acervo
+
+A pasta `public/musicas/` fica fora do git, então quem não está no computador
+dela não sabe o que tem lá. `npm run catalogo` lê a pasta e escreve dois
+arquivos pequenos, que podem ir para o repositório:
+
+- `catalogo/musicas.md`, para ler: as músicas por artista, com álbum, ano e
+  duração, e quais das 93 do jogo já têm o arquivo inteiro;
+- `catalogo/musicas.json`, a mesma coisa para o jogo e para os scripts.
+
+Título, artista, álbum, ano e duração saem das **etiquetas** do arquivo — FLAC
+e MP3 lidos pelo próprio script, os outros formatos pelo ffprobe, se ele estiver
+instalado. Sem etiqueta, valem o nome do arquivo e o das pastas
+(`Artista - Título.flac`, `Artista/Álbum/05 Título.flac`); pasta de gênero
+(`Sertanejo/`) não vira artista. O catálogo ainda aponta o que pede atenção:
+**duplicadas**, **versões ruins para o quiz** (ao vivo, acústico, remix, sem
+voz, acelerada), **arquivos sem etiqueta** e **faixas de menos de 1 minuto**.
+
+```bash
+npm run catalogo                      # lê public/musicas
+npm run catalogo -- --de ~/Musicas    # outra pasta
+```
+
 ### Categoria Música — perguntas de letra
 
 O campo `letra` mostra um trecho em destaque, e o enunciado decide o que se
