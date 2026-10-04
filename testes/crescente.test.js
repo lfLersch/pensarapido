@@ -10,7 +10,7 @@
  * difíceis. A comparação é dentro da categoria, igual ao sorteio.
  */
 
-const { Sala } = require('../server/sala.js');
+const { Sala, idDaPergunta } = require('../server/sala.js');
 const { QUESTOES } = require('../server/questions.js');
 const dificuldade = require('../server/dificuldade.js');
 
@@ -23,11 +23,7 @@ const conferir = (nome, obtido, esperado) => {
 };
 
 // O mesmo id que sala.js usa: pergunta com imagem ou audio leva a midia junto.
-const idDe = (categoria, q) => {
-  const midia = q.audio || q.imagem;
-  return dificuldade.idDe(categoria, q.pergunta, midia ? `${q.resposta}|${midia}` : q.resposta);
-};
-const difDe = (categoria, q) => dificuldade.dificuldadeDe(idDe(categoria, q), q.dif ?? 40);
+const difDe = (categoria, q) => dificuldade.dificuldadeDe(idDaPergunta(categoria, q), q.dif ?? 40);
 
 /** Em que ponto da categoria a pergunta fica: 0 = a mais fácil, 1 = a mais difícil. */
 function posicaoNaCategoria(categoria, q) {

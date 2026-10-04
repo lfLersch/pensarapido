@@ -17,8 +17,12 @@ const estado = {
     subs: new Set(),
     modo: 'tempo',
     metaPontos: 120,
-    segundosPorPergunta: 20
+    segundosPorPergunta: 20,
+    limiteMusica: 30,     // por quanto tempo a musica toca, no maximo
+    fimPor: 'pontos',     // modos musicais: 'pontos' ou 'musicas'
+    totalMusicas: 15
   },
+  musica: null,     // a musica da rodada: { inicio, limite, abriuEm, parada }
   acertou: false,
   necessarias: 1,   // Escalada: quantas respostas a rodada pede
   meusItens: [],    // Escalada: o que já respondi nesta rodada
@@ -461,6 +465,13 @@ function tocarTrecho(botao, url) {
   aba.audio = aba.audio || new Audio();
   aba.audio.src = url;
   aba.audio.onended = pararTrecho;
+  // O arquivo e a musica inteira: aqui toca 30s a partir de um terco dela,
+  // que costuma ja ter passado da introducao.
+  aba.audio.onloadedmetadata = () => {
+    const inicio = (aba.audio.duration || 0) / 3;
+    aba.audio.currentTime = inicio;
+    aba.audio.ontimeupdate = () => { if (aba.audio.currentTime >= inicio + 30) pararTrecho(); };
+  };
   // Trocar de trecho no meio interrompe o play anterior: so desmarca se
   // ainda for este que esta tocando.
   aba.audio.play().catch(() => { if (aba.tocando === botao) pararTrecho(); });
@@ -1058,10 +1069,80 @@ async function carregarConfig() {
   $('versao-atual').textContent = estado.config.versao ? `v${estado.config.versao}` : '';
   mostrarConviteDeLogin();
   montarCategorias();
+  estado.escolhas.limiteMusica = estado.config.limiteMusicaPadrao || 30;
+  estado.escolhas.totalMusicas = estado.config.totalMusicasPadrao || 15;
   montarModos();
   montarMetas();
   montarTempos();
+  montarLimites();
+  montarFim();
+  sincronizarModo();
+}
+
+/** O modo escolhido e musical (Corrida musical, Qual e a musica)? */
+function modoMusical(id = estado.escolhas.modo) {
+  const modo = estado.config.modos.find((m) => m.id === id);
+  return Boolean(modo && modo.musical);
+}
+
+/**
+ * Os blocos da configuracao que valem para o modo escolhido.
+ *
+ * Nos modos musicais a categoria e sempre Ouvir musicas e a rodada dura o
+ * limite da musica, entao somem as categorias e o tempo por pergunta; aparece
+ * a escolha de acabar por pontos ou pelo numero de musicas.
+ */
+function sincronizarModo() {
+  const musical = modoMusical();
+  $('bloco-categorias').hidden = musical;
+  $('bloco-tempo').hidden = musical;
+  $('bloco-fim').hidden = !musical;
+  const porMusicas = musical && estado.escolhas.fimPor === 'musicas';
+  $('bloco-meta').hidden = porMusicas;
+  $('total-opcoes').hidden = !porMusicas;
+  document.querySelectorAll('#fim-opcoes .pilula').forEach((p) => {
+    p.classList.toggle('escolhida', p.dataset.fim === estado.escolhas.fimPor);
+  });
+  $('limite-dica').textContent = musical
+    ? 'A rodada dura isso: a musica toca ate alguem acertar, ate todo mundo responder ou ate o limite. O pedaco e sorteado, nao e sempre o comeco.'
+    : 'Vale para a categoria Ouvir musicas: por quanto tempo a musica toca, no maximo. O pedaco e sorteado, nao e sempre o comeco.';
   atualizarResumo();
+}
+
+/** Pilulas de escolha unica: marca a do valor atual e chama `escolher` no clique. */
+function montarPilulas(caixa, valores, rotulo, atual, escolher) {
+  caixa.innerHTML = '';
+  for (const valor of valores) {
+    const pilula = criar('button', 'pilula');
+    pilula.type = 'button';
+    pilula.dataset.valor = String(valor);
+    pilula.textContent = rotulo(valor);
+    pilula.classList.toggle('escolhida', valor === atual);
+    pilula.addEventListener('click', () => {
+      escolher(valor);
+      caixa.querySelectorAll('.pilula').forEach((p) => {
+        p.classList.toggle('escolhida', p.dataset.valor === String(valor));
+      });
+      atualizarResumo();
+    });
+    caixa.appendChild(pilula);
+  }
+}
+
+function montarLimites() {
+  montarPilulas($('limite-opcoes'), estado.config.limitesMusica || [15, 20, 30, 45, 60],
+    (s) => `${s}s`, estado.escolhas.limiteMusica, (s) => { estado.escolhas.limiteMusica = s; });
+}
+
+function montarFim() {
+  montarPilulas($('total-opcoes'), estado.config.totaisMusicas || [10, 15, 20, 30],
+    (n) => `${n} musicas`, estado.escolhas.totalMusicas, (n) => { estado.escolhas.totalMusicas = n; });
+  document.querySelectorAll('#fim-opcoes .pilula').forEach((p) => {
+    p.addEventListener('click', () => {
+      estado.escolhas.fimPor = p.dataset.fim;
+      sincronizarModo();
+    });
+  });
 }
 
 function montarCategorias() {
@@ -1196,7 +1277,7 @@ function montarModos() {
       item.addEventListener('click', () => {
         estado.escolhas.modo = modo.id;
         document.querySelectorAll('.modo').forEach((m) => m.classList.toggle('escolhido', m.dataset.id === modo.id));
-        atualizarResumo();
+        sincronizarModo();
       });
     } else {
       item.disabled = true;
@@ -1264,9 +1345,15 @@ function montarTempos() {
 }
 
 function atualizarResumo() {
-  const total = categoriasEscolhidas().length;
+  const musical = modoMusical();
+  const total = musical ? 1 : categoriasEscolhidas().length;
   const modo = estado.config.modos.find((m) => m.id === estado.escolhas.modo);
-  $('resumo-config').innerHTML = `
+  $('resumo-config').innerHTML = musical
+    ? `
+    <span>${modo.icone} ${modo.nome}</span>
+    <span>${resumoDoFim(estado.escolhas)}</span>
+    <span>Musica de ate <b>${estado.escolhas.limiteMusica}s</b></span>`
+    : `
     <span>${plural(total, 'categoria', 'categorias')}</span>
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
@@ -1276,13 +1363,20 @@ function atualizarResumo() {
   $('btn-criar').disabled = total === 0;
 }
 
+/** "Meta 120 pts" ou "15 musicas", conforme a partida acaba. */
+function resumoDoFim(config) {
+  return config.fimPor === 'musicas' && modoMusical(config.modo)
+    ? `<b>${config.totalMusicas}</b> musicas`
+    : `Meta <b>${config.metaPontos} pts</b>`;
+}
+
 $('btn-criar').addEventListener('click', () => {
   const nickname = inputNickname.value.trim();
   if (nickname.length < 2) {
     mostrarTela('tela-lobby');
     return avisar('aviso-lobby', 'Digite um nickname com pelo menos 2 caracteres.');
   }
-  if (categoriasEscolhidas().length === 0) {
+  if (!modoMusical() && categoriasEscolhidas().length === 0) {
     return avisar('aviso-config', 'Escolha pelo menos uma categoria.');
   }
 
@@ -1296,7 +1390,10 @@ $('btn-criar').addEventListener('click', () => {
     subs: [...estado.escolhas.subs].filter((parte) => !marcadas.has(parte.split(':')[0])),
     modo: estado.escolhas.modo,
     metaPontos: estado.escolhas.metaPontos,
-    segundosPorPergunta: estado.escolhas.segundosPorPergunta
+    segundosPorPergunta: estado.escolhas.segundosPorPergunta,
+    limiteMusica: estado.escolhas.limiteMusica,
+    fimPor: estado.escolhas.fimPor,
+    totalMusicas: estado.escolhas.totalMusicas
   };
 
   socket.emit('sala:criar', { nickname, config, cliente: carteirinha() }, (resposta) => {
@@ -1328,7 +1425,12 @@ function renderizarSala() {
   const modo = estado.config.modos.find((m) => m.id === sala.config.modo);
   // Categoria que entrou só com uma parte também conta.
   const emJogo = [...new Set([...sala.config.categorias, ...(sala.config.subs || []).map((s) => s.split(':')[0])])];
-  $('resumo-sala').innerHTML = `
+  $('resumo-sala').innerHTML = modo && modo.musical
+    ? `
+    <span>${modo.icone} ${modo.nome}</span>
+    <span>${resumoDoFim(sala.config)}</span>
+    <span>Musica de ate <b>${sala.config.limiteMusica}s</b></span>`
+    : `
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     <span>Meta <b>${sala.config.metaPontos} pts</b></span>
     <span><b>${sala.config.segundosPorPergunta}s</b> por pergunta</span>
@@ -1781,10 +1883,52 @@ socket.on('rodada:categoria', (dados) => {
   contarSegundos($('revelacao-num'), dados.duracaoMs);
   $('revelacao-espera').hidden = true;
 
+  estado.carregando = dados.imagem ? 'a imagem' : (dados.audio ? 'a musica' : null);
   if (dados.imagem) preCarregarImagem(dados.imagem, dados.rodada);
+  else if (dados.audio) preCarregarAudio(dados.audio, dados.rodada);
 
   if (dados.placar) renderizarPlacar(dados.placar);
 });
+
+/**
+ * Baixa a musica da pergunta durante a tela da categoria e ja deixa o audio
+ * parado no ponto sorteado. O aviso ao servidor e o mesmo da imagem: a
+ * pergunta so abre quando todo mundo esta pronto para ouvir o mesmo pedaco
+ * ao mesmo tempo — na Corrida musical, quem ouve dois segundos depois perde.
+ *
+ * Cada pre-carga ganha um numero: um aviso atrasado da rodada anterior nao
+ * pula o audio da rodada nova para o ponto velho.
+ */
+let preCarga = 0;
+function preCarregarAudio(audio, rodada) {
+  const player = $('tocador-audio');
+  const minha = ++preCarga;
+  pararAudio();
+  estado.musica = null;
+  if (player.getAttribute('src') !== audio.url) player.src = audio.url;
+
+  let avisou = false;
+  const avisar = () => {
+    if (avisou || minha !== preCarga) return;
+    avisou = true;
+    socket.emit('rodada:imagemPronta', { rodada });
+  };
+  // Pronto e: ja pulou para o ponto e tem audio dali para a frente.
+  const quandoPulou = () => {
+    if (minha !== preCarga) return;
+    if (player.readyState >= 3) return avisar();
+    player.addEventListener('canplay', avisar, { once: true });
+  };
+  const pular = () => {
+    if (minha !== preCarga) return;
+    player.addEventListener('seeked', quandoPulou, { once: true });
+    player.currentTime = audio.inicio || 0;
+  };
+  // Musica que nao carrega avisa igual: esperar por ela so atrasaria a sala.
+  player.addEventListener('error', avisar, { once: true });
+  if (player.readyState >= 1) pular();
+  else player.addEventListener('loadedmetadata', pular, { once: true });
+}
 
 /**
  * Baixa a imagem da pergunta enquanto a categoria esta na tela, e avisa o
@@ -1813,7 +1957,7 @@ function preCarregarImagem(url, rodada) {
 // A tela da categoria acabou, mas ainda tem gente baixando a imagem.
 socket.on('rodada:aguardando', ({ prontos, total, duracaoMs } = {}) => {
   const aviso = $('revelacao-espera');
-  aviso.textContent = `Carregando a imagem para todo mundo… ${prontos} de ${total} prontos`;
+  aviso.textContent = `Carregando ${estado.carregando || 'a imagem'} para todo mundo… ${prontos} de ${total} prontos`;
   if (aviso.hidden) {
     aviso.hidden = false;
     // A barra recomeça: e o tempo maximo que a sala espera.
@@ -1852,7 +1996,7 @@ socket.on('rodada:pergunta', (dados) => {
 
   $('jogo-codigo').textContent = estado.sala?.codigo || '----';
   $('jogo-rodada').textContent = dados.rodada;
-  $('jogo-meta').textContent = `${estado.sala?.config.metaPontos ?? '—'} pts`;
+  escreverMeta(dados.rodada);
 
   // A categoria fica pequena, logo acima da pergunta.
   $('pergunta-categoria').style.setProperty('--cor-categoria', dados.categoria.cor);
@@ -1905,7 +2049,8 @@ socket.on('rodada:pergunta', (dados) => {
     atualizarEscalada();
   }
 
-  montarAudio(dados.audio);
+  montarAudio(dados.audio, dados.audioInicio, dados.audioLimiteMs);
+  desenharOpcoes(dados.opcoes);
 
   const figura = $('pergunta-figura');
   if (dados.imagem) {
@@ -1955,6 +2100,14 @@ socket.on('rodada:pergunta', (dados) => {
   if (dados.veni) {
     inputChat.placeholder = 'Trave sua resposta — ninguem ve ate a janela fechar…';
     $('status-respostas').textContent = 'Ninguem palpitou ainda.';
+  }
+
+  // Qual e a musica: a resposta e o clique, o chat e so conversa.
+  if (dados.opcoes) {
+    inputChat.placeholder = 'Clique numa das opcoes. Aqui e so conversa…';
+    $('status-respostas').textContent = 'Ninguem escolheu ainda.';
+  } else if (estado.sala?.config.modo === 'corrida') {
+    inputChat.placeholder = `Seja o primeiro a acertar… (${plural(dados.chances, 'chance', 'chances')})`;
   }
 
   pararContagem();
@@ -2118,6 +2271,79 @@ function limparTabuleiro() {
   $('mascara').textContent = '';
   $('status-respostas').textContent = '';
   montarAudio(null);
+  desenharOpcoes(null);
+}
+
+/** Etiqueta de cima: a meta de pontos, ou em que musica a partida esta. */
+function escreverMeta(rodada) {
+  const config = estado.sala?.config;
+  const porMusicas = Boolean(config && config.fimPor === 'musicas' && modoMusical(config.modo));
+  $('jogo-meta-rotulo').textContent = porMusicas ? 'Musica' : 'Meta';
+  $('jogo-meta').textContent = porMusicas
+    ? `${rodada ?? estado.sala?.rodada ?? 0} de ${config.totalMusicas}`
+    : `${config?.metaPontos ?? '—'} pts`;
+}
+
+/* --------------------------- Qual e a musica --------------------------- */
+
+/** As quatro opcoes da rodada (ou nada, nos outros modos). */
+function desenharOpcoes(opcoes) {
+  const caixa = $('opcoes');
+  caixa.innerHTML = '';
+  caixa.hidden = !opcoes;
+  estado.minhaOpcao = null;
+  if (!opcoes) return;
+
+  opcoes.forEach((texto, indice) => {
+    const botao = criar('button', 'opcao');
+    botao.type = 'button';
+    botao.innerHTML = `<span class="opcao__letra">${'ABCD'[indice] || indice + 1}</span>`
+      + `<span class="opcao__texto">${escapar(texto)}</span>`;
+    botao.addEventListener('click', () => escolherOpcao(indice));
+    caixa.appendChild(botao);
+  });
+}
+
+/**
+ * Um clique por musica, sem troca. Ninguem fica sabendo na hora se acertou:
+ * a certa so aparece no resultado.
+ */
+function escolherOpcao(indice) {
+  if (estado.minhaOpcao !== null || estado.pausado) return;
+  estado.minhaOpcao = indice;
+  marcarMinhaOpcao(indice);
+
+  socket.emit('sala:opcao', { indice }, (resposta) => {
+    if (resposta?.erro) {
+      estado.minhaOpcao = null;
+      marcarMinhaOpcao(null);
+      return avisoParticular(resposta.erro);
+    }
+    avisoParticular('Resposta travada. A certa aparece quando a musica acabar.');
+  });
+}
+
+function marcarMinhaOpcao(indice) {
+  [...$('opcoes').children].forEach((botao, i) => {
+    botao.classList.toggle('escolhida', i === indice);
+    botao.disabled = indice !== null;
+  });
+}
+
+// Quantos ja clicaram — sem dizer em que, nem se acertaram.
+socket.on('qual:escolheu', ({ quantos, total } = {}) => {
+  $('status-respostas').textContent = `${quantos} de ${total} ja escolheram`;
+});
+
+/** No resultado: a certa em verde e, se a minha era outra, ela em vermelho. */
+function revelarOpcoes(opcoes) {
+  const botoes = [...$('opcoes').children];
+  if (!opcoes || !botoes.length) return;
+  botoes.forEach((botao, i) => {
+    botao.disabled = true;
+    botao.classList.toggle('certa', i === opcoes.certa);
+    botao.classList.toggle('errada', i === estado.minhaOpcao && i !== opcoes.certa);
+  });
 }
 
 /* ------------------------ 1 eh bom 2 ok 3 eh demais -------------------------- */
@@ -2239,7 +2465,7 @@ socket.on('leilao:comeco', (dados) => {
 
   $('jogo-codigo').textContent = estado.sala?.codigo || '----';
   $('jogo-rodada').textContent = dados.rodada;
-  $('jogo-meta').textContent = `${estado.sala?.config.metaPontos ?? '—'} pts`;
+  escreverMeta(dados.rodada);
 
   $('pergunta-categoria').style.setProperty('--cor-categoria', dandoDicas() ? '#38bdf8' : '#f59e0b');
   $('pergunta-categoria-icone').textContent = dandoDicas() ? '💡' : (leilaoGeral() ? '🔨' : '🎁');
@@ -2615,15 +2841,21 @@ function registrarItem(nome) {
 /**
  * Prepara o tocador da rodada.
  *
+ * O arquivo e a musica inteira e a sala sorteia o ponto: todo mundo ouve o
+ * mesmo pedaco, do segundo `inicio` ate o limite. A tela da categoria ja
+ * baixou o audio e parou ali (preCarregarAudio), entao aqui e so dar o play.
+ *
  * Tenta tocar sozinho, mas o navegador recusa som automatico em pagina sem
  * interacao recente. Quando recusa, o botao ganha destaque em vez de a
- * pergunta ficar muda sem ninguem entender por que.
+ * pergunta ficar muda sem ninguem entender por que — e o toque entra no ponto
+ * em que os outros estao, nao no comeco do pedaco.
  */
-function montarAudio(url) {
+function montarAudio(url, inicio = 0, limiteMs = null) {
   const caixa = $('tocador');
   const player = $('tocador-audio');
 
   pararAudio();
+  estado.musica = null;
 
   if (!url) {
     caixa.hidden = true;
@@ -2632,18 +2864,72 @@ function montarAudio(url) {
   }
 
   caixa.hidden = false;
-  caixa.classList.remove('tocando', 'travado');
+  caixa.classList.remove('tocando', 'travado', 'acabou');
   $('tocador-aviso').textContent = '';
-  player.src = url;
-  player.currentTime = 0;
+  estado.musica = {
+    inicio: inicio || 0,
+    limite: limiteMs ? limiteMs / 1000 : Infinity,
+    abriuEm: Date.now(),
+    paradoMs: 0,       // quanto a rodada ficou pausada
+    pausouEm: null
+  };
+  if (player.getAttribute('src') !== url) player.src = url;
+  tocarNoPonto();
+}
 
+/** Segundos de musica que ja correram para a sala, sem contar a pausa. */
+function musicaDecorrida() {
+  const m = estado.musica;
+  const pausaAgora = m.pausouEm ? Date.now() - m.pausouEm : 0;
+  return Math.max(0, (Date.now() - m.abriuEm - m.paradoMs - pausaAgora) / 1000);
+}
+
+/** Toca do ponto em que a sala esta agora — ou avisa que o pedaco ja acabou. */
+function tocarNoPonto() {
+  const m = estado.musica;
+  const player = $('tocador-audio');
+  if (!m) return;
+
+  const ponto = m.inicio + musicaDecorrida();
+  if (ponto >= m.inicio + m.limite) return musicaAcabou();
+  // Meio segundo de diferenca nao vale um pulo: pular tambem engasga.
+  if (player.readyState >= 1 && Math.abs(player.currentTime - ponto) > 0.5) player.currentTime = ponto;
+  else if (player.readyState < 1) {
+    player.addEventListener('loadedmetadata', () => { player.currentTime = ponto; }, { once: true });
+  }
+
+  subirVolume(player);
   player.play()
     .then(() => marcarTocando(true))
     .catch(() => {
       // Autoplay bloqueado: quem toca e a pessoa.
-      caixa.classList.add('travado');
+      $('tocador').classList.add('travado');
       $('tocador-aviso').textContent = 'Toque para ouvir';
     });
+}
+
+/**
+ * Entrada suave: o pedaco cai no meio de uma frase, e comecar no volume cheio
+ * soa como um tranco. (O iPhone ignora o volume do <audio>: la entra seco.)
+ */
+function subirVolume(player) {
+  clearInterval(estado.subindoVolume);
+  player.volume = 0;
+  const comeco = Date.now();
+  estado.subindoVolume = setInterval(() => {
+    const fracao = Math.min(1, (Date.now() - comeco) / 600);
+    player.volume = fracao;
+    if (fracao >= 1) clearInterval(estado.subindoVolume);
+  }, 40);
+}
+
+/** O pedaco chegou ao limite da sala. */
+function musicaAcabou() {
+  const player = $('tocador-audio');
+  player.pause();
+  marcarTocando(false);
+  $('tocador').classList.add('acabou');
+  $('tocador-aviso').textContent = 'Fim do trecho';
 }
 
 function marcarTocando(sim) {
@@ -2654,6 +2940,7 @@ function marcarTocando(sim) {
 function pararAudio() {
   const player = $('tocador-audio');
   if (!player) return;
+  clearInterval(estado.subindoVolume);
   player.pause();
   marcarTocando(false);
 }
@@ -2664,6 +2951,8 @@ $('tocador-botao').addEventListener('click', () => {
   $('tocador-aviso').textContent = '';
 
   if (player.paused) {
+    // A musica e da sala: voltar a tocar entra onde os outros estao.
+    if (estado.musica) return tocarNoPonto();
     player.play().then(() => marcarTocando(true)).catch(() => {
       $('tocador-aviso').textContent = 'Nao consegui tocar este audio';
     });
@@ -2672,6 +2961,42 @@ $('tocador-botao').addEventListener('click', () => {
     marcarTocando(false);
   }
 });
+
+// O limite: o arquivo e a musica inteira, quem para no fim do pedaco e a tela.
+$('tocador-audio').addEventListener('timeupdate', () => {
+  const m = estado.musica;
+  const player = $('tocador-audio');
+  if (m && !player.paused && player.currentTime >= m.inicio + m.limite) musicaAcabou();
+});
+
+/*
+ * Destrava o som no primeiro toque na pagina.
+ *
+ * O iPhone so deixa tocar sozinho um <audio> que ja tocou dentro de um toque
+ * da pessoa. Sem isso, na Corrida musical quem esta no celular teria que
+ * tocar no "ouvir" a cada musica e largaria atras. Um instante de silencio no
+ * primeiro toque (entrar, criar a sala, digitar o nome) resolve para o resto.
+ */
+const SILENCIO = 'data:audio/wav;base64,UklGRuwAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+function destravarSom() {
+  const player = $('tocador-audio');
+  // Com musica carregada, mexer no src atrapalharia a rodada.
+  if (estado.somDestravado || player.getAttribute('src')) return;
+  player.src = SILENCIO;
+  player.play()
+    .then(() => {
+      estado.somDestravado = true;
+      player.pause();
+      if (player.getAttribute('src') === SILENCIO) player.removeAttribute('src');
+      document.removeEventListener('pointerdown', destravarSom, true);
+      document.removeEventListener('keydown', destravarSom, true);
+    })
+    .catch(() => {
+      if (player.getAttribute('src') === SILENCIO) player.removeAttribute('src');
+    });
+}
+document.addEventListener('pointerdown', destravarSom, true);
+document.addEventListener('keydown', destravarSom, true);
 
 $('tocador-audio').addEventListener('ended', () => marcarTocando(false));
 $('tocador-audio').addEventListener('error', () => {
@@ -2907,6 +3232,9 @@ socket.on('rodada:resultado', (dados) => {
   cronometro.classList.remove('urgente');
   $('mascara').textContent = '';
   pararAudio();
+  // A rodada acabou: o botao do tocador deixa de seguir a sala e toca dali.
+  estado.musica = null;
+  revelarOpcoes(dados.opcoes);
   $('escalada').hidden = true;
   // Fim da rodada do Carrossel: a fila some e o chat volta para todos.
   if (estado.carrossel) {
@@ -2957,9 +3285,13 @@ socket.on('rodada:resultado', (dados) => {
     const item = criar('li', 'resultado__item ' + (detalhe.acertou ? 'acertou' : 'errou'));
     // No Presente Grego quase ninguem responde: o "nao acertou" pelo relogio
     // nao diz nada, e quem conta a historia e o papel na rodada.
+    // Qual e a musica: quem errou mostra em que clicou.
+    const naoAcertou = dados.opcoes
+      ? (detalhe.escolha ? `marcou ${detalhe.escolha}` : 'nao escolheu')
+      : 'nao acertou';
     const tempo = dados.presente
       ? (PAPEIS[detalhe.papel] || '—')
-      : (detalhe.ms === null ? 'nao acertou' : `${(detalhe.ms / 1000).toFixed(1)}s`);
+      : (detalhe.ms === null ? naoAcertou : `${(detalhe.ms / 1000).toFixed(1)}s`);
 
     const pedia = detalhe.necessarias || 1;
     const conseguiu = detalhe.itens || [];
@@ -3030,9 +3362,13 @@ socket.on('jogo:fim', (dados) => {
 
 function renderizarFim(placar, meta, rodadas) {
   const campeao = placar[0];
+  // Partida dos modos musicais pode acabar pelo numero de musicas, sem meta.
+  const config = estado.sala?.config;
+  const porMusicas = Boolean(config && config.fimPor === 'musicas' && modoMusical(config.modo));
+  const regra = porMusicas ? `${config.totalMusicas} musicas` : `meta de ${meta} pts`;
   $('fim-titulo').textContent = campeao ? `${campeao.nickname} venceu!` : 'Fim de jogo!';
   $('fim-sub').textContent = campeao
-    ? `${campeao.pontos} pontos · meta de ${meta} pts · ${plural(rodadas ?? 0, 'rodada', 'rodadas')}`
+    ? `${campeao.pontos} pontos · ${regra} · ${plural(rodadas ?? 0, 'rodada', 'rodadas')}`
     : '';
 
   // Pódio: 2º, 1º, 3º (nessa ordem visual)
@@ -3109,6 +3445,8 @@ function aplicarPausa(pausado, por) {
     const player = $('tocador-audio');
     estado.musicaDaPausa = Boolean(player.src) && !player.paused;
     if (estado.musicaDaPausa) pararAudio();
+    // O relogio da musica para junto: na volta ela segue de onde estava.
+    if (estado.musica) estado.musica.pausouEm = Date.now();
     $('pausa').hidden = false;
   } else if (!pausado && estado.pausado) {
     estado.pausado = false;
@@ -3118,8 +3456,13 @@ function aplicarPausa(pausado, por) {
     inputChat.placeholder = chat.placeholder;
     if (!chat.disabled && !('ontouchstart' in window)) inputChat.focus();
     retomarRelogios();
+    if (estado.musica && estado.musica.pausouEm) {
+      estado.musica.paradoMs += Date.now() - estado.musica.pausouEm;
+      estado.musica.pausouEm = null;
+    }
     if (estado.musicaDaPausa) {
-      $('tocador-audio').play().then(() => marcarTocando(true)).catch(() => {});
+      if (estado.musica) tocarNoPonto();
+      else $('tocador-audio').play().then(() => marcarTocando(true)).catch(() => {});
     }
   }
   if (pausado) $('pausa-quem').textContent = por ? `${por} pausou o jogo.` : '';
@@ -3167,7 +3510,7 @@ function abrirTelaDaSala(sala) {
   limparTabuleiro();
   $('jogo-codigo').textContent = sala.codigo;
   $('jogo-rodada').textContent = sala.rodada;
-  $('jogo-meta').textContent = `${sala.config.metaPontos} pts`;
+  escreverMeta(sala.rodada);
   $('pergunta-categoria-icone').textContent = '⏳';
   $('pergunta-categoria-nome').textContent = 'Entrando';
   $('pergunta-texto').textContent = 'Voce entra na proxima rodada.';

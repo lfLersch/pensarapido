@@ -92,9 +92,14 @@ e que a versão do topo seja a do jogo.
 | Ajuste | Opções |
 | --- | --- |
 | Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
-| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral** ou **Dando dicas** (Equipes aparece como *em breve*) |
+| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical** ou **Qual é a música** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
+| Limite da música | 15s / 20s / **30s (padrão)** / 45s / 60s — por quanto tempo a música toca, no máximo |
+| Fim da partida | só nos modos musicais: **por pontos** (a meta acima) ou **por número de músicas** (10 / **15** / 20 / 30) |
+
+Nos dois modos musicais a categoria é sempre **Ouvir músicas** e a rodada dura
+o limite da música, então somem da tela as categorias e o tempo por pergunta.
 
 ### Sala de espera
 
@@ -634,6 +639,47 @@ pessoa só, e o que ela tem na frente não é a pergunta, são as palavras que o
 parceiro escolheu. Se quem dá as dicas ou quem adivinha sai no meio, a rodada é
 **cancelada** sem ninguém pontuar.
 
+### Corrida musical
+
+Toca um pedaço sorteado de uma música (ver [Categoria Ouvir
+músicas](#categoria-ouvir-músicas)) e **o primeiro que acertar no chat leva os
+pontos**. A pergunta é *"Qual é o nome desta música?"* ou *"Quem canta esta
+música?"*, como na categoria.
+
+- **Pontos:** o mesmo esquema do Modo Tempo — 10 nos primeiros 5 s, 1 a menos a
+  cada 5 s. Como só o primeiro pontua, o desconto da fila não entra.
+- **A música para quando alguém acerta**: a rodada fecha na hora. Palpite certo
+  que chega no mesmo instante, depois do primeiro, é segurado e não vale nada.
+- Se ninguém acerta, a rodada dura o **limite da música** da sala.
+- São **5 chances por música**, como no Modo Tempo.
+
+### Qual é a música
+
+Toca um pedaço sorteado de uma música e aparecem **4 opções**. A resposta é o
+clique, e o chat vira só conversa.
+
+- **Um clique por música**, sem troca. Certo vale o esquema do Modo Tempo (10
+  nos primeiros 5 s, 1 a menos a cada 5 s); errado, zero.
+- **Ninguém fica sabendo na hora se acertou**, nem quem clicou: a certa só
+  aparece no resultado, em verde, com a errada de cada um em vermelho e o que
+  cada pessoa marcou na lista.
+- A rodada fecha quando **todo mundo clicou** ou no **limite da música**.
+- **As opções erradas são do mesmo estilo** (rap nacional com rap nacional,
+  sertanejo com sertanejo — o estilo de cada música fica em
+  [`server/musicas.js`](server/musicas.js)): "Negro Drama" ao lado de "Shape of
+  You" se acertaria sem ouvir nada. Ficam de fora o que também valeria como
+  resposta — o parceiro do dueto, o "Perfect" da outra banda.
+- O chat **segura** a mensagem que parece com qualquer uma das quatro opções:
+  quem já clicou não consegue soprar para os outros.
+- Pergunta sem opções possíveis (*"De qual anime é esta música?"*) não entra.
+- Não há máscara da resposta: o tamanho apontaria a opção certa.
+
+**Nos dois modos musicais** a partida acaba pela meta de pontos ou pelo
+número de músicas (a sala escolhe), a mesma música não toca duas vezes na
+partida e a rodada **não alimenta a dificuldade adaptativa**: na corrida só uma
+pessoa chega a acertar, e com quatro opções um em cada quatro acerta no chute.
+`testes/musicas.test.js` cobre os dois.
+
 ### Pular a rodada
 
 Qualquer pessoa pode votar para **pular a rodada**, e com **metade mais um**
@@ -1093,6 +1139,7 @@ server/
   banco.js       conexão com o Postgres (só com DATABASE_URL)
   dificuldade.js dificuldade adaptativa e persistência das estatísticas
   questions.js   banco de perguntas por categoria
+  musicas.js     duração e estilo de cada música de Ouvir músicas
   dados/         estatísticas acumuladas (criado sozinho)
 public/
   index.html     as cinco telas do jogo
@@ -1129,6 +1176,10 @@ Pergunta com imagem (bandeira, foto, logo) manda a imagem **já na tela da
 categoria**. O navegador baixa e decodifica escondido, e avisa o servidor
 (`rodada:imagemPronta`) quando ela está pronta para aparecer. A pergunta — e o
 relógio — só abrem quando **todo mundo** que viu a categoria abrir avisou.
+
+A música de *Ouvir músicas* passa pelo mesmo portão: o aviso vem quando o
+áudio já baixou e já está parado no ponto sorteado, pronto para tocar junto com
+os outros.
 
 - Quem já estava pronto não espera nada a mais: se todos avisaram dentro dos
   2,8 s, a pergunta abre na hora de sempre.
@@ -1309,23 +1360,55 @@ transparente sumiria na tela escura do jogo.
 
 ### Categoria Ouvir músicas
 
-A categoria **Ouvir músicas** toca os 40 primeiros segundos de uma música. São 93
-músicas, do rock ao sertanejo e ao funk (Yellow, Waka Waka, Billie Jean, Racionais e
-outras), e cada trecho tem **duas perguntas**: *"Qual é o nome desta música?"* e
-*"Quem canta esta música?"* — ou *"Qual banda canta…"*, para banda não ganhar
-atalho de sobrenome ("Park" valendo por Linkin Park). Em dueto vale qualquer um
-dos dois nomes.
+A categoria **Ouvir músicas** toca **um pedaço sorteado** de uma música — não
+é sempre o começo. São 146 músicas, do rock ao sertanejo, ao funk e ao rap
+nacional (Yellow, Waka Waka, Billie Jean, Racionais, Djonga, Comunidade
+Nin-Jitsu e outras), e cada uma tem **duas perguntas**: *"Qual é o nome desta
+música?"* e *"Quem canta esta música?"* — ou *"Qual banda canta…"*, para banda
+não ganhar atalho de sobrenome ("Park" valendo por Linkin Park). Em dueto vale
+qualquer um dos nomes.
 
-- Os arquivos inteiros (FLAC, dezenas de MB cada) ficam em `public/musicas/`,
-  que está no `.gitignore` e **não vai para o repositório**.
-- O jogo usa só os trechos, em `public/audio/trecho-*.mp3` (MP3 de 112 kbps,
-  ~550 KB cada, todos no mesmo volume e com entrada e saída suaves).
-- O trecho é sempre o começo da música, de 0:00 a 0:40 (Wish You Were Here, de 0:17 a 0:57). Dá para trocar o de
-  qualquer música por outro ponto, escolhendo o segundo na mão.
-- Quando o navegador bloqueia o som automático, o tocador pede um toque.
+- **O arquivo é a música inteira**, em `public/audio/musica-<nome>.mp3`: MP3 de
+  64 kbps mono, todas no mesmo volume (-14 LUFS), uns 1,8 MB por música e 252
+  MB no total. A **taxa é fixa** de propósito: com taxa variável o navegador
+  pula para um ponto aproximado do meio da música, e cada um ouviria um pedaço
+  diferente.
+- **Quem sorteia o ponto é o servidor** (`sortearInicio`, em
+  [`server/sala.js`](server/sala.js)), para a sala inteira ouvir o mesmo
+  pedaço. O sorteio fica longe dos 15 s iniciais (silêncio, a plateia do ao
+  vivo) e deixa 10 s de folga no fim, antes do fade-out. A duração de cada
+  música mora em [`server/musicas.js`](server/musicas.js).
+- **A música toca até o limite da sala** (30 s por padrão) e para sozinha.
+  Fora dos modos musicais o relógio da pergunta continua sendo o tempo por
+  pergunta: com 20 s de pergunta e limite de 30 s, a rodada acaba antes; com
+  45 s de pergunta e limite de 15 s, a música para e a rodada segue.
+- **A música chega antes do relógio**, pelo mesmo portão da imagem: na tela da
+  categoria o navegador baixa o áudio, pula para o ponto sorteado e avisa que
+  está pronto. Sem isso, quem tem a internet lenta ouvia segundos depois dos
+  outros — e na Corrida musical perdia por isso.
+- **Pausa:** a música para junto e volta do ponto em que estava. Quem tocou no
+  "ouvir" depois (autoplay bloqueado) entra no ponto em que a sala está, não
+  no começo do pedaço.
+- **O primeiro toque na página destrava o som** (um instante de silêncio): o
+  iPhone só deixa tocar sozinho um áudio que já tocou dentro de um toque da
+  pessoa. Ainda assim, quando o navegador bloqueia, o tocador pede um toque.
+- A entrada é suave (600 ms), menos no iPhone, que ignora o volume do áudio.
+- A mesma música não toca duas vezes na partida, mesmo tendo duas perguntas.
+- O id de cada pergunta continua saindo do nome antigo do arquivo
+  (`trecho-<nome>.mp3`): a dificuldade e o rodízio de antes da troca não se
+  perdem.
+- Os originais ficam em `public/musicas/`, que está no `.gitignore` e **não vai
+  para o repositório**. Ali também fica um `catalogo.html`, com a lista das
+  músicas e quais já estão no jogo.
+
+**Música nova:** converta o original para `public/audio/musica-<nome>.mp3` (64
+kbps, mono, taxa fixa, volume igualado), escreva as duas perguntas em
+`questions.js` e acrescente a linha com a duração e o estilo em
+`server/musicas.js`. `testes/musicas.test.js` confere que as três coisas
+batem.
 
 > São músicas com direito autoral. Para jogar entre amigos tudo bem, mas no site
-> público os trechos ficam acessíveis para qualquer um.
+> público as músicas inteiras ficam acessíveis para qualquer um.
 
 ### Categoria Música — perguntas de letra
 
@@ -1431,7 +1514,10 @@ pode pontuar e a chance que não volta ao recarregar a página)
 o **círculo entre nota e dificuldade** (a simulação de uma população
 inteira, o que entra na conta da sala e o painel do perfil),
 a **aba Estatísticas** (os números de cada pergunta, os totais pesados, as
-ordens, as páginas e a resposta que não sai)
+ordens, as páginas e a resposta que não sai),
+as **músicas** (arquivo, duração e perguntas que batem, o ponto sorteado longe
+do começo e do fim, a Corrida que fecha no primeiro acerto, as quatro opções
+honestas do Qual é a música e a partida pelo número de músicas)
 e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim

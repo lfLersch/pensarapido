@@ -1107,6 +1107,63 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: var(--destaque);
   white-space: nowrap;
 }
+/* O pedaco chegou ao limite da sala: o aviso sai do amarelo de "faca algo". */
+.tocador.acabou .tocador__aviso { color: var(--texto-fraco); }
+
+/* Qual e a musica: as quatro opcoes, em grade de 2 por 2. */
+.opcoes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 20px;
+}
+.opcao {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+  color: var(--texto);
+  background: var(--superficie);
+  border: 1.5px solid var(--borda);
+  border-radius: var(--raio-peq);
+  cursor: pointer;
+  transition: all var(--transicao);
+}
+.opcao:hover:not(:disabled) { border-color: var(--primaria-2); background: var(--superficie-2); }
+.opcao:disabled { cursor: default; }
+.opcao__letra {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+  color: var(--texto-suave);
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+}
+.opcao__texto { min-width: 0; overflow-wrap: anywhere; }
+/* Travada: a minha fica marcada e as outras apagam ate o resultado. */
+.opcao:disabled:not(.escolhida):not(.certa):not(.errada) { opacity: 0.45; }
+.opcao.escolhida { border-color: var(--primaria); background: rgba(124, 92, 255, 0.18); }
+.opcao.escolhida .opcao__letra { color: #fff; background: var(--primaria); }
+.opcao.certa { border-color: var(--certo); background: rgba(34, 197, 94, 0.16); }
+.opcao.certa .opcao__letra { color: #fff; background: var(--certo); }
+.opcao.errada { border-color: var(--errado); background: rgba(244, 63, 94, 0.14); }
+.opcao.errada .opcao__letra { color: #fff; background: var(--errado); }
+
+@media (max-width: 480px) {
+  .opcoes { grid-template-columns: 1fr; }
+  .opcao { min-height: 50px; }
+}
+
+/* Configuracao: o numero de musicas fica numa linha abaixo de "por pontos / por musicas". */
+.meta__opcoes--abaixo { margin-top: 10px; }
 
 .pergunta__figura {
   margin: 0 0 20px;

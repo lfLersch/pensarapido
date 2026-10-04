@@ -7,7 +7,7 @@ const { Server } = require('socket.io');
 
 const {
   Sala, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, gerarCodigo, indicePerguntas,
-  categoriasEmJogo, perguntasEscolhidas
+  categoriasEmJogo, perguntasEscolhidas, LIMITE_MUSICA_PADRAO, TOTAL_MUSICAS_PADRAO
 } = require('./sala');
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
@@ -21,6 +21,10 @@ const PORTA = process.env.PORT || 3000;
 const SEGUNDOS_PERMITIDOS = [15, 20, 30, 45];
 const META_MIN = 20;
 const META_MAX = 500;
+// Por quanto tempo a musica toca, no maximo, e quantas musicas tem a partida
+// dos modos musicais que acaba pelo numero delas.
+const LIMITES_MUSICA = [15, 20, 30, 45, 60];
+const TOTAIS_MUSICAS = [10, 15, 20, 30];
 // Sala que esvaziou no meio da partida nao morre na hora: quem caiu tem esse
 // tempo para voltar e reencontrar o proprio placar.
 const MS_ESPERANDO_VOLTA = 10 * 60 * 1000;
@@ -39,6 +43,10 @@ app.get('/api/config', (_req, res) => {
     maxJogadores: MAX_JOGADORES,
     maxTexto: MAX_TEXTO,
     segundosPermitidos: SEGUNDOS_PERMITIDOS,
+    limitesMusica: LIMITES_MUSICA,
+    limiteMusicaPadrao: LIMITE_MUSICA_PADRAO,
+    totaisMusicas: TOTAIS_MUSICAS,
+    totalMusicasPadrao: TOTAL_MUSICAS_PADRAO,
     meta: { min: META_MIN, max: META_MAX },
     niveis: dificuldade.NIVEIS,
     versao: VERSAO,
@@ -167,10 +175,16 @@ function limparCodigo(valor) {
 function validarConfig(bruta) {
   if (!bruta || typeof bruta !== 'object') return { erro: 'Configuração inválida.' };
 
+  const modo = MODOS.find((m) => m.id === bruta.modo && m.disponivel);
+  if (!modo) return { erro: 'Esse modo de jogo ainda não está disponível.' };
+
+  // Os modos musicais só tocam música, venha o que vier marcado.
   const idsValidos = new Set(CATEGORIAS.map((c) => c.id));
-  const categorias = Array.isArray(bruta.categorias)
-    ? [...new Set(bruta.categorias.filter((id) => idsValidos.has(id)))]
-    : [];
+  const categorias = modo.musical
+    ? ['ouvir']
+    : Array.isArray(bruta.categorias)
+      ? [...new Set(bruta.categorias.filter((id) => idsValidos.has(id)))]
+      : [];
   // Partes vêm como 'categoria:parte' e só valem as que existem de fato.
   // `fora`: partes desmarcadas de uma categoria marcada (saem só elas).
   // `subs`: partes marcadas de uma categoria desmarcada (entram só elas).
@@ -182,8 +196,8 @@ function validarConfig(bruta) {
     ? [...new Set(lista.filter((s) => partesValidas.has(s)
         && categorias.includes(String(s).split(':')[0]) === daMarcada))]
     : []);
-  const fora = partes(bruta.fora, true);
-  const subs = partes(bruta.subs, false);
+  const fora = modo.musical ? [] : partes(bruta.fora, true);
+  const subs = modo.musical ? [] : partes(bruta.subs, false);
 
   // Categoria marcada com todas as partes desmarcadas pode ficar sem nada
   // (Marcas só tem perguntas dentro das partes).
@@ -192,18 +206,31 @@ function validarConfig(bruta) {
     .filter((id) => perguntasEscolhidas(escolha, id).length > 0);
   if (comPerguntas.length === 0) return { erro: 'Escolha pelo menos uma categoria.' };
 
-  const modo = MODOS.find((m) => m.id === bruta.modo && m.disponivel);
-  if (!modo) return { erro: 'Esse modo de jogo ainda não está disponível.' };
+  // Partida pelo número de músicas só existe nos modos musicais; nos outros
+  // quem decide é sempre a meta de pontos.
+  const fimPor = modo.musical && bruta.fimPor === 'musicas' ? 'musicas' : 'pontos';
+  const total = Number(bruta.totalMusicas);
+  const totalMusicas = TOTAIS_MUSICAS.includes(total) ? total : TOTAL_MUSICAS_PADRAO;
 
   const metaPontos = Number(bruta.metaPontos);
-  if (!Number.isInteger(metaPontos) || metaPontos < META_MIN || metaPontos > META_MAX) {
+  if (fimPor === 'pontos'
+      && (!Number.isInteger(metaPontos) || metaPontos < META_MIN || metaPontos > META_MAX)) {
     return { erro: `A meta deve ser um número entre ${META_MIN} e ${META_MAX}.` };
   }
 
   const segundos = Number(bruta.segundosPorPergunta);
   const segundosPorPergunta = SEGUNDOS_PERMITIDOS.includes(segundos) ? segundos : 20;
 
-  return { config: { categorias, subs, fora, modo: modo.id, metaPontos, segundosPorPergunta } };
+  const limite = Number(bruta.limiteMusica);
+  const limiteMusica = LIMITES_MUSICA.includes(limite) ? limite : LIMITE_MUSICA_PADRAO;
+
+  return {
+    config: {
+      categorias, subs, fora, modo: modo.id,
+      metaPontos: Number.isInteger(metaPontos) ? metaPontos : 120,
+      segundosPorPergunta, limiteMusica, fimPor, totalMusicas
+    }
+  };
 }
 
 /* -------------------------------- Socket.IO -------------------------------- */
@@ -297,7 +324,14 @@ io.on('connection', (socket) => {
     responder(callback, sala.palpitar(socket.id, texto));
   });
 
-  // A imagem da proxima pergunta terminou de carregar neste navegador. Nao
+  // Qual e a musica: o clique numa das quatro opcoes.
+  socket.on('sala:opcao', ({ indice } = {}, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+    responder(callback, sala.escolherOpcao(socket.id, Number(indice)));
+  });
+
+  // A imagem (ou a musica) da proxima pergunta terminou de carregar neste navegador. Nao
   // precisa de resposta: o servidor so junta os avisos e abre a pergunta
   // quando todo mundo ja esta com ela.
   socket.on('rodada:imagemPronta', ({ rodada } = {}) => {

@@ -211,7 +211,7 @@
         </div>
       </div>
 
-      <div class="bloco">
+      <div class="bloco" id="bloco-categorias">
         <div class="bloco__cabecalho">
           <h3 class="bloco__titulo">Categorias</h3>
           <div class="bloco__acoes">
@@ -228,7 +228,17 @@
         <div class="grade-modos" id="grade-modos"></div>
       </div>
 
-      <div class="bloco">
+      <!-- Modos musicais: a partida acaba pela meta de pontos ou pelo numero de musicas. -->
+      <div class="bloco" id="bloco-fim" hidden>
+        <h3 class="bloco__titulo">Fim da partida</h3>
+        <div class="meta__opcoes" id="fim-opcoes">
+          <button class="pilula" type="button" data-fim="pontos">Por pontos</button>
+          <button class="pilula" type="button" data-fim="musicas">Por numero de musicas</button>
+        </div>
+        <div class="meta__opcoes meta__opcoes--abaixo" id="total-opcoes" hidden></div>
+      </div>
+
+      <div class="bloco" id="bloco-meta">
         <h3 class="bloco__titulo">Pontuacao para vencer</h3>
         <p class="bloco__dica">O primeiro que chegar nessa pontuacao leva a partida.</p>
         <div class="meta">
@@ -241,9 +251,15 @@
         </div>
       </div>
 
-      <div class="bloco">
+      <div class="bloco" id="bloco-tempo">
         <h3 class="bloco__titulo">Tempo por pergunta</h3>
         <div class="meta__opcoes" id="tempo-opcoes"></div>
+      </div>
+
+      <div class="bloco" id="bloco-limite">
+        <h3 class="bloco__titulo">Limite da musica</h3>
+        <p class="bloco__dica" id="limite-dica">Por quanto tempo a musica toca, no maximo. O pedaco e sorteado: nao e sempre o comeco.</p>
+        <div class="meta__opcoes" id="limite-opcoes"></div>
       </div>
 
       <p class="aviso" id="aviso-config" role="alert"></p>
@@ -351,7 +367,7 @@
         <div class="jogo__info">
           <span class="etiqueta">Sala <b id="jogo-codigo">----</b></span>
           <span class="etiqueta">Rodada <b id="jogo-rodada">1</b></span>
-          <span class="etiqueta">Meta <b id="jogo-meta">120</b></span>
+          <span class="etiqueta"><span id="jogo-meta-rotulo">Meta</span> <b id="jogo-meta">120</b></span>
         </div>
         <div class="jogo__canto">
           <button class="btn btn--fantasma btn--pausar" id="btn-pausar" type="button" title="Pausar o jogo" hidden>
@@ -398,6 +414,9 @@
             <span class="tocador__aviso" id="tocador-aviso"></span>
             <audio id="tocador-audio" preload="auto"></audio>
           </div>
+
+          <!-- Qual e a musica: as quatro opcoes, um clique por musica. -->
+          <div class="opcoes" id="opcoes" hidden></div>
 
           <figure class="pergunta__figura" id="pergunta-figura" hidden>
             <img id="pergunta-imagem" alt="Imagem da pergunta" />
