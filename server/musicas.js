@@ -175,6 +175,7 @@ const MUSICAS = {
   'amanha-ou-depois': { duracao: 220.7, estilo: 'nacional' },
   'detetive': { duracao: 205.7, estilo: 'nacional' },
   'garota-radical': { duracao: 176.5, estilo: 'nacional' },
+  'pinhal': { duracao: 219.7, estilo: 'nacional' },
   'levo-comigo': { duracao: 206.7, estilo: 'nacional' },
   'menina-estranha': { duracao: 176.8, estilo: 'nacional' },
   'nao-quero-dinheiro': { duracao: 153.8, estilo: 'nacional' },

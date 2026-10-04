@@ -19,14 +19,14 @@ const NOTAS = [
   {
     versao: '1.28',
     data: '2026-10-04',
-    titulo: 'Corrida musical, Qual e a musica e 146 musicas',
+    titulo: 'Corrida musical, Qual e a musica e 147 musicas',
     itens: [
       'Modo novo, Corrida musical: toca um pedaco de uma musica e o primeiro que acertar no chat leva os pontos. A musica para assim que alguem acerta.',
       'Modo novo, Qual e a musica: toca um pedaco e aparecem 4 opcoes. Um clique por musica, e quanto mais rapido, mais pontos. A certa so aparece no fim da rodada.',
       'Nos dois modos a partida pode acabar pela meta de pontos ou depois de 10, 15, 20 ou 30 musicas.',
       'A musica nao toca mais sempre do comeco: cada rodada sorteia um pedaco diferente, e todo mundo ouve o mesmo pedaco ao mesmo tempo.',
       'A sala escolhe por quanto tempo a musica toca, de 15 a 60 segundos. O padrao e 30.',
-      'Ouvir musicas foi de 93 para 146 musicas, com bastante rap e funk nacional, Comunidade Nin-Jitsu, Nenhum de Nos e Tim Maia.'
+      'Ouvir musicas foi de 93 para 147 musicas, com bastante rap e funk nacional, Comunidade Nin-Jitsu, Nenhum de Nos, Cidadao Quem e Tim Maia.'
     ]
   },
   {

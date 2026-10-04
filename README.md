@@ -1361,7 +1361,7 @@ transparente sumiria na tela escura do jogo.
 ### Categoria Ouvir músicas
 
 A categoria **Ouvir músicas** toca **um pedaço sorteado** de uma música — não
-é sempre o começo. São 146 músicas, do rock ao sertanejo, ao funk e ao rap
+é sempre o começo. São 147 músicas, do rock ao sertanejo, ao funk e ao rap
 nacional (Yellow, Waka Waka, Billie Jean, Racionais, Djonga, Comunidade
 Nin-Jitsu e outras), e cada uma tem **duas perguntas**: *"Qual é o nome desta
 música?"* e *"Quem canta esta música?"* — ou *"Qual banda canta…"*, para banda
@@ -1369,7 +1369,7 @@ não ganhar atalho de sobrenome ("Park" valendo por Linkin Park). Em dueto vale
 qualquer um dos nomes.
 
 - **O arquivo é a música inteira**, em `public/audio/musica-<nome>.mp3`: MP3 de
-  64 kbps mono, todas no mesmo volume (-14 LUFS), uns 1,8 MB por música e 252
+  64 kbps mono, todas no mesmo volume (-14 LUFS), uns 1,8 MB por música e 254
   MB no total. A **taxa é fixa** de propósito: com taxa variável o navegador
   pula para um ponto aproximado do meio da música, e cada um ouviria um pedaço
   diferente.

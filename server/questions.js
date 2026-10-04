@@ -1614,7 +1614,9 @@ const QUESTOES = {
     { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-o-maior-idiota-do-mundo.mp3', resposta: 'O Maior Idiota do Mundo', dif: 55 },
     { pergunta: 'Qual banda canta esta musica?', audio: '/audio/musica-o-maior-idiota-do-mundo.mp3', resposta: 'Topaz', dif: 55 },
     { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-felina.mp3', resposta: 'Felina', dif: 45 },
-    { pergunta: 'Quem canta esta musica?', audio: '/audio/musica-felina.mp3', resposta: 'WIU', aceita: ['MC Ryan SP', 'Ryan SP'], dif: 45 }
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/musica-felina.mp3', resposta: 'WIU', aceita: ['MC Ryan SP', 'Ryan SP'], dif: 45 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-pinhal.mp3', resposta: 'Pinhal', dif: 55 },
+    { pergunta: 'Qual banda canta esta musica?', audio: '/audio/musica-pinhal.mp3', resposta: 'Cidadao Quem', dif: 50 }
   ],
 
   rap: [
