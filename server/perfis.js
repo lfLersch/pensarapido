@@ -21,6 +21,7 @@
 const fs = require('fs');
 const path = require('path');
 const banco = require('./banco');
+const { NIVEIS, chanceDeAcerto, ESCALA_NOTA } = require('./dificuldade');
 
 // Os testes apontam para um arquivo temporario, para nao sujar os perfis de verdade.
 const ARQUIVO = process.env.PERFIS_ARQUIVO || path.join(__dirname, 'dados', 'perfis.json');
@@ -53,17 +54,16 @@ const DIF_MUITO_DIFICIL = 75;
 
 /** Nota de quem ainda nao jogou a categoria. */
 const NOTA_INICIAL = 50;
-/** Diferenca que muda a chance: 10 pontos acima da nota = 27% de chance; 20 = 12%. */
-const ESCALA_NOTA = 10;
+// A chance esperada (e a ESCALA_NOTA dela, em que 10 pontos acima da nota
+// sao 27% de chance e 20 sao 12%) mora em dificuldade.js: a mesma conta
+// serve para as duas pontas do circulo.
 /** Tamanho do passo: `PASSO_INICIAL / (1 + rodadas / 10)`, nunca abaixo de `PASSO_MINIMO`. */
 const PASSO_INICIAL = 20;
 const PASSO_MINIMO = 3;
 /** Com menos rodadas que isto, a nota aparece como provisoria. */
 const RODADAS_PARA_NOTA = 5;
-
-function chanceDeAcerto(nota, dificuldade) {
-  return 1 / (1 + Math.exp((dificuldade - nota) / ESCALA_NOTA));
-}
+/** Quantas partidas o grafico de evolucao guarda. */
+const MAX_HISTORICO = 30;
 
 /** A nota depois de uma rodada. `rodadas` e quantas a pessoa ja tinha jogado nesta categoria. */
 function novaNota(nota, rodadas, acertou, dificuldade) {
@@ -85,6 +85,111 @@ const TOTAL_CATEGORIAS = require('./questions').CATEGORIAS.length;
 const marca = (p, nome) => (p.marcas && p.marcas[nome]) || 0;
 const especialidades = (p) => Object.values(p.porCategoria || {})
   .filter((c) => c.rodadas >= RODADAS_ESPECIALISTA && c.nota >= NOTA_ESPECIALISTA).length;
+
+const umaCasa = (n) => Math.round(n * 10) / 10;
+
+/** Em qual faixa de dificuldade.js (Facil, Media, Dificil, Muito dificil) a pergunta cai. */
+function indiceDoNivel(dificuldade) {
+  const i = NIVEIS.findIndex((n) => dificuldade < n.ate);
+  return i < 0 ? NIVEIS.length - 1 : i;
+}
+
+/* --------------------------- Fichas de desempenho --------------------------- *
+ *
+ * Uma ficha e o desempenho num recorte: uma categoria, ou todas juntas (a
+ * "geral"). Alem da nota, ela separa as rodadas por faixa de dificuldade e
+ * guarda quanto a nota ESPERAVA de acerto em cada uma — e o que o painel do
+ * perfil compara com o acerto de verdade.
+ */
+
+function novaFicha() {
+  return {
+    rodadas: 0,
+    acertos: 0,
+    nota: NOTA_INICIAL,
+    somaDificuldade: 0,
+    porNivel: NIVEIS.map(() => ({ rodadas: 0, acertos: 0, somaEsperado: 0 }))
+  };
+}
+
+/** Completa a ficha que veio de antes dos campos novos existirem. */
+function normalizarFicha(bruta) {
+  const f = Object.assign(novaFicha(), bruta || {});
+  if (!Array.isArray(f.porNivel) || f.porNivel.length !== NIVEIS.length) {
+    f.porNivel = novaFicha().porNivel;
+  }
+  return f;
+}
+
+/** Uma rodada na ficha. A chance esperada sai da nota de ANTES da rodada. */
+function anotarNaFicha(f, acertou, dificuldade) {
+  const nivel = f.porNivel[indiceDoNivel(dificuldade)];
+  nivel.rodadas += 1;
+  if (acertou) nivel.acertos += 1;
+  nivel.somaEsperado += chanceDeAcerto(f.nota, dificuldade);
+
+  f.nota = novaNota(f.nota, f.rodadas, acertou, dificuldade);
+  f.rodadas += 1;
+  if (acertou) f.acertos += 1;
+  f.somaDificuldade += dificuldade;
+}
+
+/** Junta a ficha `de` na `para`: contagens somam, a nota vira a media pesada pelas rodadas. */
+function somarFicha(para, de) {
+  const total = para.rodadas + de.rodadas;
+  if (total) para.nota = umaCasa((para.nota * para.rodadas + de.nota * de.rodadas) / total);
+  para.rodadas = total;
+  para.acertos += de.acertos;
+  para.somaDificuldade += de.somaDificuldade;
+  para.porNivel.forEach((nivel, i) => {
+    const outro = de.porNivel[i];
+    nivel.rodadas += outro.rodadas;
+    nivel.acertos += outro.acertos;
+    nivel.somaEsperado += outro.somaEsperado;
+  });
+  if (para.inicioPartida == null && de.inicioPartida != null) para.inicioPartida = de.inicioPartida;
+}
+
+/**
+ * A geral de um perfil de antes dela existir: a soma das categorias. A
+ * divisao por faixa de dificuldade nao tem como ser refeita, e comeca vazia.
+ */
+function geralDasCategorias(porCategoria) {
+  const geral = novaFicha();
+  for (const c of Object.values(porCategoria)) {
+    const f = normalizarFicha(c);
+    somarFicha(geral, { ...f, porNivel: novaFicha().porNivel });
+  }
+  return geral;
+}
+
+/**
+ * A nota que a pessoa leva para uma pergunta desta categoria, e o quanto
+ * ela merece confianca — e o que entra na dificuldade da pergunta
+ * (dificuldade.js).
+ *
+ * Nota provisoria nao pode valer inteira: quem jogou 1 rodada de Cinema ainda
+ * nao disse nada sobre Cinema. Entao cada nota vale na proporcao da
+ * confianca, `rodadas / (rodadas + 5)`, e o resto vem de um degrau acima:
+ *
+ *   geral   = 50    + confianca da geral     x (nota geral - 50)
+ *   efetiva = geral + confianca da categoria x (nota da categoria - geral)
+ *
+ * Quem joga muito no geral e nunca jogou Cinema entra com a nota geral; quem
+ * nunca jogou nada entra com 50 e confianca 0, e nao mexe na pergunta.
+ */
+function notaEfetivaDe(p, categoria) {
+  if (!p) return { nota: NOTA_INICIAL, confianca: 0 };
+  const confianca = (f) => (f ? f.rodadas / (f.rodadas + RODADAS_PARA_NOTA) : 0);
+  const g = p.geral || novaFicha();
+  const c = categoria ? p.porCategoria[categoria] : null;
+  const geral = NOTA_INICIAL + confianca(g) * (g.nota - NOTA_INICIAL);
+  const nota = c ? geral + confianca(c) * (c.nota - geral) : geral;
+  return {
+    nota: umaCasa(nota),
+    confianca: Math.round((1 - (1 - confianca(g)) * (1 - confianca(c))) * 100) / 100
+  };
+}
 
 /**
  * As conquistas, na ordem em que aparecem no perfil.
@@ -170,10 +275,15 @@ function perfilVazio() {
     dificeis: 0,
     maiorSequencia: 0,
     categorias: [],
-    // id da categoria -> { rodadas, acertos, nota, somaDificuldade }
+    // Todas as categorias juntas, e cada uma sozinha: fichas de novaFicha().
+    geral: novaFicha(),
     porCategoria: {},
     // Contadores das conquistas mais novas (gatilhos, perfeitas, viradas...)
     marcas: {},
+    // Uma foto por partida: { quando, nota (geral), cats: { id: nota } }.
+    historico: [],
+    // Categorias medidas desde a ultima foto: entram na proxima.
+    mexidas: [],
     conquistas: {} // id -> quando foi alcançada (ms)
   };
 }
@@ -194,6 +304,12 @@ function normalizarPerfil(bruto) {
   if (!p.conquistas || typeof p.conquistas !== 'object') p.conquistas = {};
   if (!p.porCategoria || typeof p.porCategoria !== 'object') p.porCategoria = {};
   if (!p.marcas || typeof p.marcas !== 'object') p.marcas = {};
+  for (const [id, c] of Object.entries(p.porCategoria)) p.porCategoria[id] = normalizarFicha(c);
+  // Perfil de antes da nota geral: ela nasce da soma das categorias.
+  const tinhaGeral = bruto && bruto.geral && typeof bruto.geral === 'object';
+  p.geral = tinhaGeral ? normalizarFicha(bruto.geral) : geralDasCategorias(p.porCategoria);
+  if (!Array.isArray(p.historico)) p.historico = [];
+  if (!Array.isArray(p.mexidas)) p.mexidas = [];
   return p;
 }
 
@@ -388,15 +504,41 @@ function anotarRodada(cliente, nickname, r) {
   }
   p.maiorSequencia = Math.max(p.maiorSequencia, r.sequencia || 0);
   if (r.medeCategoria && r.categoria && Number.isFinite(r.dificuldade)) {
-    const c = p.porCategoria[r.categoria]
-      || (p.porCategoria[r.categoria] = { rodadas: 0, acertos: 0, nota: NOTA_INICIAL, somaDificuldade: 0 });
-    c.nota = novaNota(c.nota, c.rodadas, r.acertou, r.dificuldade);
-    c.rodadas += 1;
-    if (r.acertou) c.acertos += 1;
-    c.somaDificuldade += r.dificuldade;
+    const c = p.porCategoria[r.categoria] || (p.porCategoria[r.categoria] = novaFicha());
+    // A primeira rodada medida da partida guarda de onde a nota saiu, para a
+    // variacao que o painel mostra ("+4 na ultima partida").
+    if (!p.mexidas.length) p.geral.inicioPartida = p.geral.nota;
+    if (!p.mexidas.includes(r.categoria)) {
+      p.mexidas.push(r.categoria);
+      c.inicioPartida = c.nota;
+    }
+    anotarNaFicha(c, r.acertou, r.dificuldade);
+    anotarNaFicha(p.geral, r.acertou, r.dificuldade);
   }
   marcar(chave);
   return conferirConquistas(p);
+}
+
+/**
+ * Fecha a partida no historico: uma foto da nota geral e das categorias que
+ * foram medidas, e a variacao de cada uma desde o comeco dela. Partida sem
+ * rodada medida (so leilao, por exemplo) nao vira foto.
+ */
+function fotografar(p) {
+  if (!p.mexidas.length) return;
+  const cats = {};
+  for (const id of p.mexidas) {
+    const c = p.porCategoria[id];
+    if (!c) continue;
+    cats[id] = c.nota;
+    c.variacao = umaCasa(c.nota - (c.inicioPartida ?? c.nota));
+    delete c.inicioPartida;
+  }
+  p.geral.variacao = umaCasa(p.geral.nota - (p.geral.inicioPartida ?? p.geral.nota));
+  delete p.geral.inicioPartida;
+  p.historico.push({ quando: Date.now(), nota: p.geral.nota, cats });
+  if (p.historico.length > MAX_HISTORICO) p.historico.splice(0, p.historico.length - MAX_HISTORICO);
+  p.mexidas = [];
 }
 
 /** A partida acabou para esta pessoa. */
@@ -415,6 +557,7 @@ function fimDePartida(cliente, nickname, fim) {
   if ((fim.jogadores || 0) >= 6) contar(p, 'casaCheia');
   if ((fim.rodadas || 0) >= 30) contar(p, 'maratonas');
   if (horaDeBrasilia(fim.quando) < 5) contar(p, 'madrugadas');
+  fotografar(p);
   marcar(chave);
   return conferirConquistas(p);
 }
@@ -434,19 +577,18 @@ function somar(para, de) {
   if (!para.nickname) para.nickname = de.nickname;
   for (const [nome, n] of Object.entries(de.marcas || {})) para.marcas[nome] = (para.marcas[nome] || 0) + n;
 
-  // Por categoria: somam as contagens, e a nota vira a media pesada pelas rodadas.
+  // Geral e por categoria: somam as contagens, e a nota vira a media pesada pelas rodadas.
+  somarFicha(para.geral, de.geral);
   for (const [id, c] of Object.entries(de.porCategoria || {})) {
     const alvo = para.porCategoria[id];
-    if (!alvo) {
-      para.porCategoria[id] = { ...c };
-      continue;
-    }
-    const total = alvo.rodadas + c.rodadas;
-    alvo.nota = total ? Math.round(((alvo.nota * alvo.rodadas + c.nota * c.rodadas) / total) * 10) / 10 : alvo.nota;
-    alvo.rodadas = total;
-    alvo.acertos += c.acertos;
-    alvo.somaDificuldade += c.somaDificuldade;
+    if (alvo) somarFicha(alvo, c);
+    else para.porCategoria[id] = JSON.parse(JSON.stringify(c));
   }
+  // As fotos dos dois aparelhos entram na mesma linha do tempo.
+  para.historico = [...para.historico, ...de.historico]
+    .sort((a, b) => a.quando - b.quando)
+    .slice(-MAX_HISTORICO);
+  for (const id of de.mexidas) if (!para.mexidas.includes(id)) para.mexidas.push(id);
 }
 
 /**
@@ -486,10 +628,64 @@ function sairDaConta(cliente) {
 }
 
 
-/** O perfil para a tela: os números e todas as conquistas, feitas ou não. */
+/** A nota (e a confianca nela) de quem joga com esta carteirinha, para uma pergunta desta categoria. */
+function notaEfetiva(cliente, categoria) {
+  return notaEfetivaDe(cliente ? perfis.get(chaveDe(cliente)) : null, categoria);
+}
+
+const porcento = (parte, todo) => (todo ? Math.round((100 * parte) / todo) : null);
+
+/** Uma ficha do jeito que o painel desenha. */
+function fichaParaTela(f) {
+  return {
+    nota: Math.round(f.nota),
+    // A faixa de dificuldade em que a pessoa acerta meio a meio.
+    nivel: NIVEIS[indiceDoNivel(f.nota)].nome,
+    provisoria: f.rodadas < RODADAS_PARA_NOTA,
+    rodadas: f.rodadas,
+    acertos: f.acertos,
+    aproveitamento: porcento(f.acertos, f.rodadas),
+    dificuldadeMedia: f.rodadas ? Math.round(f.somaDificuldade / f.rodadas) : null,
+    variacao: Number.isFinite(f.variacao) ? f.variacao : null,
+    porNivel: NIVEIS.map((n, i) => {
+      const nivel = f.porNivel[i];
+      return {
+        nivel: n.nome,
+        rodadas: nivel.rodadas,
+        acertos: nivel.acertos,
+        aproveitamento: porcento(nivel.acertos, nivel.rodadas),
+        esperado: nivel.rodadas ? Math.round((100 * nivel.somaEsperado) / nivel.rodadas) : null
+      };
+    })
+  };
+}
+
+/**
+ * O ponto forte e o que pede treino: a maior e a menor nota entre as
+ * categorias que ja passaram da fase provisoria. Com uma so, nao ha o que comparar.
+ */
+function destaquesDe(linhas) {
+  const firmes = linhas.filter((l) => !l.provisoria);
+  if (firmes.length < 2) return { forte: null, fraco: null };
+  const ordem = [...firmes].sort((a, b) => b.nota - a.nota);
+  const forte = ordem[0];
+  const fraco = ordem[ordem.length - 1];
+  return forte.nota === fraco.nota ? { forte: null, fraco: null } : { forte: forte.id, fraco: fraco.id };
+}
+
+/** O perfil para a tela: os números, o painel de desempenho e todas as conquistas. */
 function verPerfil(cliente) {
   const conta = cliente ? vinculos.get(cliente) : null;
   const p = (cliente && perfis.get(chaveDe(cliente))) || perfilVazio();
+  const desempenho = Object.entries(p.porCategoria)
+    .map(([id, c]) => ({
+      id,
+      ...fichaParaTela(c),
+      historico: p.historico
+        .filter((h) => h.cats && Number.isFinite(h.cats[id]))
+        .map((h) => ({ quando: h.quando, nota: Math.round(h.cats[id]) }))
+    }))
+    .sort((a, b) => a.provisoria - b.provisoria || b.nota - a.nota || b.rodadas - a.rodadas);
   return {
     conta: conta ? { nome: p.nomeConta || p.nickname || '' } : null,
     nickname: p.nickname,
@@ -499,16 +695,12 @@ function verPerfil(cliente) {
     pontos: p.pontos,
     maiorSequencia: p.maiorSequencia,
     categorias: p.categorias.length,
-    desempenho: Object.entries(p.porCategoria)
-      .map(([id, c]) => ({
-        id,
-        nota: Math.round(c.nota),
-        provisoria: c.rodadas < RODADAS_PARA_NOTA,
-        rodadas: c.rodadas,
-        acertos: c.acertos,
-        dificuldadeMedia: c.rodadas ? Math.round(c.somaDificuldade / c.rodadas) : null
-      }))
-      .sort((a, b) => a.provisoria - b.provisoria || b.nota - a.nota || b.rodadas - a.rodadas),
+    geral: {
+      ...fichaParaTela(p.geral),
+      historico: p.historico.map((h) => ({ quando: h.quando, nota: Math.round(h.nota) }))
+    },
+    desempenho,
+    destaques: destaquesDe(desempenho),
     // Secretas ate sair: sem nome, sem regra, nem o id (que ja entregaria a regra).
     conquistas: CONQUISTAS.map((c) => (p.conquistas[c.id]
       ? { ...publica(c), quando: p.conquistas[c.id] }
@@ -537,5 +729,6 @@ process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 module.exports = {
   anotarRodada, fimDePartida, verPerfil, melhores, salvar, pronto, entrarComConta, sairDaConta,
   CONQUISTAS, MS_RELAMPAGO, MS_GATILHO, MS_ULTIMO_SEGUNDO, DIF_MUITO_DIFICIL, horaDeBrasilia,
-  chanceDeAcerto, novaNota, NOTA_INICIAL, RODADAS_PARA_NOTA
+  chanceDeAcerto, novaNota, NOTA_INICIAL, ESCALA_NOTA, RODADAS_PARA_NOTA, MAX_HISTORICO,
+  notaEfetiva, notaEfetivaDe, normalizarPerfil
 };

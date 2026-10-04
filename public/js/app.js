@@ -30,6 +30,7 @@ const estado = {
   votei: false,     // votei para pular a rodada atual
   contagem: null,
   urgencia: null,
+  pausado: false,   // o lider pausou o jogo
 };
 
 /* ----------------------------- Atalhos ----------------------------- */
@@ -230,6 +231,256 @@ $('btn-abrir-perfil').addEventListener('click', () => {
 });
 $('btn-voltar-perfil').addEventListener('click', () => mostrarTela('tela-lobby'));
 
+/* ---------------------------- Estatisticas ---------------------------- *
+ *
+ * Uma pagina de perguntas por vez, com os totais do recorte inteiro em cima.
+ * Filtro novo pede a primeira pagina de novo; "Mostrar mais" pede a seguinte
+ * e junta embaixo. O servidor nao manda as respostas.
+ */
+
+const abaEstatisticas = {
+  pagina: 0,
+  carregadas: 0,
+  pedido: 0,      // so vale a resposta do ultimo pedido: a busca dispara varios
+  espera: null,   // a busca espera a pessoa parar de digitar
+  audio: null,
+  tocando: null   // o botao do trecho que esta tocando
+};
+
+// Cada coluna ordena num sentido e, clicada de novo, no contrario.
+const ORDENS_DA_COLUNA = {
+  vezes: ['vezes', 'menos-vezes'],
+  acerto: ['acerto', 'menos-acerto'],
+  rapidas: ['rapidas', 'lentas'],
+  dificuldade: ['dificuldade', 'menos-dificuldade']
+};
+const ORDENS_CRESCENTES = new Set(['menos-vezes', 'menos-acerto', 'rapidas', 'menos-dificuldade']);
+
+const milhar = (n) => Number(n || 0).toLocaleString('pt-BR');
+const emSegundos = (ms) => (ms === null || ms === undefined ? '—'
+  : `${(ms / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s`);
+
+$('btn-abrir-estatisticas').addEventListener('click', () => {
+  montarCategoriasDaAba();
+  mostrarTela('tela-estatisticas');
+  carregarEstatisticas();
+});
+$('btn-voltar-estatisticas').addEventListener('click', () => {
+  pararTrecho();
+  mostrarTela('tela-lobby');
+});
+
+$('est-busca').addEventListener('input', () => {
+  clearTimeout(abaEstatisticas.espera);
+  abaEstatisticas.espera = setTimeout(carregarEstatisticas, 250);
+});
+$('est-busca').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  clearTimeout(abaEstatisticas.espera);
+  e.target.blur(); // no celular, fecha o teclado para mostrar a lista
+  carregarEstatisticas();
+});
+for (const id of ['est-categoria', 'est-ordem', 'est-feitas']) {
+  $(id).addEventListener('change', () => carregarEstatisticas());
+}
+$('est-mais').addEventListener('click', () => carregarEstatisticas({ mais: true }));
+
+for (const botao of document.querySelectorAll('#est-tabela th[data-ordem] button')) {
+  botao.addEventListener('click', () => {
+    const [primeira, segunda] = ORDENS_DA_COLUNA[botao.parentElement.dataset.ordem];
+    $('est-ordem').value = $('est-ordem').value === primeira ? segunda : primeira;
+    carregarEstatisticas();
+  });
+}
+
+/** As categorias e as partes delas, uma vez so (a configuracao nao muda). */
+function montarCategoriasDaAba() {
+  const select = $('est-categoria');
+  if (select.options.length > 1 || !estado.config) return;
+  for (const c of estado.config.categorias) {
+    select.add(new Option(`${c.icone} ${c.nome}`, c.id));
+    for (const s of c.subs || []) {
+      select.add(new Option(`   ${s.icone} ${s.nome}`, `${c.id}:${s.id}`));
+    }
+  }
+}
+
+async function carregarEstatisticas({ mais = false } = {}) {
+  const aba = abaEstatisticas;
+  const pedido = ++aba.pedido;
+  const pagina = mais ? aba.pagina + 1 : 0;
+
+  const [categoria, sub] = $('est-categoria').value.split(':');
+  const busca = $('est-busca').value.trim();
+  const params = new URLSearchParams({ ordem: $('est-ordem').value, pagina: String(pagina) });
+  if (categoria) params.set('categoria', categoria);
+  if (sub) params.set('sub', sub);
+  if (busca) params.set('busca', busca);
+  if ($('est-feitas').checked) params.set('feitas', '1');
+
+  marcarOrdemNaTabela();
+  $('est-mais').disabled = true;
+  $('est-tabela').setAttribute('aria-busy', 'true');
+
+  let dados;
+  try {
+    const resposta = await fetch(`/api/estatisticas?${params}`);
+    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+    dados = await resposta.json();
+  } catch {
+    if (pedido !== aba.pedido) return;
+    $('est-tabela').removeAttribute('aria-busy');
+    $('est-mais').disabled = false;
+    if (mais) brindar('Nao deu para carregar mais agora. Tente de novo.');
+    else mostrarVazioDaAba('Nao deu para carregar as estatisticas agora. Tente de novo daqui a pouco.');
+    return;
+  }
+  if (pedido !== aba.pedido) return; // chegou depois de um pedido mais novo
+
+  $('est-tabela').removeAttribute('aria-busy');
+  aba.pagina = pagina;
+  const corpo = $('est-linhas');
+  if (!mais) {
+    pararTrecho();
+    corpo.innerHTML = '';
+    aba.carregadas = 0;
+    desenharResumoDaAba(dados.resumo);
+  }
+  for (const linha of dados.linhas) corpo.appendChild(linhaDaAba(linha));
+  aba.carregadas += dados.linhas.length;
+
+  const vazio = dados.total === 0;
+  $('est-tabela').hidden = vazio;
+  if (vazio) {
+    mostrarVazioDaAba($('est-feitas').checked
+      ? 'Nenhuma pergunta deste recorte caiu ainda.'
+      : 'Nenhuma pergunta com esse texto nesta categoria.');
+  } else {
+    $('est-vazio').hidden = true;
+  }
+  $('est-contagem').textContent = vazio ? '' : `Mostrando ${milhar(aba.carregadas)} de ${milhar(dados.total)} perguntas`;
+
+  const faltam = dados.total - aba.carregadas;
+  $('est-mais').hidden = faltam <= 0;
+  $('est-mais').disabled = false;
+  $('est-mais').textContent = `Mostrar mais ${milhar(Math.min(faltam, dados.tamanho))}`;
+}
+
+function mostrarVazioDaAba(texto) {
+  $('est-tabela').hidden = true;
+  $('est-contagem').textContent = '';
+  $('est-mais').hidden = true;
+  $('est-vazio').textContent = texto;
+  $('est-vazio').hidden = false;
+}
+
+/** O cabecalho da coluna em uso fica marcado, com o sentido para o leitor de tela. */
+function marcarOrdemNaTabela() {
+  const ordem = $('est-ordem').value;
+  for (const th of document.querySelectorAll('#est-tabela th[data-ordem]')) {
+    const ativa = ORDENS_DA_COLUNA[th.dataset.ordem].includes(ordem);
+    th.classList.toggle('est-ordenada', ativa);
+    th.classList.toggle('est-ordenada--crescente', ativa && ORDENS_CRESCENTES.has(ordem));
+    if (ativa) th.setAttribute('aria-sort', ORDENS_CRESCENTES.has(ordem) ? 'ascending' : 'descending');
+    else th.removeAttribute('aria-sort');
+  }
+}
+
+function desenharResumoDaAba(r) {
+  const numeros = [
+    [milhar(r.feitas), `de ${milhar(r.perguntas)} perguntas ja cairam`],
+    [milhar(r.vezes), 'vezes que elas cairam'],
+    [r.acerto === null ? '—' : `${r.acerto}%`,
+      r.respostas ? `de acerto, em ${milhar(r.respostas)} respostas` : 'de acerto'],
+    [emSegundos(r.tempoMedioMs), 'tempo medio do acerto']
+  ];
+  $('est-resumo').innerHTML = numeros.map(([valor, rotulo]) => `
+    <div class="perfil-numero">
+      <span class="perfil-numero__valor">${valor}</span>
+      <span class="perfil-numero__rotulo">${rotulo}</span>
+    </div>`).join('');
+}
+
+function linhaDaAba(l) {
+  const tr = criar('tr', 'est-linha' + (l.vezes ? '' : ' est-linha--nunca'));
+  const c = categoriaDe(l.categoria);
+  const sub = l.sub && (c.subs || []).find((s) => s.id === l.sub);
+  const nivel = (estado.config?.niveis || []).find((n) => n.nome === l.nivel);
+
+  const acerto = l.acerto === null ? '<span class="est-sem">—</span>' : `
+    <span class="est-acerto">
+      <span class="est-barra" aria-hidden="true"><span style="width:${l.acerto}%"></span></span>
+      <span>${l.acerto}%</span>
+    </span>
+    <span class="est-detalhe">${milhar(l.acertos)} de ${milhar(l.respostas)}</span>`;
+
+  tr.innerHTML = `
+    <td class="est-col-pergunta">
+      <div class="est-pergunta">
+        <div class="est-pergunta__textos">
+          <span class="est-pergunta__texto">${escapar(l.pergunta)}</span>
+          <span class="est-pergunta__onde">${c.icone} ${escapar(c.nome)}${
+            sub ? ` · ${sub.icone} ${escapar(sub.nome)}` : ''}</span>
+        </div>
+      </div>
+    </td>
+    <td class="est-num" data-rotulo="Vezes">${l.vezes ? milhar(l.vezes) : '<span class="est-sem">0</span>'}</td>
+    <td class="est-num" data-rotulo="Acerto">${acerto}</td>
+    <td class="est-num" data-rotulo="Tempo">${l.tempoMedioMs === null
+      ? '<span class="est-sem">—</span>' : emSegundos(l.tempoMedioMs)}</td>
+    <td class="est-num" data-rotulo="Dificuldade">
+      <span class="est-nivel"><i style="background:${nivel ? nivel.cor : 'var(--texto-fraco)'}"></i>${Math.round(l.dificuldade)}</span>
+      <span class="est-detalhe">${escapar(l.nivel)}</span>
+    </td>`;
+
+  // A imagem e o audio sao o que separa "Que pais e este?" de outro igual.
+  const pergunta = tr.querySelector('.est-pergunta');
+  if (l.imagem) {
+    const img = criar('img', 'est-miniatura');
+    img.src = l.imagem;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.addEventListener('error', () => img.remove());
+    pergunta.prepend(img);
+  } else if (l.audio) {
+    const botao = criar('button', 'est-trecho');
+    botao.type = 'button';
+    botao.textContent = '▶\uFE0E';
+    botao.setAttribute('aria-label', 'Ouvir o trecho');
+    botao.addEventListener('click', () => tocarTrecho(botao, l.audio));
+    pergunta.prepend(botao);
+  }
+  return tr;
+}
+
+function tocarTrecho(botao, url) {
+  const aba = abaEstatisticas;
+  if (aba.tocando === botao) { pararTrecho(); return; }
+  pararTrecho();
+  aba.audio = aba.audio || new Audio();
+  aba.audio.src = url;
+  aba.audio.onended = pararTrecho;
+  // Trocar de trecho no meio interrompe o play anterior: so desmarca se
+  // ainda for este que esta tocando.
+  aba.audio.play().catch(() => { if (aba.tocando === botao) pararTrecho(); });
+  aba.tocando = botao;
+  botao.textContent = '■';
+  botao.setAttribute('aria-label', 'Parar o trecho');
+  botao.classList.add('est-trecho--tocando');
+}
+
+function pararTrecho() {
+  const aba = abaEstatisticas;
+  if (aba.audio) aba.audio.pause();
+  if (aba.tocando) {
+    aba.tocando.textContent = '▶\uFE0E';
+    aba.tocando.setAttribute('aria-label', 'Ouvir o trecho');
+    aba.tocando.classList.remove('est-trecho--tocando');
+  }
+  aba.tocando = null;
+}
+
 /**
  * Login com Google, opcional.
  *
@@ -351,7 +602,7 @@ function renderizarPerfil(perfil) {
       <span class="perfil-numero__rotulo">${rotulo}</span>
     </div>`).join('');
 
-  renderizarDesempenho(perfil.desempenho || []);
+  renderizarPainel(perfil);
 
   const feitas = perfil.conquistas.filter((c) => c.quando).length;
   $('perfil-contagem').textContent = `${feitas}/${perfil.conquistas.length}`;
@@ -371,30 +622,391 @@ function renderizarPerfil(perfil) {
     </li>`)).join('');
 }
 
-/** Uma linha por categoria jogada: a nota, a barra e o quanto ja jogou. */
-function renderizarDesempenho(linhas) {
+/* ---------------------------- Painel de desempenho ---------------------------- *
+ *
+ * O painel mostra um recorte por vez: "Geral" (todas as perguntas) ou uma
+ * categoria. Os chips de cima escolhem o recorte, e tudo embaixo (nota,
+ * evolucao, acerto por dificuldade) se redesenha para ele. Os graficos sao
+ * SVG na mao, medidos na largura da tela, com o valor no hover e no teclado
+ * e uma tabela com os mesmos numeros para quem nao enxerga o grafico.
+ */
+
+const painelDesempenho = { perfil: null, recorte: 'geral' };
+const SVG = 'http://www.w3.org/2000/svg';
+
+function noSvg(tag, atributos = {}, pai = null) {
+  const no = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(atributos)) no.setAttribute(k, v);
+  if (pai) pai.appendChild(no);
+  return no;
+}
+
+function categoriaDe(id) {
+  return (estado.config?.categorias || []).find((c) => c.id === id)
+    || { id, nome: id, icone: '❓', cor: 'var(--primaria)' };
+}
+
+function renderizarPainel(perfil) {
+  painelDesempenho.perfil = perfil;
+  const existe = painelDesempenho.recorte === 'geral' || (perfil.desempenho || []).some((l) => l.id === painelDesempenho.recorte);
+  if (!existe) painelDesempenho.recorte = 'geral';
+  desenharFiltro();
+  desenharRecorte();
+  renderizarDesempenho(perfil.desempenho || [], perfil.destaques || {});
+}
+
+function escolherRecorte(id) {
+  painelDesempenho.recorte = id;
+  desenharFiltro();
+  desenharRecorte();
+}
+
+function desenharFiltro() {
+  const filtro = $('painel-filtro');
+  filtro.innerHTML = '';
+  const opcoes = [{ id: 'geral', rotulo: '🧠 Geral' },
+    ...(painelDesempenho.perfil.desempenho || []).map((l) => {
+      const c = categoriaDe(l.id);
+      return { id: l.id, rotulo: `${c.icone} ${c.nome}` };
+    })];
+  for (const opcao of opcoes) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'subchip' + (opcao.id === painelDesempenho.recorte ? ' marcada' : '');
+    chip.setAttribute('role', 'tab');
+    chip.setAttribute('aria-selected', String(opcao.id === painelDesempenho.recorte));
+    chip.textContent = opcao.rotulo;
+    chip.addEventListener('click', () => escolherRecorte(opcao.id));
+    filtro.appendChild(chip);
+  }
+}
+
+/** A ficha do recorte escolhido: a geral, ou a de uma categoria. */
+function fichaDoRecorte() {
+  const p = painelDesempenho.perfil;
+  if (painelDesempenho.recorte === 'geral') return { ...p.geral, titulo: 'Nota geral' };
+  const l = p.desempenho.find((d) => d.id === painelDesempenho.recorte);
+  return { ...l, titulo: `Nota em ${categoriaDe(l.id).nome}` };
+}
+
+function desenharRecorte() {
+  const alvo = $('painel');
+  const f = fichaDoRecorte();
+  alvo.innerHTML = '';
+
+  if (!f.rodadas) {
+    alvo.innerHTML = '<p class="painel__vazio">Jogue uma partida no Modo Tempo ou na Escalada: a partir da primeira rodada o painel ganha sua nota, e a cada partida um ponto na evolucao.</p>';
+    return;
+  }
+
+  // Cabecalho: a nota em destaque e tres numeros ao lado.
+  const topo = document.createElement('div');
+  topo.className = 'painel__topo';
+  const variacao = Number.isFinite(f.variacao) && f.variacao !== 0
+    ? `<span class="painel__variacao painel__variacao--${f.variacao > 0 ? 'sobe' : 'desce'}">${f.variacao > 0 ? '▲' : '▼'} ${Math.abs(Math.round(f.variacao))} na ultima partida</span>`
+    : '';
+  topo.innerHTML = `
+    <div class="painel__nota">
+      <span class="painel__rotulo"></span>
+      <span class="painel__valor">${f.nota}</span>
+      ${f.provisoria ? `<span class="painel__provisoria">provisoria · ${f.rodadas} de 5 rodadas</span>` : variacao}
+      <span class="painel__sub">Meio a meio em perguntas de dificuldade ${f.nota} (${f.nivel})</span>
+    </div>
+    <div class="painel__kpis">
+      <div class="kpi"><span class="kpi__valor">${f.aproveitamento}%</span><span class="kpi__texto"><span class="kpi__rotulo">Aproveitamento</span><span class="kpi__detalhe">${f.acertos} acertos em ${f.rodadas}</span></span></div>
+      <div class="kpi"><span class="kpi__valor">${f.rodadas}</span><span class="kpi__texto"><span class="kpi__rotulo">Rodadas medidas</span><span class="kpi__detalhe">no Modo Tempo e na Escalada</span></span></div>
+      <div class="kpi"><span class="kpi__valor">${f.dificuldadeMedia}</span><span class="kpi__texto"><span class="kpi__rotulo">Dificuldade media</span><span class="kpi__detalhe">das perguntas que voce pegou</span></span></div>
+    </div>`;
+  topo.querySelector('.painel__rotulo').textContent = f.titulo;
+  alvo.appendChild(topo);
+
+  const evolucao = cartaoDeGrafico(alvo, 'Evolucao da nota', 'Um ponto por partida, das ultimas 30.');
+  desenharEvolucao(evolucao, f.historico || []);
+
+  const niveis = cartaoDeGrafico(alvo, 'Acerto por dificuldade', 'A barra e quanto voce acertou em cada faixa; o traco, quanto a sua nota esperava.');
+  desenharNiveis(niveis, f.porNivel || []);
+
+  alvo.appendChild(tabelaDoRecorte(f));
+}
+
+function cartaoDeGrafico(alvo, titulo, descricao) {
+  const cartao = document.createElement('div');
+  cartao.className = 'painel__grafico';
+  const h = document.createElement('h4');
+  h.className = 'painel__titulo';
+  h.textContent = titulo;
+  const p = document.createElement('p');
+  p.className = 'painel__descricao';
+  p.textContent = descricao;
+  const area = document.createElement('div');
+  area.className = 'grafico';
+  cartao.append(h, p, area);
+  alvo.appendChild(cartao);
+  return area;
+}
+
+/** A dica que segue o mouse (ou o foco): valor forte em cima, o rotulo embaixo. */
+function dicaDo(area) {
+  let dica = area.querySelector('.grafico__dica');
+  if (!dica) {
+    dica = document.createElement('div');
+    dica.className = 'grafico__dica';
+    dica.hidden = true;
+    area.appendChild(dica);
+  }
+  return {
+    mostrar(x, y, linhas) {
+      dica.innerHTML = '';
+      linhas.forEach(([valor, rotulo]) => {
+        const linha = document.createElement('div');
+        const forte = document.createElement('strong');
+        forte.textContent = valor;
+        const fraco = document.createElement('span');
+        fraco.textContent = rotulo;
+        linha.append(forte, fraco);
+        dica.appendChild(linha);
+      });
+      dica.hidden = false;
+      const largura = area.clientWidth;
+      const w = dica.offsetWidth;
+      dica.style.left = `${Math.min(Math.max(0, x - w / 2), Math.max(0, largura - w))}px`;
+      dica.style.top = `${Math.max(0, y - dica.offsetHeight - 10)}px`;
+    },
+    esconder() { dica.hidden = true; }
+  };
+}
+
+const dataCurta = (ms) => new Date(ms).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+/** Linha da nota, partida a partida, com a mira que acha o ponto mais perto. */
+function desenharEvolucao(area, pontos) {
+  if (pontos.length < 2) {
+    area.innerHTML = `<p class="painel__vazio">${pontos.length
+      ? `Uma partida ate aqui, com nota ${pontos[0].nota}. A linha aparece a partir da segunda.`
+      : 'A evolucao aparece quando voce terminar uma partida.'}</p>`;
+    return;
+  }
+  const largura = Math.max(260, area.clientWidth || 320);
+  const altura = 190;
+  const m = { cima: 14, baixo: 24, esq: 30, dir: 34 };
+  const x = (i) => m.esq + (i * (largura - m.esq - m.dir)) / (pontos.length - 1);
+  const y = (v) => m.cima + ((100 - v) * (altura - m.cima - m.baixo)) / 100;
+
+  const svg = noSvg('svg', {
+    width: largura, height: altura, viewBox: `0 0 ${largura} ${altura}`, class: 'grafico__svg',
+    tabindex: 0, role: 'img',
+    'aria-label': `Evolucao da nota: de ${pontos[0].nota} para ${pontos[pontos.length - 1].nota} em ${pontos.length} partidas. Use as setas para ver cada partida.`
+  });
+
+  for (const v of [0, 25, 50, 75, 100]) {
+    noSvg('line', { x1: m.esq, x2: largura - m.dir, y1: y(v), y2: y(v), class: v === 0 ? 'grafico__base' : 'grafico__grade' }, svg);
+    noSvg('text', { x: m.esq - 8, y: y(v) + 4, class: 'grafico__eixo', 'text-anchor': 'end' }, svg).textContent = v;
+  }
+  noSvg('text', { x: m.esq, y: altura - 6, class: 'grafico__eixo' }, svg).textContent = dataCurta(pontos[0].quando);
+  noSvg('text', { x: largura - m.dir, y: altura - 6, class: 'grafico__eixo', 'text-anchor': 'end' }, svg)
+    .textContent = dataCurta(pontos[pontos.length - 1].quando);
+
+  const caminho = pontos.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.nota).toFixed(1)}`).join(' ');
+  noSvg('path', { d: `${caminho} L${x(pontos.length - 1)},${y(0)} L${x(0)},${y(0)} Z`, class: 'grafico__area' }, svg);
+  noSvg('path', { d: caminho, class: 'grafico__linha' }, svg);
+
+  const ultimo = pontos.length - 1;
+  noSvg('circle', { cx: x(ultimo), cy: y(pontos[ultimo].nota), r: 4, class: 'grafico__ponto' }, svg);
+  noSvg('text', { x: x(ultimo) + 9, y: y(pontos[ultimo].nota) + 4, class: 'grafico__valor' }, svg).textContent = pontos[ultimo].nota;
+
+  const mira = noSvg('line', { y1: m.cima, y2: y(0), class: 'grafico__mira', visibility: 'hidden' }, svg);
+  const foco = noSvg('circle', { r: 4, class: 'grafico__ponto', visibility: 'hidden' }, svg);
+  area.appendChild(svg);
+  const dica = dicaDo(area);
+
+  let atual = null;
+  const marcar = (i) => {
+    atual = i;
+    const p = pontos[i];
+    mira.setAttribute('x1', x(i));
+    mira.setAttribute('x2', x(i));
+    foco.setAttribute('cx', x(i));
+    foco.setAttribute('cy', y(p.nota));
+    mira.setAttribute('visibility', 'visible');
+    foco.setAttribute('visibility', 'visible');
+    const anterior = i ? p.nota - pontos[i - 1].nota : null;
+    const mudou = anterior === null ? 'primeira partida do grafico'
+      : `${anterior > 0 ? '+' : ''}${anterior} desde a partida anterior`;
+    dica.mostrar(x(i), y(p.nota), [[`Nota ${p.nota}`, `${dataCurta(p.quando)} · ${mudou}`]]);
+  };
+  const soltar = () => {
+    atual = null;
+    mira.setAttribute('visibility', 'hidden');
+    foco.setAttribute('visibility', 'hidden');
+    dica.esconder();
+  };
+  svg.addEventListener('pointermove', (e) => {
+    const caixa = svg.getBoundingClientRect();
+    const px = e.clientX - caixa.left;
+    const passo = (largura - m.esq - m.dir) / (pontos.length - 1);
+    marcar(Math.min(ultimo, Math.max(0, Math.round((px - m.esq) / passo))));
+  });
+  svg.addEventListener('pointerleave', soltar);
+  svg.addEventListener('blur', soltar);
+  svg.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const i = atual === null ? ultimo : atual + (e.key === 'ArrowRight' ? 1 : -1);
+    marcar(Math.min(ultimo, Math.max(0, i)));
+  });
+}
+
+/** Uma coluna por faixa de dificuldade: a barra e o acerto, o traco e o esperado. */
+function desenharNiveis(area, faixas) {
+  const legenda = document.createElement('div');
+  legenda.className = 'grafico__legenda';
+  legenda.innerHTML = '<span><i class="chave chave--barra"></i>Seu acerto</span><span><i class="chave chave--traco"></i>Esperado pela sua nota</span>';
+  area.appendChild(legenda);
+
+  const largura = Math.max(260, area.clientWidth || 320);
+  const altura = 200;
+  const m = { cima: 22, baixo: 40, esq: 30, dir: 8 };
+  const faixa = (largura - m.esq - m.dir) / faixas.length;
+  const y = (v) => m.cima + ((100 - v) * (altura - m.cima - m.baixo)) / 100;
+  const BARRA = 24;
+
+  const svg = noSvg('svg', {
+    width: largura, height: altura, viewBox: `0 0 ${largura} ${altura}`, class: 'grafico__svg', role: 'img',
+    'aria-label': 'Acerto por faixa de dificuldade: ' + faixas.map((f) => f.rodadas
+      ? `${f.nivel} ${f.aproveitamento}% (esperado ${f.esperado}%)` : `${f.nivel} sem rodadas`).join(', ')
+  });
+  for (const v of [0, 25, 50, 75, 100]) {
+    noSvg('line', { x1: m.esq, x2: largura - m.dir, y1: y(v), y2: y(v), class: v === 0 ? 'grafico__base' : 'grafico__grade' }, svg);
+    noSvg('text', { x: m.esq - 8, y: y(v) + 4, class: 'grafico__eixo', 'text-anchor': 'end' }, svg).textContent = `${v}%`;
+  }
+  area.appendChild(svg);
+  const dica = dicaDo(area);
+
+  faixas.forEach((f, i) => {
+    const centro = m.esq + faixa * i + faixa / 2;
+    noSvg('text', { x: centro, y: altura - 22, class: 'grafico__rotulo', 'text-anchor': 'middle' }, svg).textContent = f.nivel;
+    // Na tela estreita a faixa nao tem lugar para "rodadas" escrito: fica o numero.
+    const cabe = faixa >= 84;
+    noSvg('text', { x: centro, y: altura - 8, class: 'grafico__eixo', 'text-anchor': 'middle' }, svg)
+      .textContent = cabe ? (f.rodadas ? plural(f.rodadas, 'rodada', 'rodadas') : 'nenhuma') : String(f.rodadas);
+    if (!f.rodadas) return;
+
+    // Barra com a ponta de cima arredondada e a base reta, no chao do grafico.
+    const topo = y(f.aproveitamento);
+    const base = y(0);
+    const r = Math.min(4, (base - topo) / 2);
+    const esq = centro - BARRA / 2;
+    const dir = centro + BARRA / 2;
+    const grupo = noSvg('g', { class: 'grafico__coluna', tabindex: 0 }, svg);
+    noSvg('rect', { x: m.esq + faixa * i, y: m.cima, width: faixa, height: base - m.cima, class: 'grafico__alvo' }, grupo);
+    if (base - topo > 0.5) {
+      noSvg('path', {
+        d: `M${esq},${base} L${esq},${topo + r} Q${esq},${topo} ${esq + r},${topo} L${dir - r},${topo} Q${dir},${topo} ${dir},${topo + r} L${dir},${base} Z`,
+        class: 'grafico__barra'
+      }, grupo);
+    }
+    // O valor vai acima da barra e do traco, o que estiver mais alto: assim o traco nunca corta o numero.
+    const acima = Number.isFinite(f.esperado) ? Math.min(topo, y(f.esperado)) : topo;
+    noSvg('text', { x: centro, y: acima - 7, class: 'grafico__valor', 'text-anchor': 'middle' }, grupo).textContent = `${f.aproveitamento}%`;
+    if (Number.isFinite(f.esperado)) {
+      noSvg('line', { x1: centro - 18, x2: centro + 18, y1: y(f.esperado), y2: y(f.esperado), class: 'grafico__esperado' }, grupo);
+    }
+
+    const mostrar = () => {
+      const diferenca = f.aproveitamento - f.esperado;
+      const leitura = Math.abs(diferenca) < 5 ? 'dentro do esperado'
+        : diferenca > 0 ? `${diferenca} pontos acima do esperado` : `${-diferenca} pontos abaixo do esperado`;
+      dica.mostrar(centro, topo, [
+        [`${f.aproveitamento}% de acerto`, `${f.nivel} · ${f.acertos} de ${f.rodadas}`],
+        [`${f.esperado}% esperado`, leitura]
+      ]);
+    };
+    grupo.addEventListener('pointerenter', mostrar);
+    grupo.addEventListener('focus', mostrar);
+    grupo.addEventListener('pointerleave', () => dica.esconder());
+    grupo.addEventListener('blur', () => dica.esconder());
+  });
+}
+
+/** Os mesmos numeros dos graficos, em tabela, para ler sem o grafico. */
+function tabelaDoRecorte(f) {
+  const detalhes = document.createElement('details');
+  detalhes.className = 'painel__tabela';
+  const resumo = document.createElement('summary');
+  resumo.textContent = 'Ver os numeros em tabela';
+  detalhes.appendChild(resumo);
+
+  const tabela = (cabecalho, linhas) => {
+    const t = document.createElement('table');
+    const tr = t.createTHead().insertRow();
+    for (const c of cabecalho) {
+      const th = document.createElement('th');
+      th.textContent = c;
+      tr.appendChild(th);
+    }
+    const corpo = t.createTBody();
+    for (const linha of linhas) {
+      const r = corpo.insertRow();
+      for (const c of linha) r.insertCell().textContent = c;
+    }
+    return t;
+  };
+  detalhes.appendChild(tabela(['Faixa', 'Rodadas', 'Acerto', 'Esperado'],
+    (f.porNivel || []).map((n) => [n.nivel, n.rodadas, n.rodadas ? `${n.aproveitamento}%` : '—', n.rodadas ? `${n.esperado}%` : '—'])));
+  if ((f.historico || []).length) {
+    detalhes.appendChild(tabela(['Partida', 'Nota'],
+      f.historico.map((h) => [new Date(h.quando).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }), h.nota])));
+  }
+  return detalhes;
+}
+
+// A largura dos graficos e medida na hora: girou o celular, redesenha.
+let esperaRedesenho = null;
+window.addEventListener('resize', () => {
+  if (!painelDesempenho.perfil || $('tela-perfil').classList.contains('ativa') === false) return;
+  clearTimeout(esperaRedesenho);
+  esperaRedesenho = setTimeout(desenharRecorte, 150);
+});
+
+/** Uma linha por categoria jogada: a nota, a barra, e um clique abre ela no painel. */
+function renderizarDesempenho(linhas, destaques) {
   const lista = $('perfil-desempenho');
   if (!linhas.length) {
     lista.innerHTML = '<li class="desempenho__vazio">Jogue uma partida no Modo Tempo ou na Escalada para aparecer sua nota em cada categoria.</li>';
     return;
   }
-  const categorias = new Map((estado.config?.categorias || []).map((c) => [c.id, c]));
   lista.innerHTML = linhas.map((l) => {
-    const c = categorias.get(l.id) || { nome: l.id, icone: '❓', cor: 'var(--primaria)' };
+    const c = categoriaDe(l.id);
     const detalhe = l.provisoria
       ? `provisoria · ${plural(l.rodadas, 'rodada', 'rodadas')}`
-      : `${l.acertos}/${l.rodadas} acertos · dificuldade media ${l.dificuldadeMedia}`;
+      : `${l.aproveitamento}% de acerto em ${plural(l.rodadas, 'rodada', 'rodadas')} · dificuldade media ${l.dificuldadeMedia}`;
+    const selo = l.id === destaques.forte ? '<span class="selo selo--forte">💪 ponto forte</span>'
+      : l.id === destaques.fraco ? '<span class="selo selo--fraco">🎯 para treinar</span>' : '';
+    const variacao = !l.provisoria && Number.isFinite(l.variacao) && Math.round(l.variacao) !== 0
+      ? `<span class="desempenho__variacao desempenho__variacao--${l.variacao > 0 ? 'sobe' : 'desce'}">${l.variacao > 0 ? '▲' : '▼'} ${Math.abs(Math.round(l.variacao))}</span>`
+      : '';
     return `
-      <li class="desempenho__linha${l.provisoria ? ' desempenho__linha--provisoria' : ''}">
-        <span class="desempenho__icone">${c.icone}</span>
-        <span class="desempenho__meio">
-          <span class="desempenho__nome">${escapar(c.nome)}</span>
-          <span class="desempenho__barra"><span style="width:${l.nota}%;background:${c.cor}"></span></span>
-          <span class="desempenho__detalhe">${detalhe}</span>
-        </span>
-        <span class="desempenho__nota">${l.nota}</span>
+      <li>
+        <button type="button" class="desempenho__linha${l.provisoria ? ' desempenho__linha--provisoria' : ''}" data-categoria="${escapar(l.id)}">
+          <span class="desempenho__icone">${c.icone}</span>
+          <span class="desempenho__meio">
+            <span class="desempenho__nome">${escapar(c.nome)} ${selo}</span>
+            <span class="desempenho__barra"><span style="width:${l.nota}%;background:${c.cor}"></span></span>
+            <span class="desempenho__detalhe">${detalhe}</span>
+          </span>
+          <span class="desempenho__fim">
+            <span class="desempenho__nota">${l.nota}</span>
+            ${variacao}
+          </span>
+        </button>
       </li>`;
   }).join('');
+  for (const botao of lista.querySelectorAll('[data-categoria]')) {
+    botao.addEventListener('click', () => {
+      escolherRecorte(botao.dataset.categoria);
+      $('painel-filtro').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 }
 
 function renderizarMelhores(jogadores) {
@@ -1008,10 +1620,20 @@ function escapar(texto) {
  * Quem anima é o próprio navegador, por transition — assim a barra não depende
  * de a aba estar pintando quadros.
  */
+/*
+ * Os relogios que estao na tela agora: a barra, o numero e o aviso de
+ * "acabando". A pausa congela os tres onde estiverem e, na volta, cada um
+ * segue com o que faltava. Relogio que comeca com o jogo pausado (a vez do
+ * carrossel quando alguem sai, por exemplo) ja nasce parado.
+ */
+const relogio = { barra: null, numero: null, urgencia: null };
+
 function animarBarra(barra, duracaoMs) {
+  relogio.barra = { el: barra, fim: Date.now() + duracaoMs, restante: duracaoMs, parada: estado.pausado };
   barra.style.transition = 'none';
   barra.style.transform = 'scaleX(1)';
   void barra.offsetWidth; // força o navegador a aplicar o estado inicial
+  if (estado.pausado) return;
   barra.style.transition = `transform ${duracaoMs}ms linear`;
   barra.style.transform = 'scaleX(0)';
 }
@@ -1026,6 +1648,11 @@ function animarBarra(barra, duracaoMs) {
 function contarSegundos(elemento, duracaoMs, aoZerar) {
   pararContagem();
   const fim = Date.now() + duracaoMs;
+  relogio.numero = { el: elemento, fim, aoZerar, restante: duracaoMs, parado: estado.pausado };
+  if (estado.pausado) {
+    if (elemento) elemento.textContent = Math.ceil(duracaoMs / 1000);
+    return;
+  }
 
   const escrever = () => {
     const restante = Math.max(0, fim - Date.now());
@@ -1058,15 +1685,66 @@ function contarTempo(barra, duracaoMs, mostrarSegundos) {
 
   cronometro.classList.remove('urgente');
   contarSegundos($('cronometro-num'), duracaoMs);
+  vigiarUrgencia(duracaoMs);
+}
 
-  // O "urgente" acompanha o mesmo intervalo do número.
+/** O "urgente" acompanha o mesmo intervalo do número. */
+function vigiarUrgencia(duracaoMs) {
   const fim = Date.now() + duracaoMs;
   pararUrgencia();
+  relogio.urgencia = { fim, restante: duracaoMs, parada: estado.pausado };
+  if (estado.pausado) return;
   estado.urgencia = setInterval(() => {
     const segundos = Math.ceil(Math.max(0, fim - Date.now()) / 1000);
     cronometro.classList.toggle('urgente', segundos <= 5 && segundos > 0);
     if (segundos <= 0) pararUrgencia();
   }, 200);
+}
+
+/** Congela a barra, o numero e o "acabando" onde estiverem. */
+function pausarRelogios() {
+  const agora = Date.now();
+  const barra = relogio.barra;
+  if (barra && !barra.parada) {
+    barra.restante = Math.max(0, barra.fim - agora);
+    // A barra anda por transition: para parar, fixa a escala de agora.
+    const matriz = getComputedStyle(barra.el).transform;
+    const escala = matriz && matriz.startsWith('matrix(') ? parseFloat(matriz.slice(7)) : 0;
+    barra.el.style.transition = 'none';
+    barra.el.style.transform = `scaleX(${escala})`;
+    barra.parada = true;
+  }
+  const numero = relogio.numero;
+  if (numero && !numero.parado && estado.contagem) {
+    numero.restante = Math.max(0, numero.fim - agora);
+    numero.parado = true;
+    pararContagem();
+  }
+  const urgencia = relogio.urgencia;
+  if (urgencia && !urgencia.parada && estado.urgencia) {
+    urgencia.restante = Math.max(0, urgencia.fim - agora);
+    urgencia.parada = true;
+    pararUrgencia();
+  }
+}
+
+/** Cada relogio segue com o que faltava quando a pausa comecou. */
+function retomarRelogios() {
+  const barra = relogio.barra;
+  if (barra && barra.parada) {
+    barra.parada = false;
+    barra.fim = Date.now() + barra.restante;
+    void barra.el.offsetWidth;
+    barra.el.style.transition = `transform ${barra.restante}ms linear`;
+    barra.el.style.transform = 'scaleX(0)';
+  }
+  const numero = relogio.numero;
+  if (numero && numero.parado) {
+    numero.parado = false;
+    contarSegundos(numero.el, numero.restante, numero.aoZerar);
+  }
+  const urgencia = relogio.urgencia;
+  if (urgencia && urgencia.parada) vigiarUrgencia(urgencia.restante);
 }
 
 function pararUrgencia() {
@@ -1093,6 +1771,7 @@ socket.on('rodada:categoria', (dados) => {
   jogo.hidden = true;
   revelacao.hidden = false;
 
+  atualizarBotoesDePausa();
   $('revelacao-rodada').textContent = `Rodada ${dados.rodada}`;
   $('revelacao-icone').textContent = dados.categoria.icone;
   $('revelacao-nome').textContent = dados.categoria.nome;
@@ -1100,13 +1779,71 @@ socket.on('rodada:categoria', (dados) => {
 
   contarTempo($('revelacao-barra'), dados.duracaoMs, false);
   contarSegundos($('revelacao-num'), dados.duracaoMs);
+  $('revelacao-espera').hidden = true;
+
+  if (dados.imagem) preCarregarImagem(dados.imagem, dados.rodada);
 
   if (dados.placar) renderizarPlacar(dados.placar);
 });
 
+/**
+ * Baixa a imagem da pergunta enquanto a categoria esta na tela, e avisa o
+ * servidor quando ela esta pronta para aparecer. O relogio da pergunta so
+ * comeca depois do aviso de todo mundo: assim ninguem perde segundos olhando
+ * um quadro vazio. A imagem vai direto no <img> da pergunta, que ainda esta
+ * escondido — quando a pergunta abrir, ela ja esta la.
+ */
+function preCarregarImagem(url, rodada) {
+  const img = $('pergunta-imagem');
+  if (img.getAttribute('src') !== url) img.src = url;
+  const avisar = () => socket.emit('rodada:imagemPronta', { rodada });
+  // decode() espera baixar E decodificar: so o "load" ainda deixaria a
+  // imagem grande pintando aos pedacos no primeiro segundo.
+  const pronta = img.decode
+    ? img.decode()
+    : new Promise((ok, falhou) => {
+      if (img.complete) return ok();
+      img.addEventListener('load', ok, { once: true });
+      img.addEventListener('error', falhou, { once: true });
+    });
+  // Imagem quebrada avisa igual: esperar por ela so atrasaria a sala.
+  pronta.then(avisar, avisar);
+}
+
+// A tela da categoria acabou, mas ainda tem gente baixando a imagem.
+socket.on('rodada:aguardando', ({ prontos, total, duracaoMs } = {}) => {
+  const aviso = $('revelacao-espera');
+  aviso.textContent = `Carregando a imagem para todo mundo… ${prontos} de ${total} prontos`;
+  if (aviso.hidden) {
+    aviso.hidden = false;
+    // A barra recomeça: e o tempo maximo que a sala espera.
+    contarTempo($('revelacao-barra'), duracaoMs, false);
+    $('revelacao-num').textContent = '';
+  }
+});
+
 /* --------------------------- 4b. Pergunta --------------------------- */
 
+// Charada de emoji ("Que filme estes emojis representam? 🦁👑🌅"): os emojis
+// do fim do enunciado descem para uma linha propria, grandes como no telao.
+// O teclado numerico (1️⃣) e a bandeira (🇺🇸) tambem contam como emoji.
+const EMOJIS_NO_FIM = /^(.*?)\s*((?:[0-9#*]️?⃣|[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Modifier}‍️]|\s)+)$/u;
+
+function escreverPergunta(texto) {
+  const alvo = $('pergunta-texto');
+  const partes = String(texto ?? '').match(EMOJIS_NO_FIM);
+  if (!partes || !/\p{Extended_Pictographic}/u.test(partes[2])) {
+    alvo.textContent = texto;
+    return;
+  }
+  alvo.textContent = partes[1];
+  const emojis = criar('span', 'pergunta__emojis');
+  emojis.textContent = partes[2].trim();
+  alvo.appendChild(emojis);
+}
+
 socket.on('rodada:pergunta', (dados) => {
+  atualizarBotoesDePausa();
   revelacao.hidden = true;
   jogo.hidden = false;
   mostrarTela('tela-jogo');
@@ -1122,7 +1859,7 @@ socket.on('rodada:pergunta', (dados) => {
   $('pergunta-categoria-icone').textContent = dados.categoria.icone;
   $('pergunta-categoria-nome').textContent = dados.categoria.nome;
 
-  $('pergunta-texto').textContent = dados.pergunta;
+  escreverPergunta(dados.pergunta);
   $('pergunta-texto').classList.remove('pergunta__texto--segredo');
   $('mascara').textContent = dados.mascara || '';
 
@@ -1172,7 +1909,9 @@ socket.on('rodada:pergunta', (dados) => {
 
   const figura = $('pergunta-figura');
   if (dados.imagem) {
-    $('pergunta-imagem').src = dados.imagem;
+    // Ja veio carregada na tela da categoria: trocar o src de novo faria
+    // o navegador recomecar.
+    if ($('pergunta-imagem').getAttribute('src') !== dados.imagem) $('pergunta-imagem').src = dados.imagem;
     $('pergunta-imagem').alt = dados.pergunta;
     figura.hidden = false;
   } else {
@@ -1184,7 +1923,10 @@ socket.on('rodada:pergunta', (dados) => {
   $('status-respostas').textContent = '';
 
   inputChat.disabled = false;
-  inputChat.placeholder = 'Escreva sua resposta…';
+  // Modo Tempo e Escalada: cada palpite errado gasta uma das chances.
+  inputChat.placeholder = dados.chances
+    ? `Escreva sua resposta… (${plural(dados.chances, 'chance', 'chances')})`
+    : 'Escreva sua resposta…';
   if (!('ontouchstart' in window)) inputChat.focus();
 
   // Modo Carrossel: a fila de jogadores e de quem é a vez.
@@ -1223,12 +1965,21 @@ socket.on('rodada:pergunta', (dados) => {
 
 /** Deixa o campo de resposta indisponível com um aviso no lugar. */
 function trancarChat(aviso) {
+  // Pausado, o campo fica trancado: a mudanca vale para quando o jogo voltar.
+  if (estado.pausado) {
+    estado.chatDaPausa = { disabled: true, placeholder: aviso };
+    return;
+  }
   inputChat.disabled = true;
   inputChat.value = '';
   inputChat.placeholder = aviso;
 }
 
 function destrancarChat(aviso) {
+  if (estado.pausado) {
+    estado.chatDaPausa = { disabled: false, placeholder: aviso };
+    return;
+  }
   inputChat.disabled = false;
   inputChat.placeholder = aviso;
   if (!('ontouchstart' in window)) inputChat.focus();
@@ -1532,7 +2283,7 @@ socket.on('leilao:pergunta', (dados) => {
     $('pergunta-texto').textContent = 'Faca seu parceiro dizer:';
     mostrarSegredo(dados.segredo);
   } else {
-    $('pergunta-texto').textContent = dados.pergunta;
+    escreverPergunta(dados.pergunta);
   }
   $('pergunta-texto').classList.remove('pergunta__texto--segredo');
 });
@@ -2017,9 +2768,44 @@ socket.on('chat:mensagem', (msg) => {
 
 formChat.addEventListener('submit', (evento) => {
   evento.preventDefault();
+  enviarDoChat();
+});
 
+/*
+ * O Enter do celular.
+ *
+ * No computador o Enter envia pelo proprio formulario. No celular nem sempre:
+ * com texto preditivo, o teclado do Android trata o Enter como "confirmar a
+ * palavra" (chega como tecla 229, sem a acao padrao de enviar), e alguns
+ * teclados mandam uma quebra de linha no lugar da tecla. Era preciso tocar
+ * duas vezes, ou no botao.
+ *
+ * Entao o Enter e tratado aqui, nos dois formatos, e o teclado mostra
+ * "Enviar" (enterkeyhint="send"), que o navegador trata como acao: confirma a
+ * palavra e envia num toque so. Quem esta compondo de verdade (japones,
+ * chines) continua confirmando com o Enter sem enviar no meio.
+ */
+inputChat.addEventListener('keydown', (evento) => {
+  if (evento.key !== 'Enter' || evento.isComposing || evento.keyCode === 229) return;
+  evento.preventDefault();
+  enviarDoChat();
+});
+inputChat.addEventListener('beforeinput', (evento) => {
+  if (evento.inputType !== 'insertLineBreak' && evento.inputType !== 'insertParagraph') return;
+  evento.preventDefault();
+  enviarDoChat();
+});
+// Tocar no botao de enviar nao tira o foco do campo: o teclado do celular
+// fica aberto para a proxima resposta.
+formChat.querySelector('.chat__enviar').addEventListener('mousedown', (evento) => evento.preventDefault());
+formChat.querySelector('.chat__enviar').addEventListener('touchstart', (evento) => {
+  evento.preventDefault();
+  enviarDoChat();
+}, { passive: false });
+
+function enviarDoChat() {
   const texto = inputChat.value.trim();
-  if (!texto) return;
+  if (!texto || inputChat.disabled) return;
   inputChat.value = '';
 
   socket.emit('sala:palpite', { texto }, (resposta) => {
@@ -2032,7 +2818,9 @@ formChat.addEventListener('submit', (evento) => {
         'msg--privado', resposta.dica);
 
     } else if (resposta.veredito === 'bloqueado') {
-      avisoParticular('Segurei essa mensagem para nao entregar a resposta.');
+      avisoParticular(resposta.motivo === 'chances'
+        ? 'Suas chances acabaram nesta pergunta. Segurei a mensagem para nao entregar a resposta.'
+        : 'Segurei essa mensagem para nao entregar a resposta.');
 
     } else if (resposta.veredito === 'repetido') {
       avisoParticular(`Voce ja tinha dito "${resposta.item}". Tente outra.`);
@@ -2078,8 +2866,22 @@ formChat.addEventListener('submit', (evento) => {
       if (resposta.item) registrarItem(resposta.item);
       inputChat.placeholder = 'Acertou! Agora e so papo…';
     }
+
+    // Modo Tempo e Escalada: o palpite errado (ou o "quase") gastou uma chance.
+    if (typeof resposta.chances === 'number') mostrarChances(resposta.chances);
   });
-});
+}
+
+/** Quantos palpites errados ainda cabem nesta pergunta, no proprio campo. */
+function mostrarChances(restam) {
+  if (restam > 0) {
+    if (restam === 1) avisoParticular('Ultima chance nesta pergunta!');
+    inputChat.placeholder = `Restam ${plural(restam, 'chance', 'chances')}…`;
+    return;
+  }
+  avisoParticular('Acabaram suas chances nesta pergunta.');
+  inputChat.placeholder = 'Sem chances nesta pergunta. Agora e so papo…';
+}
 
 socket.on('rodada:acertou', (dados) => {
   $('status-respostas').textContent =
@@ -2277,6 +3079,69 @@ $('btn-novo-jogo').addEventListener('click', () => {
 });
 
 /* =====================================================================
+   Pausa
+   ===================================================================== */
+
+/*
+ * So o lider pausa e continua. Pausado, a tela "Jogo pausado" cobre a
+ * pergunta, os relogios congelam onde estavam, a musica para e o campo de
+ * resposta tranca. O servidor e quem manda: ele recusa palpite, voto e lance
+ * enquanto a pausa durar, e avisa todo mundo com 'sala:pausa'.
+ */
+
+const souLider = () => Boolean(estado.eu?.lider);
+
+function atualizarBotoesDePausa() {
+  const mostra = souLider() && !estado.pausado;
+  $('btn-pausar').hidden = !mostra;
+  $('btn-pausar-rev').hidden = !mostra;
+  $('btn-continuar').hidden = !souLider();
+  $('pausa-espera').hidden = souLider();
+}
+
+function aplicarPausa(pausado, por) {
+  if (pausado && !estado.pausado) {
+    pausarRelogios();
+    estado.pausado = true;
+    estado.chatDaPausa = { disabled: inputChat.disabled, placeholder: inputChat.placeholder };
+    inputChat.disabled = true;
+    inputChat.placeholder = 'Jogo pausado…';
+    const player = $('tocador-audio');
+    estado.musicaDaPausa = Boolean(player.src) && !player.paused;
+    if (estado.musicaDaPausa) pararAudio();
+    $('pausa').hidden = false;
+  } else if (!pausado && estado.pausado) {
+    estado.pausado = false;
+    $('pausa').hidden = true;
+    const chat = estado.chatDaPausa || { disabled: false, placeholder: 'Escreva sua resposta…' };
+    inputChat.disabled = chat.disabled;
+    inputChat.placeholder = chat.placeholder;
+    if (!chat.disabled && !('ontouchstart' in window)) inputChat.focus();
+    retomarRelogios();
+    if (estado.musicaDaPausa) {
+      $('tocador-audio').play().then(() => marcarTocando(true)).catch(() => {});
+    }
+  }
+  if (pausado) $('pausa-quem').textContent = por ? `${por} pausou o jogo.` : '';
+  atualizarBotoesDePausa();
+}
+
+function pedirPausa() {
+  socket.emit('sala:pausar', {}, (resposta) => {
+    if (resposta?.erro) brindar(resposta.erro);
+  });
+}
+$('btn-pausar').addEventListener('click', pedirPausa);
+$('btn-pausar-rev').addEventListener('click', pedirPausa);
+$('btn-continuar').addEventListener('click', () => {
+  socket.emit('sala:continuar', {}, (resposta) => {
+    if (resposta?.erro) brindar(resposta.erro);
+  });
+});
+
+socket.on('sala:pausa', ({ pausado, por } = {}) => aplicarPausa(Boolean(pausado), por));
+
+/* =====================================================================
    Eventos gerais da sala
    ===================================================================== */
 
@@ -2320,6 +3185,11 @@ socket.on('sala:estado', (sala) => {
   // Mantém o "sou eu" em dia (o líder pode ter mudado).
   const eu = sala.jogadores.find((j) => j.id === estado.eu?.id);
   if (eu) estado.eu = { ...estado.eu, ...eu };
+
+  // Quem entra (ou volta) com o jogo pausado ja abre a tela de pausa; e a
+  // partida que acaba ou volta ao saguao leva a pausa junto.
+  const emJogo = sala.estado !== 'lobby' && sala.estado !== 'fim';
+  aplicarPausa(Boolean(emJogo && sala.pausa), sala.pausa?.por);
 
   if (sala.estado === 'lobby') {
     renderizarSala();

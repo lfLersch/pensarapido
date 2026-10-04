@@ -91,7 +91,7 @@ e que a versão do topo seja a do jogo.
 
 | Ajuste | Opções |
 | --- | --- |
-| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História, Ciência, Games, **Mainstream**, **Marcas** |
+| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
 | Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral** ou **Dando dicas** (Equipes aparece como *em breve*) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
@@ -149,9 +149,40 @@ Duas proteções extras, ambas fora do chat global:
 Os limites ficam no topo de [`server/comparar.js`](server/comparar.js)
 (`LIMITE_CERTO`, `LIMITE_QUASE`), caso queira afrouxar ou apertar.
 
+**Enter envia, também no celular.** No computador o próprio formulário cuida
+disso. No Android, com texto preditivo ligado, o teclado trata o Enter como
+"confirmar a palavra" (tecla 229, sem a ação de enviar), e alguns teclados
+mandam uma quebra de linha no lugar da tecla — era preciso tocar duas vezes.
+Agora o campo tem `enterkeyhint="send"` (o teclado mostra **Enviar**, que
+confirma a palavra e envia num toque só), e o Enter e a quebra de linha são
+tratados direto no campo. Enter no meio de uma composição de verdade
+(japonês, chinês) continua só confirmando. Tocar no ➤ não fecha o teclado.
+
 > **Onde fica a fronteira:** *menos* de 10% é acerto, então 10% exatos já contam
 > como "quase". Numa resposta de 10 letras, 1 letra errada dá exatamente 10% e
 > cai no "quase". Para aceitar esse caso, troque `<` por `<=` em `LIMITE_CERTO`.
+
+### Cinco chances por pergunta
+
+No **Modo Tempo** e na **Escalada**, cada pessoa pode errar **5 vezes por
+pergunta**. Sem esse teto, quem não sabia metralhava palpites até um colar.
+
+- Gasta chance todo palpite que não acerta: o que vai para o chat e o "quase".
+  Durante a pergunta não há como separar conversa de chute, então o "kkk"
+  também conta.
+- Não gasta: acertar, repetir um item que você já disse na Escalada e
+  escrever na tela da categoria, antes de a pergunta aparecer.
+- O campo de resposta mostra quantas chances restam, e a última vem avisada.
+- Sem chances, a pessoa vira plateia, igual a quem já acertou: a conversa
+  continua indo ao chat, mas nada parecido com a resposta sai dela e nada
+  mais pontua.
+- A contagem é pelo nickname. Cair e voltar no meio da pergunta não devolve
+  as chances.
+
+Os outros modos já tinham regra própria para o palpite e não mudam: a vez do
+Carrossel, o respondedor dos leilões, o palpite único do Mais ou Menos Pontos
+e o palpite fechado do 1 é bom 2 ok 3 é demais. O número fica em
+`CHANCES_POR_PERGUNTA`, no topo de [`server/sala.js`](server/sala.js).
 
 ### Acentos
 
@@ -195,8 +226,9 @@ Ou seja: **quem acerta em terceiro depois de 15s leva 5 pontos** — a faixa val
 7 e saem 2 de quem chegou na frente.
 
 - Um acerto nunca vale menos que **1 ponto**, por mais tarde e mais atrás que venha.
-- Não existe punição por errar: dá para tentar quantas vezes quiser até o tempo acabar.
-- A rodada fecha quando todos acertam ou quando o tempo acaba.
+- Errar não tira ponto, mas cada um tem **5 chances por pergunta** (veja abaixo).
+- A rodada fecha quando ninguém mais pode pontuar — cada um acertou ou gastou
+  as chances — ou quando o tempo acaba.
 - A partida acaba assim que alguém alcança a meta definida pelo líder.
 
 As faixas são de 5s independente da duração escolhida, então uma rodada de 30s
@@ -214,6 +246,9 @@ segunda, 3 na terceira. A rodada ganha **3 segundos por resposta extra** — a d
 **Pontuação:** cada item lembrado vale **2 pontos**, e fechar a lista dá **+5 de
 bônus**. Quem lembra 3 de 4 leva 6; quem fecha as 4 leva 8 + 5 = 13. Progresso
 parcial conta, então ninguém sai de mãos vazias por ter parado a um item do fim.
+
+Cada rodada dá **5 chances de errar**, como no Modo Tempo: item fora da lista
+gasta uma, item novo e item repetido não.
 
 **Escolha da lista.** Cada lista tem um `tema`, e o sorteio faz duas coisas:
 
@@ -622,6 +657,31 @@ Duas decisões que valem registrar:
 Rodada pulada **não alimenta a dificuldade adaptativa**: quase ninguém tentou
 responder, então ela não mede nada sobre a pergunta.
 
+### Pausar o jogo
+
+O **líder** tem um botão **⏸ Pausar** no topo da pergunta (e na tela da
+categoria). No celular fica só o ícone.
+
+- **Tudo para onde estava:** o relógio da rodada, o da vez no Carrossel, o do
+  lance no leilão, a contagem da tela de resultado e a espera da imagem. Cada
+  um guarda quanto faltava (`pausar`, em [`server/sala.js`](server/sala.js)).
+- **A pergunta some:** a tela *"Jogo pausado"* cobre o jogo inteiro. Com o
+  relógio parado, ninguém fica olhando a imagem ou o enunciado com todo o
+  tempo do mundo.
+- **Ninguém responde, vota ou dá lance.** O servidor recusa enquanto a pausa
+  durar, e o chat fecha, como no leilão: senão daria para combinar a resposta.
+  Se a música de *Ouvir músicas* estava tocando, para junto.
+- **Só o líder continua.** Na volta, cada relógio segue com o que faltava, e o
+  início da pergunta anda o tempo que ficou parado: a pontuação por tempo não
+  conta a pausa. O chat registra quem pausou e quem continuou.
+- **Se o líder sai pausado,** a coroa passa como sempre e quem herdou continua.
+  Quem entra durante a pausa já abre a tela de pausa.
+- Se a partida acaba, ou a sala esvazia e alguém volta, a pausa some.
+
+Tudo o que seria agendado durante a pausa (alguém sai e a rodada fecharia, por
+exemplo) espera a volta: `agendar` e `agendarVez` guardam o que chega em vez de
+disparar. `testes/pausa.test.js` cobre.
+
 ### Categorias variadas (Modo Tempo)
 
 O sorteio escolhe primeiro a **categoria** e só depois a pergunta. Numa janela
@@ -707,8 +767,9 @@ descola quando alguém edita só uma das listas.
 1. A **categoria aparece sozinha em tela cheia** por ~2,8s.
 2. Vem a pergunta, com a **categoria pequena logo acima dela**.
 3. Abaixo aparece o **formato da resposta**: `Johnny Depp` vira `•••••• ••••`.
-4. Perguntas de bandeira e de futebol mostram a imagem; as de música mostram um
-   trecho da letra em destaque.
+4. Perguntas de bandeira e de futebol mostram a imagem, que já vem carregada
+   da tela da categoria ([a imagem chega antes do relógio](#a-imagem-chega-antes-do-relógio));
+   as de música mostram um trecho da letra em destaque.
 5. O placar e o chat ficam ao lado (no celular, acima e abaixo da pergunta).
 6. No fim da rodada aparecem a resposta certa, as outras formas aceitas, a
    dificuldade da pergunta e quem pontuou.
@@ -840,6 +901,59 @@ Com nota 50 e já com 10 rodadas jogadas:
   abrir.
 - Com menos de 5 rodadas na categoria, a nota aparece como provisória.
 - No login, notas de dois aparelhos viram a média pesada pelas rodadas.
+- A nota volta para a dificuldade: ver [Dificuldade adaptativa](#dificuldade-adaptativa).
+
+### Painel de desempenho
+
+A tela do perfil tem um painel com um recorte por vez: **Geral** (todas as
+perguntas) ou uma categoria, escolhidos nos chips de cima. Clicar numa
+categoria da lista abre o painel nela.
+
+- **A nota** em destaque, com a variação da última partida e a faixa em que
+  ela acerta meio a meio ("Meio a meio em perguntas de dificuldade 63").
+- **Aproveitamento**, rodadas medidas e dificuldade média das perguntas.
+- **Evolução da nota**: uma foto por partida, das últimas 30.
+- **Acerto por dificuldade**: em cada faixa (Fácil, Média, Difícil, Muito
+  difícil), o quanto a pessoa acertou contra o quanto a nota esperava. Barra
+  longe do traço quer dizer que a nota ainda está se ajustando.
+- Na lista por categoria, **ponto forte** e **para treinar** marcam a maior e
+  a menor nota entre as que já não são provisórias.
+- Os mesmos números ficam numa tabela, embaixo dos gráficos, para quem não
+  enxerga o gráfico.
+
+A nota **geral** é uma nota como a das categorias, andando a cada rodada
+medida de qualquer categoria. Perfil gravado antes dela existir ganha a geral
+somando as categorias (a média das notas pesada pelas rodadas); a divisão por
+faixa de dificuldade e a evolução começam do zero, porque não dá para
+refazê-las.
+
+### Estatísticas das perguntas
+
+O saguão tem o botão **Estatísticas das perguntas**, que abre uma tabela com
+todas as perguntas do banco:
+
+- **Vezes** — quantas vezes a pergunta já caiu, em qualquer modo. É o mesmo
+  contador do [rodízio](#rodízio-a-mesma-pergunta-não-volta-tão-cedo).
+- **Acerto** — a parte de quem estava na rodada que acertou ("9 de 12").
+- **Tempo do acerto** — quanto levou, em média, do relógio abrir até o acerto.
+- **Dificuldade** — a [aprendida](#dificuldade-adaptativa), com o nível.
+
+Acerto e tempo vêm das rodadas que medem a pergunta, as mesmas que alimentam a
+dificuldade: os leilões (Presente Grego, Leilão Geral e Dando dicas) e o Mais
+ou Menos Pontos ficam de fora. Em cima ficam os totais do que está filtrado,
+com o acerto e o tempo pesados pelo número de respostas e de acertos.
+
+Dá para buscar no texto da pergunta, filtrar por categoria ou parte dela,
+ordenar (mais feitas, mais ou menos acertadas, acerto mais rápido ou mais
+lento, dificuldade; clicar no cabeçalho da coluna também ordena) e ficar só
+com as que já caíram. A lista vem de 50 em 50. Pergunta de imagem mostra a
+imagem, e a de música tem um botão para ouvir o trecho, porque é isso que
+separa um "Que país é este?" do outro.
+
+**As respostas não aparecem**, e a busca não olha a resposta: a aba é pública
+e, aberta noutra guia, viraria cola no meio da partida. Os números vêm de
+`GET /api/estatisticas` (`categoria`, `sub`, `busca`, `ordem`, `feitas=1`,
+`pagina`, `tamanho` até 100), que `testes/estatisticas.test.js` cobre.
 
 ### Login com Google (opcional)
 
@@ -910,22 +1024,59 @@ banco é pulada.
 ## Dificuldade adaptativa
 
 Toda pergunta tem um campo `dif` (0 a 100) em `questions.js`, que é só o **ponto
-de partida**. Depois de cada rodada o servidor recalcula:
+de partida**. Depois de cada rodada o servidor recalcula, em
+[`server/dificuldade.js`](server/dificuldade.js):
 
-- quanto **menos gente acerta**, mais a dificuldade **sobe** (peso 0,65);
-- quanto **mais demoram** para acertar, mais ela **sobe** (peso 0,35).
+```
+bruta     = 100 × (0,65 × parte que errou + 0,35 × parte do tempo gasta)
+surpresa  = média de  confiança × (chance esperada − acertou)
+observada = bruta + 50 × surpresa
+nova      = atual + peso × (observada − atual)
+```
 
-O valor novo entra por média móvel, e a base escrita no arquivo pesa como se já
-viesse de 4 rodadas — assim uma única partida não joga o número para o extremo.
+- **Acerto e tempo** — quanto menos gente acerta e quanto mais demora, mais
+  sobe. É a conta de sempre.
+- **A nota de quem jogou** — cada pessoa que viu a pergunta abrir tem uma
+  chance esperada de acertar, que sai da nota dela na categoria contra a
+  dificuldade atual (a mesma conta da [nota por categoria](#nota-por-categoria)).
+  Errar o que a nota prometia acertar empurra a pergunta para cima; acertar o
+  que ela dava como perdido, para baixo. **Errar entre craques pesa mais que
+  errar entre novatos.**
+- **Confiança** — nota provisória não vale inteira: cada nota pesa
+  `rodadas / (rodadas + 5)`. Quem nunca jogou nada entra com confiança 0 e
+  não mexe na pergunta; quem joga muito mas nunca jogou aquela categoria
+  entra com a nota geral.
+- **Peso** — a base escrita no arquivo pesa como se já viesse de 4 rodadas, e
+  nenhuma rodada nova pesa menos de 10%. Uma partida sozinha não leva o número
+  para o extremo.
+- **Onde a nota não entra** — só o Modo Tempo e as perguntas comuns da
+  Escalada comparam a sala com as notas, porque neles todo mundo responde a
+  mesma pergunta (as listas da Escalada não têm categoria). No Carrossel e no
+  1 é bom 2 ok 3 é demais fica só a conta bruta; leilões e Mais ou Menos
+  Pontos nem registram.
+
+É um círculo: a dificuldade mexe na nota, e a nota mexe na dificuldade. O
+`testes/circulo.test.js` simula 40 jogadores de força conhecida em 80
+perguntas de dificuldade conhecida e confere que ele não desanda:
+
+| | com a nota da sala | sem |
+| --- | --- | --- |
+| nível médio das perguntas depois de 10 mil e 20 mil rodadas | 43,7 → 44,1 | 44,4 → 44,8 |
+| correlação com a dificuldade de verdade | 0,974 | 0,976 |
+| difícil jogada só por craques − fácil jogada só por novatos | **13,8** | 5,3 |
+
+As duas últimas perguntas acertam uns 73% cada uma. Sem olhar quem jogou, elas
+parecem quase iguais. O peso 50 foi escolhido na mesma simulação: com 0 elas
+não se separam, e passando de 80 uma rodada sozinha pesa demais.
 
 Níveis: **Fácil** (<30) · **Média** (<55) · **Difícil** (<75) · **Muito difícil**.
 
-**A dificuldade não altera a pontuação.** Ela existe para separar perguntas por
-nível depois — montar salas "só fácil", equilibrar rodadas, ou eventualmente
-pontuar. O valor já está pronto em [`server/dificuldade.js`](server/dificuldade.js).
+**A dificuldade não altera a pontuação.** Ela ordena o sorteio (a [partida
+começa pelas fáceis](#dificuldade-crescente)) e pesa na nota do perfil.
 
-O que foi aprendido fica em `server/dados/estatisticas.json` e sobrevive a
-reinícios. Para inspecionar, com o servidor no ar:
+O que foi aprendido vai para a tabela `perguntas_stats` quando há
+`DATABASE_URL`, e para `server/dados/estatisticas.json` quando não há. Para
+inspecionar, com o servidor no ar:
 
 ```bash
 curl -s http://localhost:3000/api/dificuldades
@@ -969,8 +1120,31 @@ O líder volta ao saguão pelo botão *Jogar de novo*, mantendo os jogadores.
 ## Ritmo de uma rodada
 
 ```
-categoria (2,8s)  ->  pergunta (30s)  ->  resultado  ->  próxima
+categoria (2,8s)  ->  [esperando a imagem, até 4s]  ->  pergunta (30s)  ->  resultado  ->  próxima
 ```
+
+### A imagem chega antes do relógio
+
+Pergunta com imagem (bandeira, foto, logo) manda a imagem **já na tela da
+categoria**. O navegador baixa e decodifica escondido, e avisa o servidor
+(`rodada:imagemPronta`) quando ela está pronta para aparecer. A pergunta — e o
+relógio — só abrem quando **todo mundo** que viu a categoria abrir avisou.
+
+- Quem já estava pronto não espera nada a mais: se todos avisaram dentro dos
+  2,8 s, a pergunta abre na hora de sempre.
+- Faltando alguém, a tela da categoria fica com *"Carregando a imagem para todo
+  mundo… 1 de 2 prontos"* e a barra recomeça. O último aviso abre a pergunta na
+  hora; se ele não vier, a sala segue depois de **4 segundos**, para uma
+  internet ruim não travar todo mundo.
+- Quem entra com a categoria na tela não é esperado, e quem sai deixa de ser.
+- Imagem quebrada também avisa: esperar por ela não adiantaria.
+- A imagem vai direto no `<img>` da pergunta, ainda escondido. Quando a
+  pergunta abre, o navegador não baixa de novo: ela aparece pintada no mesmo
+  quadro em que o relógio começa.
+
+Testado com duas abas, uma limitada a 30 kbps: nas três rodadas a sala esperou
+de 0,4 a 2,4 s a mais pela aba lenta, e nas duas a imagem já estava pintada
+quando a pergunta chegou. `testes/imagem.test.js` cobre o portão.
 
 Cada etapa mostra **quantos segundos faltam, em número**. A rodada não espera o
 relógio acabar: assim que **todo mundo acerta**, ela fecha na hora e o resultado
@@ -1044,7 +1218,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3075 perguntas em 18 categorias**, mais 602 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3948 perguntas em 18 categorias**, mais 608 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -1183,6 +1357,52 @@ Depois de preencher, confira o tamanho:
 npm run checar-letras
 ```
 
+### Cinema — charadas de emoji
+
+A parte **Emojis** de Cinema & TV conta um filme em emojis, como no quiz de
+filmes do canal Aculturados. A charada vai no **fim do enunciado**, e é só
+isso que a pergunta precisa:
+
+```js
+{ pergunta: 'Que filme estes emojis representam? 🦁👑🌅', sub: 'emojis',
+  resposta: 'O Rei Leao', aceita: ['Rei Leao', 'The Lion King'], dif: 15 }
+```
+
+O cliente separa os emojis do fim do texto (`EMOJIS_NO_FIM`, em
+`public/js/app.js`) e os mostra grandes, numa linha própria. Como eles fazem
+parte do enunciado, chegam também a quem lê a pergunta no leilão. A charada
+pode formar o nome de uma pessoa em vez de um filme — *"Que ator estes emojis
+formam? 🍷⛽"* → **Vin Diesel** —, e aí o sobrenome vale sozinho, como em toda
+pergunta que começa por "Que ator".
+
+**Só emoji até o Unicode 12.** O Windows 10 parou nessa versão e desenha os
+mais novos (🪨, 🪄, 🫏…) como um quadradinho. Bandeira de país vira duas letras
+no Windows (🇺🇸 aparece como "US"), então só entra onde as letras também
+servem de pista. `testes/perguntas.test.js` reprova charada com emoji novo
+demais, emoji fora do fim do enunciado e filme repetido.
+
+### Cinema — perguntas de dentro da série
+
+A resposta é algo **da própria obra** (personagem, lugar, bordão, número), e o
+enunciado abre com o título entre aspas. Os padrões vêm dos quizzes de série
+que mais circulam (Racha Cuca, Quizur): parentesco, *quem é o X do título*,
+bordão pela metade, número famoso e cidade onde se passa.
+
+```js
+{ pergunta: 'Em "Todo Mundo Odeia o Chris", qual e o nome do irmao mais novo de Chris, mais alto e mais popular que ele?',
+  sub: 'series', resposta: 'Drew', dif: 25 }
+{ pergunta: 'Em "Eu, a Patroa e as Criancas", quem e o "Eu" do titulo, o pai vivido por Damon Wayans?',
+  sub: 'series', resposta: 'Michael Kyle', aceita: ['Michael', 'Kyle'], dif: 35 }
+{ pergunta: 'Em "Chaves", como termina a desculpa do garoto "Foi sem querer..."?',
+  sub: 'series', resposta: 'Querendo', dif: 20 }
+```
+
+Enunciado que começa por *Em* não ganha o atalho de sobrenome automático, então
+o primeiro nome e o sobrenome do personagem vão escritos no `aceita`. Cuidado
+com sobrenome solto ali: ele **tira o atalho de outra pergunta** que tenha o
+mesmo sobrenome — *"Cooper"* para Winnie Cooper fazia *"Cooper"* parar de valer
+para Sheldon Cooper. Na dúvida, deixe só o primeiro nome.
+
 ### Criar uma categoria nova
 
 Acrescente uma entrada em `CATEGORIAS` (com `id`, `nome`, `icone` e `cor`) e uma
@@ -1204,7 +1424,14 @@ a dica de uma palavra só e a rodada que paga igual custe 1 ou 10),
 enunciado, as duas pontas do "duvido" e o que acontece quando alguém sai no
 meio), o **Leilão Geral** (a pergunta pública, passar o lance, o leilão que
 fecha em quem sobrou e as duas contas da pontuação), a **votação para pular** (o teto de metade mais um, o voto que
-alterna, as três fases em que vale e o que acontece quando quem votou sai)
+alterna, as três fases em que vale e o que acontece quando quem votou sai),
+as **5 chances por pergunta** (o que gasta, o que não gasta, a resposta certa
+que não vale nem vaza depois da última, a rodada que fecha quando ninguém mais
+pode pontuar e a chance que não volta ao recarregar a página)
+o **círculo entre nota e dificuldade** (a simulação de uma população
+inteira, o que entra na conta da sala e o painel do perfil),
+a **aba Estatísticas** (os números de cada pergunta, os totais pesados, as
+ordens, as páginas e a resposta que não sai)
 e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim

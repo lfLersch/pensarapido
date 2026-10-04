@@ -15,11 +15,19 @@ const PONTOS_MAX = 10;        // base de quem responde na primeira faixa
 const MS_POR_FAIXA = 5000;    // a cada 5s de rodada, a base cai 1 ponto
 const PONTOS_MIN = 1;         // acertar sempre vale pelo menos 1
 
+// Modo Tempo e Escalada: cada um erra no maximo isto por pergunta. Sem teto,
+// quem nao sabia metralhava palpites ate um colar. O "quase" tambem gasta.
+const CHANCES_POR_PERGUNTA = 5;
+
 // Escalada: cada item lembrado já vale ponto, e fechar a lista dá um empurrão.
 const PONTOS_POR_ITEM = 2;
 const BONUS_ESCALADA = 5;
 
 const MS_REVELACAO = 2800;   // tela "categoria" antes da pergunta
+// Pergunta com imagem: a imagem baixa durante a tela da categoria, e o relogio
+// so comeca quando ela ja esta na tela de todo mundo. Quem estiver com a
+// internet arrastada segura a sala no maximo isto, alem da tela da categoria.
+const MS_ESPERA_IMAGEM = 4000;
 const MS_RESULTADO = 5000;       // tela de resultado quando o tempo acaba
 const MS_RESULTADO_TODOS = 3000; // ... e quando todo mundo acertou antes
 const MS_APOS_ULTIMO = 0;        // acertou geral, fecha na hora: a contagem é na tela
@@ -158,14 +166,14 @@ const MODOS = [
     id: 'tempo',
     nome: 'Modo Tempo',
     icone: '⏱',
-    descricao: 'Escreva a resposta no chat. A cada 5s de rodada a base cai 1 ponto (10, 9, 8, 7) e cai mais 1 para cada pessoa que acertou antes de voce.',
+    descricao: 'Escreva a resposta no chat. A cada 5s de rodada a base cai 1 ponto (10, 9, 8, 7) e cai mais 1 para cada pessoa que acertou antes de voce. Sao 5 chances por pergunta: cada palpite errado gasta uma.',
     disponivel: true
   },
   {
     id: 'escalada',
     nome: 'Escalada',
     icone: '🧗',
-    descricao: 'Cada rodada pede uma resposta a mais: 1 na primeira, 2 na segunda, 3 na terceira… Cada item lembrado vale 2 pontos e fechar a lista da +5 de bonus.',
+    descricao: 'Cada rodada pede uma resposta a mais: 1 na primeira, 2 na segunda, 3 na terceira… Cada item lembrado vale 2 pontos e fechar a lista da +5 de bonus. Sao 5 chances de errar por rodada.',
     disponivel: true
   },
   {
@@ -297,15 +305,18 @@ function serveDeAlvo(resposta) {
   return texto.split(/\s+/).length <= 3 && normalizar(texto).length >= 3;
 }
 
-/** Índice de todas as perguntas, para o painel de dificuldades. */
+/** Índice de todas as perguntas, para o painel de dificuldades e a aba Estatisticas. */
 function indicePerguntas() {
   const mapa = new Map();
   for (const categoria of CATEGORIAS) {
     for (const q of QUESTOES[categoria.id] || []) {
       mapa.set(idDaPergunta(categoria.id, q), {
         categoria: categoria.id,
+        sub: q.sub || null,
         pergunta: q.pergunta,
         resposta: q.resposta,
+        imagem: q.imagem || null,
+        audio: q.audio || null,
         base: q.dif ?? 40
       });
     }
@@ -360,9 +371,18 @@ class Sala {
     this.pontosRodada = new Map(); // socketId -> pontos feitos nesta rodada
     this.pulos = new Set();        // quem votou para pular a rodada atual
     this.errouRanking = new Set(); // Mais ou Menos Pontos: quem ja gastou a vez errando
+    // Modo Tempo e Escalada: palpites errados de cada um nesta rodada. A chave
+    // e o nickname, que sobrevive a cair e voltar; o socket muda na volta, e
+    // recarregar a pagina devolveria as chances.
+    this.chancesGastas = new Map();
     this.ultimoTema = null;     // tema da rodada anterior, para não repetir
     this.jogadoresNaRodada = 0;
     this.naRodada = new Set();
+    // Pergunta com imagem: de quem a sala espera o "imagem pronta", quem ja
+    // mandou, e se a tela da categoria ja acabou e so falta a imagem.
+    this.esperaImagemDe = new Set();
+    this.imagemPronta = new Set();
+    this.esperandoImagem = false;
 
     this.filas = new Map();     // categoria -> perguntas embaralhadas ainda não usadas
     this.ultimasCategorias = []; // de onde vieram as últimas perguntas, para variar
@@ -405,6 +425,12 @@ class Sala {
 
     this.temporizador = null;
     this.temporizadorVez = null; // o relógio dos 7s corre à parte do da rodada
+    // O que cada relogio vai fazer e quando: a pausa precisa saber quanto faltava.
+    this.agendado = null;
+    this.agendadoVez = null;
+    // Jogo pausado pelo lider: { desde, por, rodada, vez } com o que faltava
+    // em cada relogio. Enquanto existe, nada corre e ninguem responde.
+    this.pausa = null;
   }
 
   /* --------------------------- Jogadores ---------------------------- */
@@ -525,6 +551,8 @@ class Sala {
   descongelar() {
     if (!this.congelada) return;
     this.congelada = false;
+    // A sala esvaziou pausada: quem voltou recomeca da proxima rodada, sem pausa.
+    this.esquecerPausa();
     this.avisar('A sala voltou. Proxima rodada ja vem.', true);
     this.agendar(() => this.proximaRodada(), MS_VOLTA_DA_SALA);
   }
@@ -577,8 +605,13 @@ class Sala {
       }
     }
 
+    // So faltava a imagem de quem saiu: a pergunta abre para quem ficou.
+    if (this.estado === 'categoria' && this.esperandoImagem && !this.pausa && this.jogadores.size > 0 && this.todosComImagem()) {
+      this.liberarPerguntaComImagem();
+    }
+
     // Só faltava quem saiu para fechar a rodada.
-    if (this.estado === 'pergunta' && this.todosAcertaram()) {
+    if (this.estado === 'pergunta' && this.ninguemMaisPontua()) {
       this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
     }
 
@@ -1559,19 +1592,85 @@ class Sala {
     this.pontosRodada = new Map();
     this.pulos = new Set();
     this.errouRanking = new Set();
+    this.chancesGastas = new Map();
     this.dicaAtual = 0;
     this.palpitesVeni = new Map();
     this.primeiroAcertoEm = null;
     this.estado = 'categoria';
+    this.esperaImagemDe = new Set(this.jogadores.keys());
+    this.imagemPronta = new Set();
+    this.esperandoImagem = false;
 
     this.emitir('rodada:categoria', {
       rodada: this.rodada,
       categoria,
       duracaoMs: MS_REVELACAO,
+      // A imagem da pergunta ja vai aqui, para baixar enquanto a categoria
+      // esta na tela. O navegador nao mostra: so carrega e avisa.
+      imagem: this.imagemParaCarregar(),
       placar: this.placar()
     });
 
-    this.agendar(() => this.mostrarPergunta(), MS_REVELACAO);
+    this.agendar(() => this.abrirPergunta(), MS_REVELACAO);
+  }
+
+  /** A imagem que a rodada vai mostrar, se a sala precisa esperar por ela. */
+  imagemParaCarregar() {
+    // Nos leiloes a pergunta so abre depois do leilao, e o leilao da tempo de sobra.
+    if (this.ehLeilao() || !this.perguntaAtual) return null;
+    return this.perguntaAtual.imagem || null;
+  }
+
+  /** Todos que viram a categoria abrir (e continuam na sala) ja carregaram a imagem? */
+  todosComImagem() {
+    return [...this.esperaImagemDe]
+      .filter((id) => this.jogadores.has(id))
+      .every((id) => this.imagemPronta.has(id));
+  }
+
+  /**
+   * Fim da tela da categoria. Sem imagem, ou com ela ja carregada em todo
+   * mundo, a pergunta abre na hora. Senao a sala espera os avisos de "imagem
+   * pronta" — no maximo MS_ESPERA_IMAGEM — para o relogio nao comecar a
+   * correr com alguem olhando um quadro vazio.
+   */
+  abrirPergunta() {
+    if (this.estado !== 'categoria') return;
+    if (!this.imagemParaCarregar() || this.todosComImagem()) return this.mostrarPergunta();
+
+    this.esperandoImagem = true;
+    this.avisarEsperaDaImagem();
+    this.agendar(() => {
+      this.esperandoImagem = false;
+      this.mostrarPergunta();
+    }, MS_ESPERA_IMAGEM);
+  }
+
+  avisarEsperaDaImagem() {
+    const quem = [...this.esperaImagemDe].filter((id) => this.jogadores.has(id));
+    this.emitir('rodada:aguardando', {
+      rodada: this.rodada,
+      prontos: quem.filter((id) => this.imagemPronta.has(id)).length,
+      total: quem.length,
+      duracaoMs: MS_ESPERA_IMAGEM
+    });
+  }
+
+  /** O navegador avisou que a imagem desta rodada ja esta carregada. */
+  imagemCarregada(socketId, rodada) {
+    if (rodada !== this.rodada || this.estado !== 'categoria' || !this.jogadores.has(socketId)) return;
+    this.imagemPronta.add(socketId);
+    // Pausado, so anota: a pergunta abre quando o jogo continuar.
+    if (!this.esperandoImagem || this.pausa) return;
+    if (this.todosComImagem()) return this.liberarPerguntaComImagem();
+    this.avisarEsperaDaImagem();
+  }
+
+  /** Chegou o ultimo aviso (ou saiu quem faltava): a pergunta abre sem esperar o teto. */
+  liberarPerguntaComImagem() {
+    this.esperandoImagem = false;
+    this.limparTemporizador();
+    this.mostrarPergunta();
   }
 
   /** Quanto tempo a rodada atual fica no ar. */
@@ -1632,6 +1731,8 @@ class Sala {
         ? this.perguntaAtual.resposta.replace(/[\p{L}\p{N}]/gu, '•')
         : null,
       duracaoMs: this.ehCarrossel() ? null : duracaoMs,
+      // Modo Tempo e Escalada: quantos palpites errados cada um pode dar.
+      chances: this.usaChances() ? CHANCES_POR_PERGUNTA : null,
       // Mais ou Menos Pontos: a mesa precisa saber ate onde vai a lista.
       ranking: this.ehRanking()
         ? {
@@ -1822,8 +1923,7 @@ class Sala {
       msPorLance: this.tempoDoLance()
     });
 
-    clearTimeout(this.temporizadorVez);
-    this.temporizadorVez = setTimeout(() => this.lanceNoTempo(equipe.id), this.tempoDoLance());
+    this.agendarVez(() => this.lanceNoTempo(equipe.id), this.tempoDoLance());
   }
 
   /** O relógio do lance zerou sem ninguém dizer nada. */
@@ -1857,6 +1957,7 @@ class Sala {
    * Vale qualquer número, desde que maior que o lance que estava na mesa.
    */
   apostar(socketId, valor) {
+    if (this.pausa) return { erro: 'O jogo esta pausado.' };
     if (!this.leilaoAberto()) return { erro: 'O leilao nao esta aberto.' };
 
     const equipe = this.equipePorId(this.leilao.equipes[this.leilao.vez]);
@@ -1884,7 +1985,7 @@ class Sala {
   }
 
   registrarLance(socketId, equipeId, aposta) {
-    clearTimeout(this.temporizadorVez);
+    this.pararVez();
 
     this.leilao.aposta = aposta;
     this.leilao.equipeAposta = equipeId;
@@ -1915,6 +2016,7 @@ class Sala {
 
   /** "Duvido": encerra o leilão e cobra o último lance. */
   duvidar(socketId) {
+    if (this.pausa) return { erro: 'O jogo esta pausado.' };
     if (this.ehLeilaoGeral() || this.ehLeilaoReverso()) {
       return { erro: 'Neste modo nao ha duvido: ou cobre, ou passa.' };
     }
@@ -1934,6 +2036,7 @@ class Sala {
    * ha parceiro para desafiar — quem nao cobre simplesmente desiste.
    */
   passar(socketId) {
+    if (this.pausa) return { erro: 'O jogo esta pausado.' };
     if (!this.ehLeilaoGeral() && !this.ehLeilaoReverso()) {
       return { erro: 'Neste modo nao da para passar: ou cobre, ou duvida.' };
     }
@@ -1950,7 +2053,7 @@ class Sala {
 
   /** Tira do leilao quem passou; sobrando um, o leilao fecha nele. */
   registrarPasso(postoId, socketId) {
-    clearTimeout(this.temporizadorVez);
+    this.pararVez();
     if (!this.leilao.fora.includes(postoId)) this.leilao.fora.push(postoId);
 
     const jogador = this.jogadores.get(socketId);
@@ -1970,7 +2073,7 @@ class Sala {
 
   /** Passa a palavra para a próxima equipe que ainda esteja no leilão. */
   avancarLance() {
-    clearTimeout(this.temporizadorVez);
+    this.pararVez();
     if (!this.leilaoAberto()) return;
 
     for (let passo = 0; passo < this.leilao.equipes.length; passo++) {
@@ -2068,8 +2171,7 @@ class Sala {
         : null
     });
 
-    clearTimeout(this.temporizadorVez);
-    this.temporizadorVez = setTimeout(() => {
+    this.agendarVez(() => {
       // O tempo dessa pessoa acabou sem resposta.
       this.eliminar(jogadorId, 'tempo');
     }, MS_POR_VEZ);
@@ -2081,7 +2183,7 @@ class Sala {
    */
   eliminar(jogadorId, motivo) {
     if (this.estado !== 'pergunta' || !this.vivos.has(jogadorId)) return;
-    clearTimeout(this.temporizadorVez);
+    this.pararVez();
 
     this.vivos.delete(jogadorId);
     const jogador = this.jogadores.get(jogadorId);
@@ -2107,7 +2209,7 @@ class Sala {
    * quando as voltas terminam ou quando sobra no máximo uma pessoa.
    */
   avancarVez() {
-    clearTimeout(this.temporizadorVez);
+    this.pararVez();
     if (this.estado !== 'pergunta') return;
 
     if (this.vivos.size <= 1) {
@@ -2142,6 +2244,7 @@ class Sala {
   palpitar(socketId, texto) {
     const jogador = this.jogadores.get(socketId);
     if (!jogador) return { erro: 'Voce nao esta nesta sala.' };
+    if (this.pausa) return { erro: 'O jogo esta pausado. O chat volta quando ele continuar.' };
 
     const limpo = String(texto || '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEXTO);
     if (!limpo) return { erro: 'Escreva alguma coisa.' };
@@ -2308,27 +2411,39 @@ class Sala {
       return { veredito: 'errado', gastou: true };
     }
 
-    // Longe de tudo: é conversa, vai para todo mundo.
+    // Quem ainda disputa a pergunta: ela esta no ar e a pessoa nao fechou.
+    // Quem gastou as chances vira plateia, igual a quem ja acertou.
+    const disputando = this.estado === 'pergunta' && !this.acertos.has(socketId);
+    const semChances = disputando && this.chancesRestantes(jogador) === 0;
+
+    // Longe de tudo: vai para todo mundo. Para quem ainda disputa, e tambem um
+    // palpite errado — nao ha como separar conversa de chute.
     if (novoItem < 0 && repetido < 0 && !perto) {
       this.publicarChat(jogador, limpo);
-      return { veredito: 'chat' };
+      if (!disputando || semChances) return { veredito: 'chat' };
+      return { veredito: 'chat', chances: this.gastarChance(jogador) };
     }
 
     // Perto de alguma resposta, mas essa pessoa não pode mais pontuar (já
-    // completou, ou a pergunta ainda nem apareceu): a mensagem morre aqui.
-    if (this.estado !== 'pergunta' || this.acertos.has(socketId)) {
-      return { veredito: 'bloqueado' };
-    }
+    // completou, gastou as chances, ou a pergunta ainda nem apareceu): a
+    // mensagem morre aqui.
+    if (!disputando) return { veredito: 'bloqueado' };
+    if (semChances) return { veredito: 'bloqueado', motivo: 'chances' };
 
+    // Repetir o que ja disse nao gasta chance: nao e um palpite novo.
     if (novoItem < 0 && repetido >= 0) {
       return { veredito: 'repetido', item: this.perguntaAtual.itens[repetido].oficial };
     }
 
     // De 10% a 20% de erro: em vez de um "quase" seco, devolve o que ja bateu
     // — "c_ra" para quem escreveu "cera" com "cara" na frente. A mensagem
-    // continua sendo so de quem escreveu.
+    // continua sendo so de quem escreveu, e gasta uma chance como qualquer erro.
     if (novoItem < 0) {
-      return { veredito: 'quase', dica: mascaraDeAcerto(limpo, quaseAlvo) };
+      return {
+        veredito: 'quase',
+        dica: mascaraDeAcerto(limpo, quaseAlvo),
+        chances: this.gastarChance(jogador)
+      };
     }
 
     /* --- acertou um item --- */
@@ -2396,7 +2511,7 @@ class Sala {
       placar: this.placar()
     });
 
-    if (this.todosAcertaram()) {
+    if (this.ninguemMaisPontua()) {
       this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
     }
 
@@ -2615,6 +2730,49 @@ class Sala {
   }
 
   /**
+   * A rodada nao tem mais o que esperar: cada um acertou, gastou a vez (Mais
+   * ou Menos Pontos) ou gastou as chances. Diferente de `todosAcertaram`, que
+   * decide a espera do resultado: quem ficou sem chances nao acertou, e a tela
+   * da resposta fica o tempo cheio para essa pessoa.
+   */
+  ninguemMaisPontua() {
+    if (this.jogadores.size === 0) return false;
+    return [...this.jogadores.values()].every((j) => this.acertos.has(j.id)
+      || this.errouRanking.has(j.id) || this.chancesRestantes(j) === 0);
+  }
+
+  /**
+   * Modo Tempo e Escalada: todos respondem a mesma pergunta ao mesmo tempo,
+   * digitando livre. Os outros modos ja tem regra propria para o palpite — a
+   * vez do Carrossel, o respondedor do leilao, a vez unica do Mais ou Menos
+   * Pontos, o palpite fechado do 1 eh bom.
+   */
+  usaChances() {
+    return !this.ehCarrossel() && !this.ehLeilao() && !this.ehRanking() && !this.ehVeni();
+  }
+
+  /** Quantos palpites errados a pessoa ainda pode dar nesta pergunta. */
+  chancesRestantes(jogador) {
+    if (!this.usaChances()) return Infinity;
+    const gastas = this.chancesGastas.get(normalizar(jogador.nickname)) || 0;
+    return Math.max(CHANCES_POR_PERGUNTA - gastas, 0);
+  }
+
+  /**
+   * Um palpite errado: desconta uma chance e devolve quantas sobraram. Quem
+   * gastou a ultima pode ser justamente quem a rodada ainda esperava.
+   */
+  gastarChance(jogador) {
+    const chave = normalizar(jogador.nickname);
+    this.chancesGastas.set(chave, (this.chancesGastas.get(chave) || 0) + 1);
+    const restam = this.chancesRestantes(jogador);
+    if (restam === 0 && this.ninguemMaisPontua()) {
+      this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
+    }
+    return restam;
+  }
+
+  /**
    * Fecha a conta do Presente Grego: é tudo ou nada.
    *
    * Entregou o que foi prometido, a equipe que apostou leva; faltou um item que
@@ -2826,6 +2984,7 @@ class Sala {
    * mudar de ideia enquanto a votação não fecha.
    */
   votarPular(socketId) {
+    if (this.pausa) return { erro: 'O jogo esta pausado.' };
     if (!this.jogadores.has(socketId)) return { erro: 'Voce nao esta nesta sala.' };
     if (!this.rodadaNoAr()) return { erro: 'Nao ha rodada para pular agora.' };
 
@@ -2960,7 +3119,8 @@ class Sala {
     const tempos = [...this.acertos.values()].map((a) => a.ms);
     const participantes = Math.max(this.jogadoresNaRodada, this.acertos.size, 1);
 
-    // A dificuldade sobe quando pouca gente acerta ou quando demoram muito.
+    // A dificuldade sobe quando pouca gente acerta, quando demoram muito e
+    // quando a sala acerta menos do que as notas dela na categoria prometiam.
     // No Presente Grego a rodada não mede a pergunta: responde uma pessoa só,
     // contra um alvo que ela nem escolheu. Registrar isso sujaria a
     // estatística da lista, então aqui a dificuldade é só lida.
@@ -2969,7 +3129,8 @@ class Sala {
       : dificuldade.registrar(this.perguntaAtual.id, this.perguntaAtual.difBase, {
           jogadores: participantes,
           tempos,
-          duracaoMs: this.config.segundosPorPergunta * 1000
+          duracaoMs: this.config.segundosPorPergunta * 1000,
+          sala: this.salaDaRodada(this.perguntaAtual)
         });
 
     const pergunta = this.perguntaAtual;
@@ -3121,9 +3282,7 @@ class Sala {
   anotarRodadaNosPerfis(pergunta, valorDificuldade) {
     // A dificuldade de ANTES desta rodada: a de depois ja carrega o resultado dela.
     const difAntes = Number.isFinite(pergunta.dificuldade) ? pergunta.dificuldade : valorDificuldade;
-    const categoria = pergunta.categoria && CATEGORIAS.some((c) => c.id === pergunta.categoria.id)
-      ? pergunta.categoria.id
-      : null;
+    const categoria = this.categoriaMedida(pergunta);
     const medeCategoria = Boolean(categoria) && this.rodadaMedeTodos();
 
     const quantosAcertaram = [...this.jogadores.values()]
@@ -3180,6 +3339,35 @@ class Sala {
     return segundo;
   }
 
+  /** A categoria de verdade da pergunta (a Escalada tem uma de mentira, so para a tela). */
+  categoriaMedida(pergunta) {
+    return pergunta && pergunta.categoria && CATEGORIAS.some((c) => c.id === pergunta.categoria.id)
+      ? pergunta.categoria.id
+      : null;
+  }
+
+  /**
+   * Quem viu a pergunta abrir, com a nota na categoria e se acertou, para a
+   * dificuldade comparar o que a sala fez com o que as notas prometiam. So
+   * nas rodadas que medem todo mundo: nas outras quem nao acertou nem sempre
+   * errou, e ai nao ha surpresa nenhuma.
+   *
+   * Sai ANTES de a rodada entrar no perfil, porque a nota de depois ja traz
+   * o resultado dela — o mesmo cuidado que a nota tem com a dificuldade. O
+   * acerto e contado igual ao de anotarRodadaNosPerfis.
+   */
+  salaDaRodada(pergunta) {
+    const categoria = this.categoriaMedida(pergunta);
+    if (!categoria || !this.rodadaMedeTodos()) return null;
+    return [...this.naRodada]
+      .map((id) => this.jogadores.get(id))
+      .filter(Boolean)
+      .map((j) => ({
+        ...perfis.notaEfetiva(j.cliente, categoria),
+        acertou: j.acertos > (j.acertosAnotados || 0)
+      }));
+  }
+
   /**
    * A rodada mede a categoria de TODO mundo que estava nela?
    *
@@ -3201,6 +3389,7 @@ class Sala {
   }
 
   terminar() {
+    this.esquecerPausa();
     const meta = this.config.metaPontos;
     // Chamado duas vezes, a partida contaria dobrado no perfil.
     const jaTerminou = this.estado === 'fim';
@@ -3233,6 +3422,7 @@ class Sala {
 
   /** Volta ao saguão mantendo os jogadores, para uma nova partida. */
   voltarAoLobby() {
+    this.esquecerPausa();
     this.limparTemporizador();
     this.estado = 'lobby';
     this.rodada = 0;
@@ -3243,6 +3433,7 @@ class Sala {
     this.pontosRodada = new Map();
     this.pulos = new Set();
     this.errouRanking = new Set();
+    this.chancesGastas = new Map();
     this.voltaRanking = 0;
     this.itensJaDitos = new Set();
     // As equipes continuam como estavam: quem já escolheu não escolhe de novo.
@@ -3302,13 +3493,47 @@ class Sala {
             falta: this.oQueFaltaNasEquipes()
           }
         : null,
-      avataresLivres: this.avataresLivres()
+      avataresLivres: this.avataresLivres(),
+      // Quem entra com o jogo pausado ja abre a tela de pausa.
+      pausa: this.pausa ? { por: this.pausa.por } : null
     };
   }
 
   agendar(fn, ms) {
+    // Pausado: o que for agendado espera a volta, com o tempo inteiro. Igual
+    // ao caminho normal, agendar a rodada derruba o relogio da vez.
+    if (this.pausa) {
+      this.pausa.rodada = { fn, restante: ms };
+      this.pausa.vez = null;
+      return;
+    }
     this.limparTemporizador();
-    this.temporizador = setTimeout(fn, ms);
+    this.agendado = { fn, fim: Date.now() + ms };
+    this.temporizador = setTimeout(() => {
+      this.agendado = null;
+      fn();
+    }, ms);
+  }
+
+  /** O relogio que corre a parte do da rodada: a vez no carrossel, o lance no leilao. */
+  agendarVez(fn, ms) {
+    if (this.pausa) {
+      this.pausa.vez = { fn, restante: ms };
+      return;
+    }
+    this.pararVez();
+    this.agendadoVez = { fn, fim: Date.now() + ms };
+    this.temporizadorVez = setTimeout(() => {
+      this.agendadoVez = null;
+      fn();
+    }, ms);
+  }
+
+  pararVez() {
+    clearTimeout(this.temporizadorVez);
+    this.temporizadorVez = null;
+    this.agendadoVez = null;
+    if (this.pausa) this.pausa.vez = null;
   }
 
   limparTemporizador() {
@@ -3316,10 +3541,77 @@ class Sala {
       clearTimeout(this.temporizador);
       this.temporizador = null;
     }
+    this.agendado = null;
     if (this.temporizadorVez) {
       clearTimeout(this.temporizadorVez);
       this.temporizadorVez = null;
     }
+    this.agendadoVez = null;
+  }
+
+  /* ------------------------------ Pausa ------------------------------ */
+
+  /**
+   * O lider para o jogo.
+   *
+   * Os dois relogios param onde estavam e guardam quanto faltava. Ninguem
+   * responde, vota ou da lance ate continuar: com o relogio parado, daria
+   * para pensar (ou combinar no chat) com todo o tempo do mundo.
+   */
+  pausar(socketId) {
+    const jogador = this.jogadores.get(socketId);
+    if (!this.ehLider(socketId)) return { erro: 'So o lider pode pausar o jogo.' };
+    if (!this.emPartida()) return { erro: 'Nao tem partida rolando.' };
+    if (this.pausa) return { ok: true };
+
+    const agora = Date.now();
+    const resto = (a) => (a ? { fn: a.fn, restante: Math.max(0, a.fim - agora) } : null);
+    const rodada = resto(this.agendado);
+    const vez = resto(this.agendadoVez);
+    this.limparTemporizador();
+    this.pausa = { desde: agora, por: jogador.nickname, rodada, vez };
+
+    this.emitir('sala:pausa', { pausado: true, por: jogador.nickname });
+    this.avisar(`${jogador.nickname} pausou o jogo.`, true);
+    return { ok: true };
+  }
+
+  /**
+   * O lider continua. Cada relogio volta com o que faltava, e os horarios de
+   * inicio andam o tempo que ficou parado: a pontuacao por tempo nao conta a
+   * pausa.
+   */
+  continuar(socketId) {
+    const jogador = this.jogadores.get(socketId);
+    if (!this.ehLider(socketId)) return { erro: 'So o lider pode continuar o jogo.' };
+    if (!this.pausa) return { ok: true };
+
+    const { desde, rodada, vez } = this.pausa;
+    const parado = Date.now() - desde;
+    this.pausa = null;
+    if (this.inicioPergunta) this.inicioPergunta += parado;
+    if (this.inicioVez) this.inicioVez += parado;
+    if (this.primeiroAcertoEm) this.primeiroAcertoEm += parado;
+
+    // A rodada antes da vez: agendar a rodada derruba o relogio da vez.
+    if (rodada) this.agendar(rodada.fn, rodada.restante);
+    if (vez) this.agendarVez(vez.fn, vez.restante);
+
+    this.emitir('sala:pausa', { pausado: false, por: jogador.nickname });
+    this.avisar(`${jogador.nickname} continuou o jogo.`, true);
+
+    // A imagem que faltava chegou durante a pausa: a pergunta abre agora.
+    if (this.estado === 'categoria' && this.esperandoImagem && this.todosComImagem()) {
+      this.liberarPerguntaComImagem();
+    }
+    return { ok: true };
+  }
+
+  /** Tira a pausa sem retomar os relogios: a partida recomecou ou acabou. */
+  esquecerPausa() {
+    if (!this.pausa) return;
+    this.pausa = null;
+    this.emitir('sala:pausa', { pausado: false, por: null });
   }
 
   destruir() {
@@ -3359,6 +3651,6 @@ function perguntasEscolhidas(config, idCategoria) {
 }
 
 module.exports = {
-  Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO,
+  Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, CHANCES_POR_PERGUNTA,
   gerarCodigo, calcularPontos, indicePerguntas, categoriasEmJogo, perguntasEscolhidas
 };

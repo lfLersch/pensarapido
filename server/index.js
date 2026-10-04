@@ -12,6 +12,7 @@ const {
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
 const perfis = require('./perfis');
+const estatisticas = require('./estatisticas');
 const google = require('./google');
 const banco = require('./banco');
 const { NOTAS, VERSAO } = require('./notas');
@@ -53,6 +54,14 @@ app.get('/api/dificuldades', (_req, res) => {
   // pergunta entra; `vezes` so conta as rodadas que alimentam a dificuldade.
   res.json(dificuldade.resumo(indicePerguntas())
     .map((linha) => ({ ...linha, usos: usos.usosDe(linha.id) })));
+});
+
+// A aba Estatisticas: quantas vezes cada pergunta caiu, o acerto e o tempo
+// do acerto, com filtro, busca, ordem e paginas. Sem as respostas.
+let indiceDasPerguntas = null;
+app.get('/api/estatisticas', (req, res) => {
+  indiceDasPerguntas = indiceDasPerguntas || indicePerguntas();
+  res.json(estatisticas.consultar(indiceDasPerguntas, req.query));
 });
 
 // Os que mais venceram, de todas as salas e de sempre.
@@ -286,6 +295,27 @@ io.on('connection', (socket) => {
     if (typeof texto !== 'string') return responder(callback, { erro: 'Mensagem inválida.' });
 
     responder(callback, sala.palpitar(socket.id, texto));
+  });
+
+  // A imagem da proxima pergunta terminou de carregar neste navegador. Nao
+  // precisa de resposta: o servidor so junta os avisos e abre a pergunta
+  // quando todo mundo ja esta com ela.
+  socket.on('rodada:imagemPronta', ({ rodada } = {}) => {
+    const sala = salaDoSocket();
+    if (sala && Number.isInteger(rodada)) sala.imagemCarregada(socket.id, rodada);
+  });
+
+  // O lider pausa e continua o jogo.
+  socket.on('sala:pausar', (_dados, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+    responder(callback, sala.pausar(socket.id));
+  });
+
+  socket.on('sala:continuar', (_dados, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+    responder(callback, sala.continuar(socket.id));
   });
 
   // Voto para pular a rodada. Metade mais um fecha a conta.
