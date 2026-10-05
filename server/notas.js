@@ -17,6 +17,17 @@
 
 const NOTAS = [
   {
+    versao: '1.30',
+    data: '2026-10-04',
+    titulo: 'Pagode, samba e forro',
+    itens: [
+      'Ouvir musicas ganhou 26 musicas e chegou a 258.',
+      'Pagode e samba: Zeca Pagodinho, Revelacao, Exaltasamba, Turma do Pagode, Raca Negra, Mumuzinho, Molejo, Menos e Mais e Seu Jorge.',
+      'Forro: Falamansa e Esperando na Janela. E mais Natiruts, Gonzaguinha e Boate Azul.',
+      'No Qual e a musica, pagode e forro tem opcoes do proprio estilo.'
+    ]
+  },
+  {
     versao: '1.29',
     data: '2026-10-04',
     titulo: '85 musicas novas: 232 para ouvir',

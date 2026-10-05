@@ -26,7 +26,9 @@ const ESTILOS = {
   sertanejo: 'Sertanejo',
   funk: 'Funk',
   rap: 'Rap nacional',
-  nacional: 'Pop e rock nacional'
+  nacional: 'Pop e rock nacional',
+  pagode: 'Pagode e samba',
+  forro: 'Forro e brega'
 };
 
 const MUSICAS = {
@@ -129,6 +131,7 @@ const MUSICAS = {
   'ai-se-eu-te-pego': { duracao: 162.0, estilo: 'sertanejo' },
   'anti-amor': { duracao: 165.4, estilo: 'sertanejo' },
   'aquele-1': { duracao: 174.0, estilo: 'sertanejo' },
+  'boate-azul': { duracao: 195.0, estilo: 'sertanejo' },
   'borboletas': { duracao: 201.5, estilo: 'sertanejo' },
   'calcinha-de-renda': { duracao: 199.4, estilo: 'sertanejo' },
   'chora-me-liga': { duracao: 180.0, estilo: 'sertanejo' },
@@ -228,6 +231,7 @@ const MUSICAS = {
   'desenho-de-deus': { duracao: 230.0, estilo: 'nacional' },
   'detalhes': { duracao: 214.1, estilo: 'nacional' },
   'detetive': { duracao: 205.7, estilo: 'nacional' },
+  'ele-te-trai': { duracao: 209.0, estilo: 'nacional' },
   'epitafio': { duracao: 148.0, estilo: 'nacional' },
   'era-um-garoto': { duracao: 256.0, estilo: 'nacional' },
   'eu-sei': { duracao: 212.0, estilo: 'nacional' },
@@ -246,6 +250,7 @@ const MUSICAS = {
   'nao-quero-dinheiro': { duracao: 153.8, estilo: 'nacional' },
   'o-descobridor-dos-sete-mares': { duracao: 260.1, estilo: 'nacional' },
   'o-maior-idiota-do-mundo': { duracao: 208.4, estilo: 'nacional' },
+  'o-que-e-o-que-e': { duracao: 241.0, estilo: 'nacional' },
   'outra-noite-que-se-vai': { duracao: 240.0, estilo: 'nacional' },
   'pais-e-filhos': { duracao: 282.0, estilo: 'nacional' },
   'pais-tropical': { duracao: 117.0, estilo: 'nacional' },
@@ -255,6 +260,7 @@ const MUSICAS = {
   'primeiros-erros': { duracao: 333.0, estilo: 'nacional' },
   'que-pais-e-este': { duracao: 172.0, estilo: 'nacional' },
   'quebre-as-correntes': { duracao: 219.0, estilo: 'nacional' },
+  'quero-ser-feliz-tambem': { duracao: 202.0, estilo: 'nacional' },
   'resposta': { duracao: 232.1, estilo: 'nacional' },
   'saideira': { duracao: 196.1, estilo: 'nacional' },
   'semente': { duracao: 260.1, estilo: 'nacional' },
@@ -268,7 +274,31 @@ const MUSICAS = {
   'velha-infancia': { duracao: 236.0, estilo: 'nacional' },
   'voce-vai-lembrar-de-mim': { duracao: 241.5, estilo: 'nacional' },
   'whisky-a-go-go': { duracao: 238.0, estilo: 'nacional' },
-  'zoio-de-lula': { duracao: 237.0, estilo: 'nacional' }
+  'zoio-de-lula': { duracao: 237.0, estilo: 'nacional' },
+  // pagode
+  'a-gente-bota-pra-quebrar': { duracao: 224.0, estilo: 'pagode' },
+  'burguesinha': { duracao: 238.0, estilo: 'pagode' },
+  'camarao-que-dorme-a-onda-leva': { duracao: 163.0, estilo: 'pagode' },
+  'camisa-10': { duracao: 170.0, estilo: 'pagode' },
+  'cheia-de-manias': { duracao: 246.1, estilo: 'pagode' },
+  'coracao-radiante': { duracao: 233.0, estilo: 'pagode' },
+  'deixa-a-vida-me-levar': { duracao: 188.0, estilo: 'pagode' },
+  'deixa-em-off': { duracao: 168.1, estilo: 'pagode' },
+  'eu-mereco-ser-feliz': { duracao: 186.0, estilo: 'pagode' },
+  'fulminante': { duracao: 192.0, estilo: 'pagode' },
+  'lancinho': { duracao: 226.0, estilo: 'pagode' },
+  'livre-pra-voar': { duracao: 318.0, estilo: 'pagode' },
+  'patricinha-de-olho-azul': { duracao: 230.0, estilo: 'pagode' },
+  'pela-ultima-vez': { duracao: 156.0, estilo: 'pagode' },
+  'ta-escrito': { duracao: 262.0, estilo: 'pagode' },
+  'ta-vendo-aquela-lua': { duracao: 192.0, estilo: 'pagode' },
+  'voltei': { duracao: 185.1, estilo: 'pagode' },
+  // forro
+  'esperando-na-janela': { duracao: 242.1, estilo: 'forro' },
+  'guardanapo': { duracao: 212.0, estilo: 'forro' },
+  'rindo-a-toa': { duracao: 215.0, estilo: 'forro' },
+  'xote-da-alegria': { duracao: 232.1, estilo: 'forro' },
+  'xote-dos-milagres': { duracao: 260.1, estilo: 'forro' }
 };
 
 /** A musica de um endereco de audio ('/audio/musica-yellow.mp3'), ou null. */
