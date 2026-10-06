@@ -41,6 +41,15 @@ const TABELAS = `
     cliente text PRIMARY KEY,
     conta   text NOT NULL
   );
+
+  -- No Supabase, toda tabela do schema public aparece na API pública dele
+  -- (anon/authenticated). O jogo não usa essa API: o servidor fala direto com
+  -- o Postgres, como dono das tabelas, e o RLS não vale para o dono. Ligado e
+  -- sem nenhuma política, ele só tranca a porta da API.
+  ALTER TABLE perguntas_usos  ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE perguntas_stats ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE jogadores       ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE vinculos        ENABLE ROW LEVEL SECURITY;
 `;
 
 let pool = null;

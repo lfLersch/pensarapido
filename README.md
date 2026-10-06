@@ -1102,8 +1102,13 @@ Render o disco zera a cada deploy**. Com a variável **`DATABASE_URL`**, os mesm
 dados vão para um **Postgres** (Supabase, Neon ou outro) e voltam em cada subida.
 
 **As tabelas se criam sozinhas** quando o servidor sobe (`perguntas_usos`,
-`perguntas_stats` e `jogadores`), então não há SQL para rodar no painel. A conexão fica em
+`perguntas_stats`, `jogadores` e `vinculos`), então não há SQL para rodar no painel. A conexão fica em
 [`server/banco.js`](server/banco.js).
+
+Na mesma subida o servidor liga o **RLS** (Row-Level Security) nas quatro, sem
+nenhuma política. Isso fecha a API pública do Supabase, que o jogo não usa, e
+não muda nada para o servidor: ele entra como dono das tabelas, e o RLS não
+vale para o dono. É o que tira o aviso `rls_disabled_in_public` do Supabase.
 
 Para ligar no Supabase:
 

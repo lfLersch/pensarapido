@@ -86,6 +86,14 @@ async function main() {
     const { rows } = await segunda.banco.consultar(
       "SELECT vezes FROM perguntas_usos WHERE id = 'p1'");
     conferir('segunda gravacao atualiza a mesma linha', rows.map((r) => r.vezes), [3]);
+
+    // A API publica do Supabase nao pode ler nem apagar nada.
+    const rls = await segunda.banco.consultar(
+      `SELECT relname FROM pg_class
+        WHERE relname IN ('perguntas_usos', 'perguntas_stats', 'jogadores', 'vinculos')
+          AND relrowsecurity ORDER BY relname`);
+    conferir('RLS ligado nas quatro tabelas', rls.rows.map((r) => r.relname),
+      ['jogadores', 'perguntas_stats', 'perguntas_usos', 'vinculos']);
     await segunda.banco.fechar();
   }
 
