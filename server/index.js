@@ -7,7 +7,9 @@ const { Server } = require('socket.io');
 
 const {
   Sala, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, gerarCodigo, indicePerguntas,
-  categoriasEmJogo, perguntasEscolhidas, LIMITE_MUSICA_PADRAO, TOTAL_MUSICAS_PADRAO
+  categoriasEmJogo, perguntasEscolhidas, LIMITE_MUSICA_PADRAO, TOTAL_MUSICAS_PADRAO,
+  MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
+  configDaBagunca
 } = require('./sala');
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
@@ -47,6 +49,13 @@ app.get('/api/config', (_req, res) => {
     limiteMusicaPadrao: LIMITE_MUSICA_PADRAO,
     totaisMusicas: TOTAIS_MUSICAS,
     totalMusicasPadrao: TOTAL_MUSICAS_PADRAO,
+    // Bagunca: o que a roleta pode sortear e quantas perguntas entre um sorteio e outro.
+    bagunca: {
+      modos: MODOS_SORTEAVEIS,
+      perguntas: PERGUNTAS_ATE_SORTEIO,
+      perguntasPadrao: PERGUNTAS_ATE_SORTEIO_PADRAO,
+      minEquipes: MIN_JOGADORES_EQUIPES
+    },
     meta: { min: META_MIN, max: META_MAX },
     niveis: dificuldade.NIVEIS,
     versao: VERSAO,
@@ -224,11 +233,16 @@ function validarConfig(bruta) {
   const limite = Number(bruta.limiteMusica);
   const limiteMusica = LIMITES_MUSICA.includes(limite) ? limite : LIMITE_MUSICA_PADRAO;
 
+  // Bagunca: quantas perguntas ate o sorteio e quais modos entram nele.
+  const bagunca = modo.bagunca ? configDaBagunca(bruta) : {};
+  if (bagunca.erro) return { erro: bagunca.erro };
+
   return {
     config: {
       categorias, subs, fora, modo: modo.id,
       metaPontos: Number.isInteger(metaPontos) ? metaPontos : 120,
-      segundosPorPergunta, limiteMusica, fimPor, totalMusicas
+      segundosPorPergunta, limiteMusica, fimPor, totalMusicas,
+      ...bagunca
     }
   };
 }

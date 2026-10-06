@@ -17,6 +17,17 @@
 
 const NOTAS = [
   {
+    versao: '1.31',
+    data: '2026-10-06',
+    titulo: 'Bagunca: todos os modos num so',
+    itens: [
+      'Modo novo, Bagunca: 3 perguntas do Modo Tempo e um sorteio escolhe o modo da rodada seguinte. Depois volta o Modo Tempo, e assim ate alguem bater a meta.',
+      'Quem cria a sala escolhe quantas perguntas do Modo Tempo vem antes de cada sorteio (de 0 a 6) e quais modos entram nele.',
+      'Presente Grego e Dando dicas so entram no sorteio com 4 ou mais na sala, e as equipes saem sorteadas na hora.',
+      'O mesmo modo nunca sai duas vezes seguidas, e a tela do sorteio mostra a regra do modo que saiu.'
+    ]
+  },
+  {
     versao: '1.30',
     data: '2026-10-04',
     titulo: 'Pagode, samba e forro',

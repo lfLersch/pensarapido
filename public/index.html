@@ -228,6 +228,26 @@
         <div class="grade-modos" id="grade-modos"></div>
       </div>
 
+      <!-- Bagunca: quantas perguntas do Modo Tempo entre um sorteio e outro, e
+           quais modos entram na roleta. -->
+      <div class="bloco" id="bloco-bagunca" hidden>
+        <h3 class="bloco__titulo">Bagunca</h3>
+        <p class="bloco__dica" id="bagunca-dica"></p>
+
+        <span class="campo__rotulo">Perguntas do Modo Tempo ate cada sorteio</span>
+        <div class="meta__opcoes" id="bagunca-perguntas"></div>
+
+        <div class="bloco__cabecalho bagunca__cabecalho">
+          <span class="campo__rotulo">Modos no sorteio</span>
+          <div class="bloco__acoes">
+            <button class="link" type="button" id="btn-todos-modos">Todos</button>
+            <button class="link" type="button" id="btn-nenhum-modo">Nenhum</button>
+          </div>
+        </div>
+        <div class="bagunca__modos" id="bagunca-modos"></div>
+        <p class="bloco__dica bagunca__equipes" id="bagunca-equipes"></p>
+      </div>
+
       <!-- Modos musicais: a partida acaba pela meta de pontos ou pelo numero de musicas. -->
       <div class="bloco" id="bloco-fim" hidden>
         <h3 class="bloco__titulo">Fim da partida</h3>
@@ -350,6 +370,19 @@
       </button>
     </div>
 
+    <!-- 4a2. Bagunca: a roleta que escolhe o modo da proxima rodada -->
+    <div class="revelacao sorteio" id="sorteio" hidden>
+      <span class="revelacao__rodada" id="sorteio-rodada">Sorteio</span>
+      <div class="revelacao__icone sorteio__icone" id="sorteio-icone">🎲</div>
+      <h2 class="revelacao__nome sorteio__nome" id="sorteio-nome">Sorteando…</h2>
+      <p class="sorteio__desc" id="sorteio-desc" hidden></p>
+      <ul class="sorteio__equipes" id="sorteio-equipes" hidden></ul>
+      <div class="revelacao__barra"><i id="sorteio-barra"></i></div>
+      <button class="btn btn--fantasma btn--pausar" id="btn-pausar-sorteio" type="button" title="Pausar o jogo" hidden>
+        <span class="btn__icone">⏸</span> Pausar
+      </button>
+    </div>
+
     <!-- Jogo pausado: cobre a pergunta para ninguem pensar com o relogio parado. -->
     <div class="pausa" id="pausa" hidden role="dialog" aria-modal="true" aria-labelledby="pausa-titulo">
       <div class="pausa__caixa">
@@ -368,6 +401,8 @@
           <span class="etiqueta">Sala <b id="jogo-codigo">----</b></span>
           <span class="etiqueta">Rodada <b id="jogo-rodada">1</b></span>
           <span class="etiqueta"><span id="jogo-meta-rotulo">Meta</span> <b id="jogo-meta">120</b></span>
+          <!-- Bagunca: de que modo e a rodada que esta no ar -->
+          <span class="etiqueta etiqueta--modo" id="jogo-modo" hidden><b id="jogo-modo-nome"></b></span>
         </div>
         <div class="jogo__canto">
           <button class="btn btn--fantasma btn--pausar" id="btn-pausar" type="button" title="Pausar o jogo" hidden>

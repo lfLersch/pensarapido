@@ -20,7 +20,9 @@ const estado = {
     segundosPorPergunta: 20,
     limiteMusica: 30,     // por quanto tempo a musica toca, no maximo
     fimPor: 'pontos',     // modos musicais: 'pontos' ou 'musicas'
-    totalMusicas: 15
+    totalMusicas: 15,
+    perguntasAteSorteio: 3,    // Bagunca: perguntas do Modo Tempo entre um sorteio e outro
+    modosBagunca: new Set()    // Bagunca: os modos que entram na roleta
   },
   musica: null,     // a musica da rodada: { inicio, limite, abriuEm, parada }
   acertou: false,
@@ -1076,6 +1078,7 @@ async function carregarConfig() {
   montarTempos();
   montarLimites();
   montarFim();
+  montarBagunca();
   sincronizarModo();
 }
 
@@ -1094,9 +1097,11 @@ function modoMusical(id = estado.escolhas.modo) {
  */
 function sincronizarModo() {
   const musical = modoMusical();
+  const bagunca = estado.escolhas.modo === 'bagunca';
   $('bloco-categorias').hidden = musical;
   $('bloco-tempo').hidden = musical;
   $('bloco-fim').hidden = !musical;
+  $('bloco-bagunca').hidden = !bagunca;
   const porMusicas = musical && estado.escolhas.fimPor === 'musicas';
   $('bloco-meta').hidden = porMusicas;
   $('total-opcoes').hidden = !porMusicas;
@@ -1105,8 +1110,98 @@ function sincronizarModo() {
   });
   $('limite-dica').textContent = musical
     ? 'A rodada dura isso: a musica toca ate alguem acertar, ate todo mundo responder ou ate o limite. O pedaco e sorteado, nao e sempre o comeco.'
-    : 'Vale para a categoria Ouvir musicas: por quanto tempo a musica toca, no maximo. O pedaco e sorteado, nao e sempre o comeco.';
+    : bagunca
+      ? 'Vale para a categoria Ouvir musicas e para as rodadas musicais do sorteio: por quanto tempo a musica toca, no maximo.'
+      : 'Vale para a categoria Ouvir musicas: por quanto tempo a musica toca, no maximo. O pedaco e sorteado, nao e sempre o comeco.';
   atualizarResumo();
+}
+
+/* ------------------------------ Bagunca ------------------------------ */
+
+/** Os modos que a roleta da Bagunca pode sortear, com a cara de cada um. */
+function modosSorteaveis() {
+  const ids = estado.config.bagunca ? estado.config.bagunca.modos : [];
+  return ids.map((id) => estado.config.modos.find((m) => m.id === id)).filter(Boolean);
+}
+
+/**
+ * A configuracao da Bagunca: quantas perguntas do Modo Tempo ate cada
+ * sorteio, e quais modos entram na roleta. Comeca com todos marcados.
+ */
+function montarBagunca() {
+  const cfg = estado.config.bagunca;
+  if (!cfg) return;
+  estado.escolhas.perguntasAteSorteio = cfg.perguntasPadrao;
+  estado.escolhas.modosBagunca = new Set(cfg.modos);
+
+  montarPilulas($('bagunca-perguntas'), cfg.perguntas, (n) => String(n),
+    estado.escolhas.perguntasAteSorteio, (n) => {
+      estado.escolhas.perguntasAteSorteio = n;
+      sincronizarBagunca();
+    });
+
+  const caixa = $('bagunca-modos');
+  caixa.innerHTML = '';
+  for (const modo of modosSorteaveis()) {
+    const chip = criar('button', 'subchip');
+    chip.type = 'button';
+    chip.dataset.id = modo.id;
+    chip.innerHTML = `${modo.icone} ${escapar(modo.nome)}`
+      + (modo.equipes ? ` <span class="subchip__tag">${cfg.minEquipes}+</span>` : '');
+    chip.title = modo.equipes
+      ? `Em equipes: so entra no sorteio com ${cfg.minEquipes} ou mais na sala`
+      : modo.descricao;
+    chip.addEventListener('click', () => {
+      const marcados = estado.escolhas.modosBagunca;
+      if (marcados.has(modo.id)) marcados.delete(modo.id);
+      else marcados.add(modo.id);
+      sincronizarBagunca();
+    });
+    caixa.appendChild(chip);
+  }
+  sincronizarBagunca();
+}
+
+function sincronizarBagunca() {
+  const marcados = estado.escolhas.modosBagunca;
+  document.querySelectorAll('#bagunca-modos .subchip').forEach((chip) => {
+    const marcado = marcados.has(chip.dataset.id);
+    chip.classList.toggle('marcada', marcado);
+    chip.setAttribute('aria-pressed', String(marcado));
+  });
+
+  const n = estado.escolhas.perguntasAteSorteio;
+  $('bagunca-dica').textContent = n === 0
+    ? 'Sem Modo Tempo no meio: toda rodada sai do sorteio.'
+    : `${plural(n, 'pergunta', 'perguntas')} do Modo Tempo, um sorteio, uma rodada do modo sorteado — e de novo.`;
+
+  // Os modos em equipe dependem de quem estiver na sala na hora do sorteio.
+  const emEquipe = modosSorteaveis().filter((m) => m.equipes && marcados.has(m.id));
+  const varios = emEquipe.length > 1;
+  $('bagunca-equipes').hidden = emEquipe.length === 0;
+  $('bagunca-equipes').textContent = emEquipe.length
+    ? `${emEquipe.map((m) => m.nome).join(' e ')} ${varios ? 'jogam' : 'joga'} em equipes: so ${
+      varios ? 'entram' : 'entra'} no sorteio com ${estado.config.bagunca.minEquipes} ou mais na sala, e as equipes saem sorteadas na hora.`
+    : '';
+  atualizarResumo();
+}
+
+$('btn-todos-modos').addEventListener('click', () => {
+  estado.escolhas.modosBagunca = new Set(estado.config.bagunca.modos);
+  sincronizarBagunca();
+});
+
+$('btn-nenhum-modo').addEventListener('click', () => {
+  estado.escolhas.modosBagunca.clear();
+  sincronizarBagunca();
+});
+
+/** "7 modos · sorteio a cada 3 perguntas", para os dois resumos. */
+function resumoDaBagunca(perguntas, quantosModos) {
+  const ritmo = perguntas === 0
+    ? 'toda rodada sorteada'
+    : `sorteio a cada <b>${perguntas}</b> ${perguntas === 1 ? 'pergunta' : 'perguntas'}`;
+  return `<span><b>${quantosModos}</b> ${quantosModos === 1 ? 'modo' : 'modos'} · ${ritmo}</span>`;
 }
 
 /** Pilulas de escolha unica: marca a do valor atual e chama `escolher` no clique. */
@@ -1348,6 +1443,7 @@ function atualizarResumo() {
   const musical = modoMusical();
   const total = musical ? 1 : categoriasEscolhidas().length;
   const modo = estado.config.modos.find((m) => m.id === estado.escolhas.modo);
+  const bagunca = Boolean(modo && modo.bagunca);
   $('resumo-config').innerHTML = musical
     ? `
     <span>${modo.icone} ${modo.nome}</span>
@@ -1356,11 +1452,12 @@ function atualizarResumo() {
     : `
     <span>${plural(total, 'categoria', 'categorias')}</span>
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
+    ${bagunca ? resumoDaBagunca(estado.escolhas.perguntasAteSorteio, estado.escolhas.modosBagunca.size) : ''}
     <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
     ${modo && modo.equipes ? '<span>👥 <b>4+</b> jogadores, em equipes</span>' : ''}`;
 
-  $('btn-criar').disabled = total === 0;
+  $('btn-criar').disabled = total === 0 || (bagunca && estado.escolhas.modosBagunca.size === 0);
 }
 
 /** "Meta 120 pts" ou "15 musicas", conforme a partida acaba. */
@@ -1379,6 +1476,10 @@ $('btn-criar').addEventListener('click', () => {
   if (!modoMusical() && categoriasEscolhidas().length === 0) {
     return avisar('aviso-config', 'Escolha pelo menos uma categoria.');
   }
+  const bagunca = estado.escolhas.modo === 'bagunca';
+  if (bagunca && estado.escolhas.modosBagunca.size === 0) {
+    return avisar('aviso-config', 'Deixe pelo menos um modo no sorteio da Bagunca.');
+  }
 
   // Categoria marcada vai inteira, menos as partes desmarcadas (`fora`);
   // parte marcada de categoria desmarcada vai sozinha (`subs`).
@@ -1393,7 +1494,11 @@ $('btn-criar').addEventListener('click', () => {
     segundosPorPergunta: estado.escolhas.segundosPorPergunta,
     limiteMusica: estado.escolhas.limiteMusica,
     fimPor: estado.escolhas.fimPor,
-    totalMusicas: estado.escolhas.totalMusicas
+    totalMusicas: estado.escolhas.totalMusicas,
+    ...(bagunca ? {
+      perguntasAteSorteio: estado.escolhas.perguntasAteSorteio,
+      modosBagunca: [...estado.escolhas.modosBagunca]
+    } : {})
   };
 
   socket.emit('sala:criar', { nickname, config, cliente: carteirinha() }, (resposta) => {
@@ -1432,6 +1537,7 @@ function renderizarSala() {
     <span>Musica de ate <b>${sala.config.limiteMusica}s</b></span>`
     : `
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
+    ${modo && modo.bagunca ? resumoDaBagunca(sala.config.perguntasAteSorteio, (sala.config.modosBagunca || []).length) : ''}
     <span>Meta <b>${sala.config.metaPontos} pts</b></span>
     <span><b>${sala.config.segundosPorPergunta}s</b> por pergunta</span>
     <span>${plural(emJogo.length, 'categoria', 'categorias')}</span>`;
@@ -1456,10 +1562,26 @@ function renderizarSala() {
   // Nao adianta apertar iniciar com a sala torta — o servidor recusa. A frase
   // do que falta vem pronta de la, para a regra morar em um lugar so.
   const falta = porEquipes ? (sala.formato && sala.formato.falta) : null;
+  // Na Bagunca a dica so avisa: a partida comeca, e o modo em equipe entra
+  // no sorteio quando a sala tiver gente para ele.
+  const aviso = falta || equipesForaDaBagunca(sala);
   const dica = $('dica-equipes');
-  dica.hidden = !falta;
-  dica.textContent = falta || '';
+  dica.hidden = !aviso;
+  dica.textContent = aviso || '';
   $('btn-iniciar').disabled = Boolean(falta);
+}
+
+/** Bagunca com pouca gente: quais modos em equipe ficam fora do sorteio, numa frase. */
+function equipesForaDaBagunca(sala) {
+  if (sala.config.modo !== 'bagunca' || !estado.config.bagunca) return null;
+  const minimo = estado.config.bagunca.minEquipes;
+  if (sala.jogadores.length >= minimo) return null;
+  const fora = (sala.config.modosBagunca || [])
+    .map((id) => estado.config.modos.find((m) => m.id === id))
+    .filter((m) => m && m.equipes);
+  if (!fora.length) return null;
+  return `Com menos de ${minimo} na sala, ${fora.map((m) => m.nome).join(' e ')} ${
+    fora.length > 1 ? 'ficam' : 'fica'} fora do sorteio.`;
 }
 
 /** Um jogador na lista da sala, com o botao de expulsar para o lider. */
@@ -1717,6 +1839,21 @@ function escapar(texto) {
 }
 
 /**
+ * O modo da rodada no ar. Fora da Bagunca e o da sala; nela muda a cada
+ * sorteio, e e por ele que a tela decide o que mostrar.
+ */
+const modoDaRodada = () => estado.sala?.modoDaRodada || estado.sala?.config.modo;
+
+/** Na Bagunca, a etiqueta de cima diz de que modo e a rodada. */
+function escreverModo() {
+  const bagunca = estado.sala?.config.modo === 'bagunca';
+  $('jogo-modo').hidden = !bagunca;
+  if (!bagunca) return;
+  const modo = estado.config.modos.find((m) => m.id === modoDaRodada());
+  $('jogo-modo-nome').textContent = modo ? `${modo.icone} ${modo.nome}` : '';
+}
+
+/**
  * Esvazia uma barra no tempo pedido.
  *
  * Quem anima é o próprio navegador, por transition — assim a barra não depende
@@ -1868,13 +2005,15 @@ socket.on('rodada:categoria', (dados) => {
   estado.emRodada = true;
   estado.votei = false;
   mostrarVotacao(0, 0);
+  if (estado.sala && dados.modo) estado.sala.modoDaRodada = dados.modo;
 
   mostrarTela('tela-jogo');
   jogo.hidden = true;
+  esconderSorteio();
   revelacao.hidden = false;
 
   atualizarBotoesDePausa();
-  $('revelacao-rodada').textContent = `Rodada ${dados.rodada}`;
+  $('revelacao-rodada').textContent = rotuloDaRodada(dados);
   $('revelacao-icone').textContent = dados.categoria.icone;
   $('revelacao-nome').textContent = dados.categoria.nome;
   $('revelacao-nome').style.color = '';
@@ -1889,6 +2028,101 @@ socket.on('rodada:categoria', (dados) => {
 
   if (dados.placar) renderizarPlacar(dados.placar);
 });
+
+/**
+ * "Rodada 4", e na Bagunca o que ela e: o modo sorteado, ou em que pergunta
+ * do Modo Tempo a sala esta ate o proximo sorteio.
+ */
+function rotuloDaRodada(dados) {
+  const bagunca = dados.bagunca;
+  if (!bagunca) return `Rodada ${dados.rodada}`;
+  if (bagunca.pergunta) return `Rodada ${dados.rodada} · ${bagunca.pergunta} de ${bagunca.de} ate o sorteio`;
+  const modo = estado.config.modos.find((m) => m.id === dados.modo);
+  return modo ? `Rodada ${dados.rodada} · ${modo.icone} ${modo.nome}` : `Rodada ${dados.rodada}`;
+}
+
+/* ------------------------- 4a2. Sorteio da Bagunca ------------------------- */
+
+/*
+ * A roleta gira pelos modos que podiam sair, freando, e para no sorteado.
+ * Quem sorteia e o servidor — a roleta e so o espetaculo, e chega ao fim
+ * com folga para a mesa ler a regra do modo (e as equipes, se for o caso)
+ * antes de a tela da categoria entrar.
+ */
+let roleta = null;
+
+socket.on('bagunca:sorteio', (dados) => {
+  estado.emRodada = true;
+  estado.votei = false;
+  if (estado.sala) estado.sala.modoDaRodada = dados.modo.id;
+
+  mostrarTela('tela-jogo');
+  jogo.hidden = true;
+  revelacao.hidden = true;
+  $('sorteio').hidden = false;
+  atualizarBotoesDePausa();
+
+  $('sorteio-rodada').textContent = `Sorteio · rodada ${dados.rodada}`;
+  pararContagem();
+  contarTempo($('sorteio-barra'), dados.duracaoMs, false);
+  girarRoleta(dados);
+
+  if (dados.placar) renderizarPlacar(dados.placar);
+});
+
+function girarRoleta(dados) {
+  clearTimeout(roleta);
+  const caixa = $('sorteio');
+  caixa.classList.remove('sorteio--parou');
+  $('sorteio-desc').hidden = true;
+  $('sorteio-equipes').hidden = true;
+
+  const opcoes = dados.roleta && dados.roleta.length > 1 ? dados.roleta : null;
+  if (!opcoes) return pararRoleta(dados);
+
+  // Cada passo demora um pouco mais que o anterior: uns dois segundos ao todo.
+  const PASSOS = 16;
+  let passo = 0;
+  let i = Math.floor(Math.random() * opcoes.length);
+  const girar = () => {
+    if (passo >= PASSOS) return pararRoleta(dados);
+    const modo = opcoes[i++ % opcoes.length];
+    $('sorteio-icone').textContent = modo.icone;
+    $('sorteio-nome').textContent = modo.nome;
+    passo += 1;
+    roleta = setTimeout(girar, 45 + passo * passo);
+  };
+  girar();
+}
+
+function pararRoleta(dados) {
+  roleta = null;
+  $('sorteio-icone').textContent = dados.modo.icone;
+  $('sorteio-nome').textContent = dados.modo.nome;
+  $('sorteio').classList.add('sorteio--parou');
+
+  const desc = $('sorteio-desc');
+  desc.textContent = dados.modo.descricao || '';
+  desc.hidden = !dados.modo.descricao;
+
+  // Modo em equipe: as equipes sairam junto com o sorteio.
+  const lista = $('sorteio-equipes');
+  lista.innerHTML = '';
+  lista.hidden = !dados.equipes;
+  for (const equipe of dados.equipes || []) {
+    const item = criar('li', 'sorteio__equipe');
+    item.style.setProperty('--cor-equipe', equipe.cor);
+    item.innerHTML = `<b>${equipe.icone} ${escapar(equipe.nome)}</b> ${
+      equipe.jogadores.map(escapar).join(', ')}`;
+    lista.appendChild(item);
+  }
+}
+
+function esconderSorteio() {
+  clearTimeout(roleta);
+  roleta = null;
+  $('sorteio').hidden = true;
+}
 
 /**
  * Baixa a musica da pergunta durante a tela da categoria e ja deixa o audio
@@ -1989,6 +2223,7 @@ function escreverPergunta(texto) {
 socket.on('rodada:pergunta', (dados) => {
   atualizarBotoesDePausa();
   revelacao.hidden = true;
+  esconderSorteio();
   jogo.hidden = false;
   mostrarTela('tela-jogo');
 
@@ -1997,6 +2232,7 @@ socket.on('rodada:pergunta', (dados) => {
   $('jogo-codigo').textContent = estado.sala?.codigo || '----';
   $('jogo-rodada').textContent = dados.rodada;
   escreverMeta(dados.rodada);
+  escreverModo();
 
   // A categoria fica pequena, logo acima da pergunta.
   $('pergunta-categoria').style.setProperty('--cor-categoria', dados.categoria.cor);
@@ -2106,7 +2342,7 @@ socket.on('rodada:pergunta', (dados) => {
   if (dados.opcoes) {
     inputChat.placeholder = 'Clique numa das opcoes. Aqui e so conversa…';
     $('status-respostas').textContent = 'Ninguem escolheu ainda.';
-  } else if (estado.sala?.config.modo === 'corrida') {
+  } else if (modoDaRodada() === 'corrida') {
     inputChat.placeholder = `Seja o primeiro a acertar… (${plural(dados.chances, 'chance', 'chances')})`;
   }
 
@@ -2446,13 +2682,14 @@ socket.on('veni:revelacao', (dados) => {
 });
 
 /** No Leilao Geral cada um leiloa por si: nao ha parceiro, nem duvido. */
-const leilaoGeral = () => estado.sala?.config.modo === 'leilao-geral';
+const leilaoGeral = () => modoDaRodada() === 'leilao-geral';
 
 /** Dando dicas: leilao ao contrario, em duplas — o lance desce. */
-const dandoDicas = () => estado.sala?.config.modo === 'dando-dicas';
+const dandoDicas = () => modoDaRodada() === 'dando-dicas';
 
 socket.on('leilao:comeco', (dados) => {
   revelacao.hidden = true;
+  esconderSorteio();
   jogo.hidden = false;
   mostrarTela('tela-jogo');
 
@@ -2466,6 +2703,7 @@ socket.on('leilao:comeco', (dados) => {
   $('jogo-codigo').textContent = estado.sala?.codigo || '----';
   $('jogo-rodada').textContent = dados.rodada;
   escreverMeta(dados.rodada);
+  escreverModo();
 
   $('pergunta-categoria').style.setProperty('--cor-categoria', dandoDicas() ? '#38bdf8' : '#f59e0b');
   $('pergunta-categoria-icone').textContent = dandoDicas() ? '💡' : (leilaoGeral() ? '🔨' : '🎁');
@@ -3431,6 +3669,7 @@ function atualizarBotoesDePausa() {
   const mostra = souLider() && !estado.pausado;
   $('btn-pausar').hidden = !mostra;
   $('btn-pausar-rev').hidden = !mostra;
+  $('btn-pausar-sorteio').hidden = !mostra;
   $('btn-continuar').hidden = !souLider();
   $('pausa-espera').hidden = souLider();
 }
@@ -3476,6 +3715,7 @@ function pedirPausa() {
 }
 $('btn-pausar').addEventListener('click', pedirPausa);
 $('btn-pausar-rev').addEventListener('click', pedirPausa);
+$('btn-pausar-sorteio').addEventListener('click', pedirPausa);
 $('btn-continuar').addEventListener('click', () => {
   socket.emit('sala:continuar', {}, (resposta) => {
     if (resposta?.erro) brindar(resposta.erro);
@@ -3506,11 +3746,13 @@ function abrirTelaDaSala(sala) {
   }
 
   revelacao.hidden = true;
+  esconderSorteio();
   jogo.hidden = false;
   limparTabuleiro();
   $('jogo-codigo').textContent = sala.codigo;
   $('jogo-rodada').textContent = sala.rodada;
   escreverMeta(sala.rodada);
+  escreverModo();
   $('pergunta-categoria-icone').textContent = '⏳';
   $('pergunta-categoria-nome').textContent = 'Entrando';
   $('pergunta-texto').textContent = 'Voce entra na proxima rodada.';

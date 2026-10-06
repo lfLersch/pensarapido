@@ -92,7 +92,8 @@ e que a versão do topo seja a do jogo.
 | Ajuste | Opções |
 | --- | --- |
 | Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
-| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical** ou **Qual é a música** (Equipes aparece como *em breve*) |
+| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical**, **Qual é a música** ou **Bagunça**, todos num só (Equipes aparece como *em breve*) |
+| Bagunça | só nela: quantas perguntas do Modo Tempo até cada sorteio (0 a 6, **3** de padrão) e quais modos entram no sorteio (**todos** de padrão) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
 | Limite da música | 15s / 20s / **30s (padrão)** / 45s / 60s — por quanto tempo a música toca, no máximo |
@@ -680,6 +681,69 @@ partida e a rodada **não alimenta a dificuldade adaptativa**: na corrida só um
 pessoa chega a acertar, e com quatro opções um em cada quatro acerta no chute.
 `testes/musicas.test.js` cobre os dois.
 
+### Bagunça
+
+Todos os modos numa partida só. A sala joga **3 perguntas do Modo Tempo**, e aí
+um **sorteio** escolhe o modo da rodada seguinte entre os outros dez. Jogada
+essa rodada, volta o Modo Tempo e a conta recomeça:
+
+```
+Tempo, Tempo, Tempo, 🎲 Escalada, Tempo, Tempo, Tempo, 🎲 Presente Grego, …
+```
+
+O líder ajusta as duas coisas na configuração:
+
+- **quantas perguntas até cada sorteio**, de 0 a 6. Com **0** não há Modo
+  Tempo no meio: toda rodada sai do sorteio;
+- **quais modos entram no sorteio**, um chip para cada. Precisa sobrar pelo
+  menos um. O Modo Tempo não aparece na lista — ele já é o recheio.
+
+**Quem cabe no sorteio é decidido na hora dele**, pela sala daquele momento:
+
+- **os modos em equipe** (Presente Grego e Dando dicas) só entram **com 4 ou
+  mais na sala** — duas equipes de dois. Com menos gente a sala de espera
+  avisa quais ficam de fora, mas a partida começa assim mesmo;
+- o **Leilão Geral** precisa de duas pessoas, como sempre;
+- **o último modo sorteado espera a vez**: o mesmo modo não sai duas vezes
+  seguidas, a não ser que seja o único marcado;
+- se nada do que foi marcado cabe na sala, a rodada segue no Modo Tempo e o
+  chat explica por quê.
+
+**A roleta.** O sorteio tem tela própria (`bagunca:sorteio`, 5,5 s): a roleta
+gira pelos modos que podiam sair, para no sorteado e mostra a regra dele.
+Quem sorteia é o servidor; a roleta é só o espetáculo. Durante a partida a
+etiqueta de cima diz o modo da rodada, e a tela da categoria diz em que
+pergunta do Modo Tempo a sala está até o sorteio (*Rodada 2 · 2 de 3 até o
+sorteio*).
+
+**As equipes saem do sorteio.** Não há caixas de equipe no saguão: o modo em
+equipe aparece de vez em quando e quem está na sala muda no caminho. Cada vez
+que um deles cai, a sala é embaralhada na hora, e a tela do sorteio já mostra
+quem joga com quem — o Presente Grego em duas equipes que dividem a sala, o
+Dando dicas em duplas (com gente ímpar, uma delas vira trio). A equipe vale
+**uma rodada**: os pontos vão para cada integrante, e o placar final é de
+cada um.
+
+**Cada modo joga como ele mesmo**, numa rodada só, com três ajustes:
+
+- a **Escalada** sobe um degrau a cada vez que é sorteada e começa no 2 (a
+  de uma resposta seria a pergunta comum do Modo Tempo);
+- o **Carrossel** também cresce pelas vezes em que saiu, e não pela rodada da
+  partida: o primeiro dá uma volta;
+- o **Mais ou Menos Pontos** abre e fecha a lista na mesma rodada, sem as
+  três voltas — e o topo dela aparece no resultado.
+
+As **rodadas musicais** (Corrida e Qual é a música) tocam música mesmo sem a
+categoria Ouvir músicas marcada, de uma fila só delas: assim Ouvir músicas não
+vaza para o Modo Tempo de quem não marcou. Tocam pelo **limite da música** da
+sala, e a partida acaba sempre pela meta de pontos.
+
+Por dentro, cada `ehX()` da sala pergunta pelo **modo da rodada**
+(`sala.modo`), e não pelo da sala: fora da Bagunça os dois são o mesmo; nela,
+o sorteio troca o primeiro e o resto do código segue sem saber. O ritmo, quem
+cabe, as equipes, os ajustes e a música isolada estão em
+`testes/bagunca.test.js`.
+
 ### Pular a rodada
 
 Qualquer pessoa pode votar para **pular a rodada**, e com **metade mais um**
@@ -1162,6 +1226,13 @@ entram com um estado a mais entre a categoria e a pergunta:
 lobby → categoria → leilao → pergunta → resultado → …
 ```
 
+Na **Bagunça**, a rodada sorteada ganha um estado antes da categoria — a tela
+da roleta:
+
+```
+… resultado → sorteio → categoria → (leilao →) pergunta → resultado → …
+```
+
 O líder volta ao saguão pelo botão *Jogar de novo*, mantendo os jogadores.
 
 ## Ritmo de uma rodada
@@ -1527,7 +1598,11 @@ a **aba Estatísticas** (os números de cada pergunta, os totais pesados, as
 ordens, as páginas e a resposta que não sai),
 as **músicas** (arquivo, duração e perguntas que batem, o ponto sorteado longe
 do começo e do fim, a Corrida que fecha no primeiro acerto, as quatro opções
-honestas do Qual é a música e a partida pelo número de músicas)
+honestas do Qual é a música e a partida pelo número de músicas),
+a **Bagunça** (o ritmo de Modo Tempo e sorteio, os modos em equipe só com 4
+ou mais, só sai o que foi marcado e nunca duas vezes seguidas, as equipes
+sorteadas, a Escalada que sobe a cada sorteio e a música que não vaza para o
+Modo Tempo)
 e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim

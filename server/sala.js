@@ -147,6 +147,15 @@ const MS_MARGEM_FIM = 10000;
 const OPCOES_QUAL_MUSICA = 4;      // Qual e a musica: a certa e tres erradas
 const TOTAL_MUSICAS_PADRAO = 15;   // partida que acaba pelo numero de musicas
 
+/* Bagunca: todos os modos numa partida so. Entre um sorteio e outro a sala
+   joga perguntas do Modo Tempo — quantas, o lider escolhe —, e o sorteio diz
+   de que modo e a rodada seguinte. */
+const PERGUNTAS_ATE_SORTEIO = [0, 1, 2, 3, 4, 5, 6];  // 0: toda rodada e sorteada
+const PERGUNTAS_ATE_SORTEIO_PADRAO = 3;
+const MS_SORTEIO = 5500;           // a roleta gira, para e da tempo de ler a regra
+// Duas equipes de dois: abaixo disso os modos em equipe nem entram na roleta.
+const MIN_JOGADORES_EQUIPES = 4;
+
 // Sala congelada que volta a ter gente: um respiro antes da proxima rodada.
 const MS_VOLTA_DA_SALA = 2500;
 // Todo mundo travou antes do tempo: um respiro curto para a mesa ler "todo
@@ -255,6 +264,14 @@ const MODOS = [
     musical: true
   },
   {
+    id: 'bagunca',
+    nome: 'Bagunca',
+    icone: '🎲',
+    descricao: 'Todos os modos numa partida so. Depois de algumas perguntas do Modo Tempo (3, se ninguem mexer), um sorteio escolhe o modo da rodada seguinte — e volta o Modo Tempo. Os modos em equipe so entram no sorteio com 4 ou mais na sala. Quantas perguntas ate o sorteio e quais modos entram nele, voce escolhe.',
+    disponivel: true,
+    bagunca: true
+  },
+  {
     id: 'equipes',
     nome: 'Equipes',
     icone: '🤝',
@@ -262,6 +279,29 @@ const MODOS = [
     disponivel: false
   }
 ];
+
+/**
+ * O que a roleta da Bagunca pode sortear: todo modo que existe, menos ela
+ * mesma e o Modo Tempo, que ja e o recheio entre um sorteio e outro.
+ */
+const MODOS_SORTEAVEIS = MODOS
+  .filter((m) => m.disponivel && !m.bagunca && m.id !== 'tempo')
+  .map((m) => m.id);
+
+/**
+ * A parte da configuracao que e so da Bagunca, conferida: quantas perguntas
+ * do Modo Tempo entre um sorteio e outro, e quais modos entram na roleta.
+ * Devolve `{ erro }` quando nao sobra modo nenhum para sortear.
+ */
+function configDaBagunca(bruta) {
+  const ate = Number(bruta && bruta.perguntasAteSorteio);
+  const perguntasAteSorteio = PERGUNTAS_ATE_SORTEIO.includes(ate) ? ate : PERGUNTAS_ATE_SORTEIO_PADRAO;
+  const pedidos = bruta && Array.isArray(bruta.modosBagunca) ? bruta.modosBagunca : MODOS_SORTEAVEIS;
+  // Na ordem da tela, sem repetir e sem o que nao existe.
+  const modosBagunca = MODOS_SORTEAVEIS.filter((id) => pedidos.includes(id));
+  if (!modosBagunca.length) return { erro: 'Deixe pelo menos um modo no sorteio da Bagunca.' };
+  return { perguntasAteSorteio, modosBagunca };
+}
 
 /* ------------------------------ Utilidades ------------------------------ */
 
@@ -432,6 +472,11 @@ class Sala {
     this.emitir = emitir;
     this.emitirPara = emitirPara || (() => {});
 
+    // Bagunca: o modo da rodada que esta no ar, e a conta do sorteio. Fora da
+    // Bagunca o modo e sempre o da sala e isto fica parado.
+    this.modoAtual = null;
+    this.bagunca = null;
+
     this.jogadores = new Map(); // socketId -> jogador
     // Quem caiu, guardado pelo nickname: quem volta com o mesmo nome volta com
     // o que era dele. Uma queda de conexao nao devia custar a partida.
@@ -483,6 +528,8 @@ class Sala {
     // perguntas do banco, "Legiao Urbana" de 5.
     this.respostasUsadas = new Set();
     this.listasUsadas = new Set();
+    // Bagunca: a rodada musical tira daqui, longe das filas das categorias.
+    this.filasMusica = new Map();
     // A mesma musica tem duas perguntas (o nome e quem canta), com respostas
     // diferentes: sem isto ela tocava duas vezes na partida.
     this.audiosUsados = new Set();
@@ -773,6 +820,9 @@ class Sala {
     if (this.estado !== 'lobby' && this.estado !== 'fim') {
       return { erro: 'A partida ja esta em andamento.' };
     }
+    // As travas abaixo sao do modo da sala: o que a Bagunca sorteou na
+    // partida passada nao vale mais.
+    this.modoAtual = null;
     if (this.jogadores.size < 1) {
       return { erro: 'E preciso pelo menos um jogador.' };
     }
@@ -800,6 +850,11 @@ class Sala {
     this.respostasUsadas.clear();
     this.listasUsadas.clear();
     this.audiosUsados.clear();
+    this.filasMusica = new Map();
+    // desdeSorteio: perguntas do Modo Tempo desde o ultimo sorteio. vezes:
+    // quantas vezes cada modo ja saiu (a Escalada e o Carrossel crescem com
+    // isso). ultimo: o modo do sorteio anterior, que espera a vez.
+    this.bagunca = this.ehBagunca() ? { desdeSorteio: 0, vezes: {}, ultimo: null } : null;
     if (this.ehLeilao()) this.formarEquipes();
     this.montarFila();
     this.proximaRodada();
@@ -808,22 +863,37 @@ class Sala {
 
   /* ------------------------- Equipes (Presente Grego) ------------------------ */
 
+  /**
+   * O modo da rodada. Fora da Bagunca e sempre o da sala; nela e o que o
+   * sorteio escolheu, ou o Modo Tempo entre um sorteio e outro. Todo `ehX`
+   * abaixo pergunta por este, e nao pelo da sala: e assim que a mesma sala
+   * joga um leilao numa rodada e um carrossel na outra.
+   */
+  get modo() {
+    return this.modoAtual || this.config.modo;
+  }
+
+  /** Todos os modos numa partida so, com um sorteio de tempos em tempos. */
+  ehBagunca() {
+    return this.config.modo === 'bagunca';
+  }
+
   ehPresenteGrego() {
-    return this.config.modo === 'presente-grego';
+    return this.modo === 'presente-grego';
   }
 
   ehVeni() {
-    return this.config.modo === 'veni';
+    return this.modo === 'veni';
   }
 
   /** Corrida musical: o primeiro que acerta leva, e a musica para ali. */
   ehCorrida() {
-    return this.config.modo === 'corrida';
+    return this.modo === 'corrida';
   }
 
   /** Qual e a musica: quatro opcoes, um clique por pessoa. */
   ehQualMusica() {
-    return this.config.modo === 'qual-musica';
+    return this.modo === 'qual-musica';
   }
 
   /** Os dois modos que so tocam musica. */
@@ -831,9 +901,14 @@ class Sala {
     return this.ehCorrida() || this.ehQualMusica();
   }
 
-  /** Partida que acaba pelo numero de musicas, e nao pela meta de pontos. */
+  /**
+   * Partida que acaba pelo numero de musicas, e nao pela meta de pontos.
+   * E regra da sala, nao da rodada: a musica sorteada na Bagunca nao muda
+   * como a partida acaba.
+   */
   fimPorMusicas() {
-    return this.ehMusical() && this.config.fimPor === 'musicas';
+    const daSala = MODOS.find((m) => m.id === this.config.modo);
+    return Boolean(daSala && daSala.musical) && this.config.fimPor === 'musicas';
   }
 
   /** Por quanto tempo a musica toca, no maximo. */
@@ -851,15 +926,23 @@ class Sala {
   }
 
   ehRanking() {
-    return this.config.modo === 'ranking';
+    return this.modo === 'ranking';
+  }
+
+  /**
+   * Mais ou Menos Pontos: quantas rodadas a mesma lista rende. Na Bagunca o
+   * modo sorteado dura uma rodada, entao a lista abre e fecha nela.
+   */
+  voltasRanking() {
+    return this.ehBagunca() ? 1 : VOLTAS_RANKING;
   }
 
   ehLeilaoGeral() {
-    return this.config.modo === 'leilao-geral';
+    return this.modo === 'leilao-geral';
   }
 
   ehDandoDicas() {
-    return this.config.modo === 'dando-dicas';
+    return this.modo === 'dando-dicas';
   }
 
   /** O leilao do Dando dicas anda para tras: ganha quem pedir MENOS. */
@@ -1091,6 +1174,34 @@ class Sala {
     }
   }
 
+  /**
+   * Bagunca: as equipes saem do sorteio, embaralhadas, cada vez que cai um
+   * modo de leilao.
+   *
+   * Nao ha saguao de equipes — o modo so aparece de vez em quando, e quem
+   * esta na sala muda no caminho. O Presente Grego divide a sala em duas
+   * equipes, que e como ele joga; o Dando dicas abre duplas, e com gente
+   * impar uma delas vira trio. No Leilao Geral cada um e o proprio time.
+   */
+  sortearEquipes() {
+    if (this.ehLeilaoGeral()) return this.formarEquipes();
+
+    const ids = embaralhar([...this.jogadores.keys()]);
+    const quantas = this.ehDandoDicas()
+      ? Math.min(MAX_EQUIPES, Math.max(MIN_EQUIPES, Math.floor(ids.length / MIN_TAMANHO_EQUIPE)))
+      : MIN_EQUIPES;
+    this.equipes = criarEquipes(quantas);
+    this.tamanhoEquipe = Math.min(MAX_TAMANHO_EQUIPE,
+      Math.max(MIN_TAMANHO_EQUIPE, Math.ceil(ids.length / quantas)));
+    this.formatoAMao = false;
+    // Um para cada lado, em roda: as equipes nunca diferem em mais de um.
+    ids.forEach((id, i) => this.equipes[i % quantas].jogadores.push(id));
+    for (const equipe of this.equipes) {
+      equipe.giro = Math.floor(Math.random() * Math.max(1, equipe.jogadores.length));
+    }
+    this.renomearEquipes();
+  }
+
   /** Os integrantes que ainda estão na sala. */
   presentesDe(equipe) {
     return equipe ? equipe.jogadores.filter((id) => this.jogadores.has(id)) : [];
@@ -1181,6 +1292,12 @@ class Sala {
 
   /** As perguntas de uma categoria, respeitando as partes marcadas. */
   perguntasDaCategoria(idCategoria) {
+    // Bagunca: a rodada musical toca musica mesmo sem a categoria marcada —
+    // quem pediu musica foi o sorteio. So entram as perguntas que os dois
+    // modos musicais sabem jogar: o nome da musica ou quem canta.
+    if (this.ehBagunca() && this.ehMusical() && idCategoria === 'ouvir') {
+      return (QUESTOES.ouvir || []).map((p) => ({ ...p, categoria: 'ouvir' })).filter(tipoMusical);
+    }
     const perguntas = perguntasEscolhidas(this.config, idCategoria);
     // Qual e a musica so faz pergunta que tem opcao: o nome ou quem canta.
     // "De qual anime e esta musica?" nao tem tres erradas para oferecer.
@@ -1219,11 +1336,11 @@ class Sala {
    * Resposta puramente numérica escapa da regra: "quanto e 6x5" e "quanto e
    * 27+3" dão 30, e ninguém sente isso como repetição — são contas diferentes.
    */
-  sacarDaCategoria(categoria) {
-    let fila = this.filas.get(categoria);
+  sacarDaCategoria(categoria, filas = this.filas) {
+    let fila = filas.get(categoria);
     if (!fila || fila.length === 0) {
       fila = this.novaFila(categoria);
-      this.filas.set(categoria, fila);
+      filas.set(categoria, fila);
     }
 
     const livre = (bruta) => {
@@ -1254,8 +1371,19 @@ class Sala {
     // baralho dela. Recomeça a categoria em vez de ficar sem pergunta.
     const nova = this.novaFila(categoria);
     const bruta = nova.shift();
-    this.filas.set(categoria, nova);
+    filas.set(categoria, nova);
     return usar(bruta);
+  }
+
+  /**
+   * Bagunca: a musica da rodada musical sai de uma fila so dela.
+   *
+   * Na fila das categorias ela vazaria: o `sacarDaFila` sorteia entre as
+   * filas que existem, e Ouvir musicas passaria a cair no Modo Tempo de uma
+   * sala que nem marcou a categoria.
+   */
+  sacarMusica() {
+    return this.sacarDaCategoria('ouvir', this.filasMusica);
   }
 
   /**
@@ -1505,7 +1633,7 @@ class Sala {
 
   /** Uma pergunta comum: uma resposta só. */
   perguntaSimples() {
-    const bruta = this.sacarDaFila();
+    const bruta = this.ehBagunca() && this.ehMusical() ? this.sacarMusica() : this.sacarDaFila();
     const id = idDaPergunta(bruta.categoria, bruta);
     const difBase = bruta.dif ?? 40;
     const opcoes = this.ehQualMusica() ? montarOpcoes(bruta) : null;
@@ -1686,17 +1814,136 @@ class Sala {
     this.ordem = ids.slice(giro).concat(ids.slice(0, giro));
     this.vivos = new Set(this.ordem);
     this.vez = 0;
-    this.voltasAlvo = this.voltasDaRodada(this.rodada);
+    this.voltasAlvo = this.voltasDaRodada(this.rodadaDoModo());
     this.voltasFeitas = 0;
   }
 
+  /**
+   * A rodada "do modo", para os modos que crescem a cada rodada. Fora da
+   * Bagunca e a rodada da partida; nela, quantas vezes o modo ja saiu no
+   * sorteio — o Carrossel continua de onde parou, em vez de pular para a
+   * altura da partida.
+   */
+  rodadaDoModo() {
+    return this.ehBagunca() ? (this.bagunca.vezes[this.modo] || 1) : this.rodada;
+  }
+
+  /* ------------------------------ Bagunca ------------------------------ */
+
+  /** Quantas perguntas do Modo Tempo entre um sorteio e outro. */
+  perguntasAteSorteio() {
+    const n = this.config.perguntasAteSorteio;
+    return PERGUNTAS_ATE_SORTEIO.includes(n) ? n : PERGUNTAS_ATE_SORTEIO_PADRAO;
+  }
+
+  /**
+   * Os modos marcados que cabem na sala agora. Modo de equipe precisa de
+   * duas equipes de dois; o Leilao Geral, de alguem para cobrir o lance.
+   */
+  modosQueCabem() {
+    const gente = this.jogadores.size;
+    return (this.config.modosBagunca || MODOS_SORTEAVEIS).filter((id) => {
+      const modo = MODOS.find((m) => m.id === id);
+      if (!modo) return false;
+      if (modo.equipes) return gente >= MIN_JOGADORES_EQUIPES;
+      if (id === 'leilao-geral') return gente >= 2;
+      return true;
+    });
+  }
+
+  /**
+   * Bagunca: de que modo e a proxima rodada.
+   *
+   * Entre um sorteio e outro a sala joga o Modo Tempo, quantas perguntas o
+   * lider escolheu. Fechou a conta, a roleta gira e a rodada seguinte e do
+   * modo sorteado — depois volta o Modo Tempo e a conta recomeca.
+   */
+  rodadaDaBagunca() {
+    if (this.bagunca.desdeSorteio < this.perguntasAteSorteio()) {
+      this.bagunca.desdeSorteio += 1;
+      this.modoAtual = 'tempo';
+      return this.comecarRodada();
+    }
+    this.bagunca.desdeSorteio = 0;
+    this.sortearModo();
+  }
+
+  /**
+   * A roleta: um modo entre os marcados que cabem na sala agora.
+   *
+   * O ultimo sorteado espera a vez, para a Bagunca nao repetir o modo duas
+   * vezes seguidas. Caiu modo de leilao, as equipes saem junto, e a tela do
+   * sorteio ja mostra quem joga com quem.
+   */
+  sortearModo() {
+    const cabem = this.modosQueCabem();
+    if (!cabem.length) {
+      this.avisar(`Nenhum modo do sorteio cabe numa sala de ${this.jogadores.size}. Segue o Modo Tempo.`, true);
+      this.modoAtual = 'tempo';
+      return this.comecarRodada();
+    }
+
+    const outros = cabem.filter((id) => id !== this.bagunca.ultimo);
+    const bolo = outros.length ? outros : cabem;
+    const id = bolo[Math.floor(Math.random() * bolo.length)];
+
+    this.modoAtual = id;
+    this.bagunca.ultimo = id;
+    this.bagunca.vezes[id] = (this.bagunca.vezes[id] || 0) + 1;
+    if (this.ehLeilao()) this.sortearEquipes();
+
+    this.estado = 'sorteio';
+    const cara = (m) => ({ id: m.id, nome: m.nome, icone: m.icone });
+    const modo = MODOS.find((m) => m.id === id);
+    this.emitir('bagunca:sorteio', {
+      rodada: this.rodada + 1,
+      modo: { ...cara(modo), descricao: modo.descricao },
+      // O que a roleta mostra girando: so o que podia ter saido.
+      roleta: cabem.map((m) => cara(MODOS.find((x) => x.id === m))),
+      equipes: this.temEquipes()
+        ? this.equipes.filter((e) => e.jogadores.length).map((e) => ({
+            nome: e.nome,
+            icone: e.icone,
+            cor: e.cor,
+            jogadores: e.jogadores.map((j) => (this.jogadores.get(j) || {}).nickname).filter(Boolean)
+          }))
+        : null,
+      duracaoMs: MS_SORTEIO,
+      placar: this.placar()
+    });
+    this.avisar(`Sorteio da Bagunca: ${modo.icone} ${modo.nome}!`, true);
+    this.agendar(() => this.comecarRodada(), MS_SORTEIO);
+  }
+
+  /** Na Bagunca, o que a tela da categoria conta: o modo, ou quanto falta para o sorteio. */
+  progressoDaBagunca() {
+    if (!this.ehBagunca()) return null;
+    // Recheio e o Modo Tempo que conta para o sorteio; o que entrou porque
+    // nenhum modo cabia na sala nao conta.
+    const recheio = this.modo === 'tempo' && this.bagunca.desdeSorteio > 0;
+    return { pergunta: recheio ? this.bagunca.desdeSorteio : null, de: this.perguntasAteSorteio() };
+  }
+
   proximaRodada() {
+    // Bagunca: antes da rodada, o modo dela — o Modo Tempo ou um sorteio.
+    if (this.ehBagunca()) return this.rodadaDaBagunca();
+    this.comecarRodada();
+  }
+
+  comecarRodada() {
     // Leilao sem dois lados não tem como acontecer.
     if (this.ehLeilao() && this.equipesAtivas().length < 2) {
-      this.avisar(this.ehLeilaoGeral()
-        ? 'Nao sobraram dois jogadores para o leilao. Fim de jogo.'
-        : 'Nao sobraram duas equipes completas. Fim de jogo.', true);
-      return this.terminar();
+      // Na Bagunca a sala encolheu entre o sorteio e a rodada: o modo
+      // sorteado fica para outra vez, e a partida segue.
+      if (this.ehBagunca()) {
+        this.avisar('A sala encolheu e o modo sorteado nao cabe mais. Segue o Modo Tempo.', true);
+        this.modoAtual = 'tempo';
+      } else {
+        this.avisar(this.ehLeilaoGeral()
+          ? 'Nao sobraram dois jogadores para o leilao. Fim de jogo.'
+          : 'Nao sobraram duas equipes completas. Fim de jogo.', true);
+        return this.terminar();
+      }
     }
 
     // Quem chegou com a rodada no ar ficou de fora dela; entre uma rodada e
@@ -1713,7 +1960,7 @@ class Sala {
       // cada uma, e o que já saiu continua fora.
       const mesmaLista = this.perguntaAtual
         && this.perguntaAtual.ranking
-        && this.voltaRanking < VOLTAS_RANKING;
+        && this.voltaRanking < this.voltasRanking();
 
       this.voltaRanking = mesmaLista ? this.voltaRanking + 1 : 1;
       this.itensJaDitos = mesmaLista ? new Set(this.itensUsados) : new Set();
@@ -1723,10 +1970,13 @@ class Sala {
     } else if (this.ehVeni()) {
       this.perguntaAtual = this.perguntaVeni();
     } else if (this.ehCarrossel()) {
-      this.perguntaAtual = this.perguntaCarrossel(this.rodada);
+      this.perguntaAtual = this.perguntaCarrossel(this.rodadaDoModo());
       this.prepararCarrossel();
-    } else if (this.config.modo === 'escalada') {
-      this.perguntaAtual = this.perguntaEscalada(this.rodada);
+    } else if (this.modo === 'escalada') {
+      // Na Bagunca a Escalada sobe um degrau a cada vez que sai, e comeca no
+      // 2: o degrau de uma resposta seria a pergunta comum do Modo Tempo.
+      const degrau = this.ehBagunca() ? this.rodadaDoModo() + 1 : this.rodada;
+      this.perguntaAtual = this.perguntaEscalada(degrau);
     } else {
       this.perguntaAtual = this.perguntaSimples();
     }
@@ -1761,6 +2011,9 @@ class Sala {
       // A musica tambem: o navegador baixa e ja pula para o ponto sorteado.
       // Sem isso, quem tem a internet lenta ouvia segundos depois dos outros.
       audio: this.audioParaCarregar(),
+      // O modo desta rodada: na Bagunca ele muda, e a tela se monta por ele.
+      modo: this.modo,
+      bagunca: this.progressoDaBagunca(),
       placar: this.placar()
     });
 
@@ -1915,7 +2168,7 @@ class Sala {
             total: this.perguntaAtual.itens.length,
             fonte: this.perguntaAtual.fonte,
             volta: this.voltaRanking,
-            voltas: VOLTAS_RANKING,
+            voltas: this.voltasRanking(),
             // O que ja saiu nas voltas anteriores: o chat rolou, e sem isso a
             // mesa repetiria o que nao vale mais.
             jaDitos: [...this.itensUsados].map((i) => this.perguntaAtual.itens[i].oficial)
@@ -2318,12 +2571,12 @@ class Sala {
   }
 
   ehCarrossel() {
-    return this.config.modo === 'carrossel' || this.config.modo === 'carrossel-cego';
+    return this.modo === 'carrossel' || this.modo === 'carrossel-cego';
   }
 
   /** So o carrossel visivel manda a lista do que ja foi respondido. */
   mostraDitos() {
-    return this.config.modo === 'carrossel';
+    return this.modo === 'carrossel';
   }
 
   /** Abre a vez de quem está na posição atual e liga o relógio dos 7s. */
@@ -3186,7 +3439,7 @@ class Sala {
     const l = this.leilao;
     if (!l) return null;
     return {
-      modo: this.config.modo,
+      modo: this.modo,
       aposta: l.aposta,
       ditas: l.ditas,
       premio: l.premio,
@@ -3466,9 +3719,9 @@ class Sala {
       // as respostas das proximas. Entao so sai o que a mesa mesma ja disse,
       // com a posicao de cada um, e o topo fica para a ultima volta.
       const posicoes = [...this.itensUsados].sort((a, b) => a - b);
-      if (this.voltaRanking < VOLTAS_RANKING) {
+      if (this.voltaRanking < this.voltasRanking()) {
         listaCompleta = posicoes.slice(0, 12).map((i) => `${i + 1}. ${pergunta.itens[i].oficial}`);
-        textoResposta = `volta ${this.voltaRanking} de ${VOLTAS_RANKING} — a mesma lista volta na proxima, sem repetir o que ja saiu`;
+        textoResposta = `volta ${this.voltaRanking} de ${this.voltasRanking()} — a mesma lista volta na proxima, sem repetir o que ja saiu`;
       } else {
         listaCompleta = pergunta.itens.slice(0, 12).map((i, k) => `${k + 1}. ${i.oficial}`);
         const ultimo = pergunta.itens[pergunta.itens.length - 1].oficial;
@@ -3584,9 +3837,12 @@ class Sala {
     }
   }
 
-  /** Os pontos do melhor adversario (de outra equipe, nos modos em equipe). */
+  /**
+   * Os pontos do melhor adversario (de outra equipe, nos modos em equipe). Na
+   * Bagunca a equipe dura uma rodada so: o parceiro dela e adversario no resto.
+   */
   pontosDoSegundo(jogador) {
-    const minhaEquipe = this.temEquipes() ? this.equipeDe(jogador.id) : null;
+    const minhaEquipe = this.temEquipes() && !this.ehBagunca() ? this.equipeDe(jogador.id) : null;
     let segundo = null;
     for (const outro of this.jogadores.values()) {
       if (outro.id === jogador.id) continue;
@@ -3675,6 +3931,8 @@ class Sala {
     this.estado = 'fim';
     this.limparTemporizador();
     this.perguntaAtual = null;
+    // Na Bagunca o placar final e de cada um: a equipe da ultima rodada sai dele.
+    this.modoAtual = null;
     this.emitir('jogo:fim', {
       placar: this.placar(),
       metaPontos: this.config.metaPontos,
@@ -3691,6 +3949,7 @@ class Sala {
     this.estado = 'lobby';
     this.rodada = 0;
     this.perguntaAtual = null;
+    this.modoAtual = null;
     this.acertos = new Map();
     this.progresso = new Map();
     this.itensUsados = new Set();
@@ -3738,6 +3997,8 @@ class Sala {
       estado: this.estado,
       config: this.config,
       rodada: this.rodada,
+      // Na Bagunca, o modo da rodada que esta no ar (quem entra no meio precisa dele).
+      modoDaRodada: this.modo,
       jogadores: this.placar(),
       equipes: this.equipes.map((e) => ({
         id: e.id, nome: e.nome, icone: e.icone, cor: e.cor, jogadores: e.jogadores
@@ -3918,6 +4179,7 @@ function perguntasEscolhidas(config, idCategoria) {
 module.exports = {
   Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, CHANCES_POR_PERGUNTA,
   LIMITE_MUSICA_PADRAO, TOTAL_MUSICAS_PADRAO,
+  MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
   gerarCodigo, calcularPontos, indicePerguntas, categoriasEmJogo, perguntasEscolhidas,
-  sortearInicio, montarOpcoes, tipoMusical, idDaPergunta
+  sortearInicio, montarOpcoes, tipoMusical, idDaPergunta, configDaBagunca
 };
