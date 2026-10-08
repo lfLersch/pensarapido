@@ -18,6 +18,7 @@ const estado = {
     modo: 'tempo',
     metaPontos: 120,
     segundosPorPergunta: 20,
+    faixa: { min: 0, max: 100 },  // Modo Tempo: a faixa de dificuldade das perguntas
     limiteMusica: 30,     // por quanto tempo a musica toca, no maximo
     fimPor: 'pontos',     // modos musicais: 'pontos' ou 'musicas'
     totalMusicas: 15,
@@ -198,7 +199,8 @@ async function carregarSalasAbertas() {
       : sala.estado === 'lobby' ? '' : ' · partida rolando';
     item.innerHTML = `
       <span class="sala-aberta__lider">${sala.avatar} ${escapar(sala.lider)}</span>
-      <span class="sala-aberta__modo">${sala.icone} ${escapar(sala.modo)} · ${sala.codigo}${quando}</span>
+      <span class="sala-aberta__modo">${sala.icone} ${escapar(sala.modo)}${
+        sala.titulo ? ` · ${escapar(sala.titulo)}` : ''} · ${sala.codigo}${quando}</span>
       <span class="sala-aberta__gente">${sala.jogadores}/${sala.max}</span>
       <button class="btn btn--secundario sala-aberta__entrar" type="button">Entrar</button>`;
     item.querySelector('button').addEventListener('click', () => {
@@ -1079,6 +1081,7 @@ async function carregarConfig() {
   montarLimites();
   montarFim();
   montarBagunca();
+  montarFaixa();
   sincronizarModo();
 }
 
@@ -1102,6 +1105,7 @@ function sincronizarModo() {
   $('bloco-tempo').hidden = musical;
   $('bloco-fim').hidden = !musical;
   $('bloco-bagunca').hidden = !bagunca;
+  $('bloco-faixa').hidden = estado.escolhas.modo !== 'tempo';
   const porMusicas = musical && estado.escolhas.fimPor === 'musicas';
   $('bloco-meta').hidden = porMusicas;
   $('total-opcoes').hidden = !porMusicas;
@@ -1195,6 +1199,137 @@ $('btn-nenhum-modo').addEventListener('click', () => {
   estado.escolhas.modosBagunca.clear();
   sincronizarBagunca();
 });
+
+/* -------------------- Faixa de dificuldade (Modo Tempo) -------------------- */
+
+/** O nivel (facil, medio, dificil) de um ponto da faixa. */
+function nivelDaFaixa(valor) {
+  const { niveis } = estado.config.faixa;
+  return niveis.find((n) => valor <= n.ate) || niveis[niveis.length - 1];
+}
+
+/** O titulo de uma faixa: o nivel onde ela comeca e o nivel onde termina. */
+function tituloDaFaixa(faixa) {
+  const de = nivelDaFaixa(faixa.min).id;
+  const ate = nivelDaFaixa(faixa.max).id;
+  return estado.config.faixa.titulos.find((t) => t.de === de && t.ate === ate);
+}
+
+const imagemDoTitulo = (titulo) => `img/titulos/${titulo.id}.svg`;
+
+/**
+ * A faixa de dificuldade do Modo Tempo: uma barra de duas alcas pintada de
+ * verde, amarelo e vermelho, e um atalho para cada titulo.
+ */
+function montarFaixa() {
+  const cfg = estado.config.faixa;
+  if (!cfg) return;
+  estado.escolhas.faixa = { ...cfg.padrao };
+
+  // Onde cada nivel comeca e termina na barra: a divisa fica entre o ultimo
+  // ponto de um nivel e o primeiro do outro (33 | 34 -> 33,5%).
+  const divisas = cfg.niveis.map((n) => (n.ate >= 100 ? 100 : n.ate + 0.5));
+  const pedacos = cfg.niveis.map((n, i) => ({ ...n, de: i ? divisas[i - 1] : 0, ate: divisas[i] }));
+  document.querySelector('.faixa__trilho').style.background = `linear-gradient(90deg, ${
+    pedacos.map((p) => `${p.cor} ${p.de}% ${p.ate}%`).join(', ')})`;
+
+  // O nome de cada nivel embaixo do pedaco dele.
+  const niveis = $('faixa-niveis');
+  niveis.innerHTML = '';
+  niveis.style.gridTemplateColumns = pedacos.map((p) => `${p.ate - p.de}fr`).join(' ');
+  for (const nivel of cfg.niveis) {
+    const rotulo = criar('span', 'faixa__nivel');
+    rotulo.style.setProperty('--cor', nivel.cor);
+    rotulo.textContent = nivel.nome;
+    niveis.appendChild(rotulo);
+  }
+
+  // Atalhos: cada titulo leva a faixa do comeco do nivel dele ao fim do outro.
+  const caixa = $('faixa-titulos');
+  caixa.innerHTML = '';
+  for (const titulo of cfg.titulos) {
+    const de = cfg.niveis.find((n) => n.id === titulo.de);
+    const ate = cfg.niveis.find((n) => n.id === titulo.ate);
+    const chip = criar('button', 'titulo-chip');
+    chip.type = 'button';
+    chip.dataset.id = titulo.id;
+    chip.title = `${de.de} a ${ate.ate}: ${titulo.dica}`;
+    chip.innerHTML = `<img src="${imagemDoTitulo(titulo)}" alt="" width="28" height="28" /> ${escapar(titulo.nome)}`;
+    chip.addEventListener('click', () => {
+      estado.escolhas.faixa = { min: de.de, max: ate.ate };
+      sincronizarFaixa();
+    });
+    caixa.appendChild(chip);
+  }
+
+  // As alcas nao se cruzam, nem chegam mais perto que a largura minima.
+  const inputMin = $('faixa-min');
+  const inputMax = $('faixa-max');
+  inputMin.addEventListener('input', () => {
+    estado.escolhas.faixa.min = Math.min(Number(inputMin.value), estado.escolhas.faixa.max - cfg.minLargura);
+    sincronizarFaixa();
+  });
+  inputMax.addEventListener('input', () => {
+    estado.escolhas.faixa.max = Math.max(Number(inputMax.value), estado.escolhas.faixa.min + cfg.minLargura);
+    sincronizarFaixa();
+  });
+
+  // Clique na barra, fora das alcas: a alca mais perto vai ate ali.
+  const controle = $('faixa-controle');
+  controle.addEventListener('pointerdown', (evento) => {
+    if (evento.target.tagName === 'INPUT') return; // pegou a alca: o proprio input cuida
+    evento.preventDefault(); // senao o clique tira o foco da alca logo depois
+    const barra = controle.getBoundingClientRect();
+    const alca = parseFloat(getComputedStyle(controle).getPropertyValue('--alca')) || 0;
+    const fracao = (evento.clientX - barra.left - alca / 2) / (barra.width - alca);
+    const valor = Math.round(Math.min(1, Math.max(0, fracao)) * 100);
+    const { min, max } = estado.escolhas.faixa;
+    const input = valor <= min || Math.abs(valor - min) < Math.abs(valor - max) ? inputMin : inputMax;
+    input.value = valor;
+    input.dispatchEvent(new Event('input'));
+    input.focus();
+  });
+
+  sincronizarFaixa();
+}
+
+function sincronizarFaixa() {
+  const { min, max } = estado.escolhas.faixa;
+  const nivelMin = nivelDaFaixa(min);
+  const nivelMax = nivelDaFaixa(max);
+
+  // Cada alca leva a cor do nivel onde esta, e o que fica fora da faixa apaga.
+  for (const [input, valor, nivel] of [[$('faixa-min'), min, nivelMin], [$('faixa-max'), max, nivelMax]]) {
+    input.value = valor;
+    input.style.setProperty('--cor', nivel.cor);
+    input.setAttribute('aria-valuetext', `${valor}, ${nivel.nome}`);
+  }
+  $('faixa-fora-min').style.width = `${min}%`;
+  $('faixa-fora-max').style.width = `${100 - max}%`;
+
+  const titulo = tituloDaFaixa(estado.escolhas.faixa);
+  $('faixa').style.setProperty('--cor-de', nivelMin.cor);
+  $('faixa').style.setProperty('--cor-ate', nivelMax.cor);
+  $('faixa-imagem').src = imagemDoTitulo(titulo);
+  $('faixa-nome').textContent = titulo.nome;
+  $('faixa-dica').textContent = titulo.dica;
+  $('faixa-valores').innerHTML = `<b style="color:${nivelMin.cor}">${min}</b> a <b style="color:${nivelMax.cor}">${max}</b>`;
+
+  document.querySelectorAll('.titulo-chip').forEach((chip) => {
+    const marcado = chip.dataset.id === titulo.id;
+    chip.classList.toggle('escolhida', marcado);
+    chip.setAttribute('aria-pressed', String(marcado));
+  });
+  atualizarResumo();
+}
+
+/** "Primata · 0 a 33", com a ilustracao, para os dois resumos. */
+function resumoDaFaixa(faixa) {
+  if (!faixa || !estado.config.faixa) return '';
+  const titulo = tituloDaFaixa(faixa);
+  return `<span class="resumo__faixa"><img src="${imagemDoTitulo(titulo)}" alt="" width="20" height="20" /><b>${
+    escapar(titulo.nome)}</b> · ${faixa.min} a ${faixa.max}</span>`;
+}
 
 /** "7 modos · sorteio a cada 3 perguntas", para os dois resumos. */
 function resumoDaBagunca(perguntas, quantosModos) {
@@ -1453,6 +1588,7 @@ function atualizarResumo() {
     <span>${plural(total, 'categoria', 'categorias')}</span>
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     ${bagunca ? resumoDaBagunca(estado.escolhas.perguntasAteSorteio, estado.escolhas.modosBagunca.size) : ''}
+    ${modo && modo.id === 'tempo' ? resumoDaFaixa(estado.escolhas.faixa) : ''}
     <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
     ${modo && modo.equipes ? '<span>👥 <b>4+</b> jogadores, em equipes</span>' : ''}`;
@@ -1495,6 +1631,7 @@ $('btn-criar').addEventListener('click', () => {
     limiteMusica: estado.escolhas.limiteMusica,
     fimPor: estado.escolhas.fimPor,
     totalMusicas: estado.escolhas.totalMusicas,
+    ...(estado.escolhas.modo === 'tempo' ? { faixa: { ...estado.escolhas.faixa } } : {}),
     ...(bagunca ? {
       perguntasAteSorteio: estado.escolhas.perguntasAteSorteio,
       modosBagunca: [...estado.escolhas.modosBagunca]
@@ -1538,6 +1675,7 @@ function renderizarSala() {
     : `
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     ${modo && modo.bagunca ? resumoDaBagunca(sala.config.perguntasAteSorteio, (sala.config.modosBagunca || []).length) : ''}
+    ${resumoDaFaixa(sala.config.faixa)}
     <span>Meta <b>${sala.config.metaPontos} pts</b></span>
     <span><b>${sala.config.segundosPorPergunta}s</b> por pergunta</span>
     <span>${plural(emJogo.length, 'categoria', 'categorias')}</span>`;

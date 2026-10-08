@@ -9,7 +9,8 @@ const {
   Sala, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, gerarCodigo, indicePerguntas,
   categoriasEmJogo, perguntasEscolhidas, LIMITE_MUSICA_PADRAO, TOTAL_MUSICAS_PADRAO,
   MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
-  configDaBagunca
+  configDaBagunca, FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
+  faixaDe, naFaixa, tituloDaFaixa
 } = require('./sala');
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
@@ -56,6 +57,13 @@ app.get('/api/config', (_req, res) => {
       perguntasPadrao: PERGUNTAS_ATE_SORTEIO_PADRAO,
       minEquipes: MIN_JOGADORES_EQUIPES
     },
+    // Modo Tempo: a faixa de dificuldade das perguntas e o titulo de cada uma.
+    faixa: {
+      padrao: FAIXA_PADRAO,
+      minLargura: FAIXA_MIN_LARGURA,
+      niveis: NIVEIS_FAIXA,
+      titulos: TITULOS_FAIXA
+    },
     meta: { min: META_MIN, max: META_MAX },
     niveis: dificuldade.NIVEIS,
     versao: VERSAO,
@@ -99,6 +107,8 @@ app.get('/api/salas', (_req, res) => {
 
     const lider = [...sala.jogadores.values()].find((j) => j.lider);
     const modo = MODOS.find((m) => m.id === sala.config.modo);
+    // Modo Tempo fora do Normal: o titulo vai junto ("Primata"), porque muda a partida.
+    const titulo = sala.config.faixa ? tituloDaFaixa(sala.config.faixa) : null;
     abertas.push({
       codigo: sala.codigo,
       lider: lider ? lider.nickname : '',
@@ -107,6 +117,7 @@ app.get('/api/salas', (_req, res) => {
       max: MAX_JOGADORES,
       modo: modo ? modo.nome : sala.config.modo,
       icone: modo ? modo.icone : '',
+      titulo: titulo && titulo.id !== 'normal' ? titulo.nome : '',
       estado: sala.estado
     });
   }
@@ -208,12 +219,19 @@ function validarConfig(bruta) {
   const fora = modo.musical ? [] : partes(bruta.fora, true);
   const subs = modo.musical ? [] : partes(bruta.subs, false);
 
+  // Modo Tempo: de que faixa de dificuldade saem as perguntas.
+  const faixa = modo.id === 'tempo' ? faixaDe(bruta.faixa) : null;
+
   // Categoria marcada com todas as partes desmarcadas pode ficar sem nada
   // (Marcas só tem perguntas dentro das partes).
   const escolha = { categorias, subs, fora };
   const comPerguntas = categoriasEmJogo(escolha)
     .filter((id) => perguntasEscolhidas(escolha, id).length > 0);
   if (comPerguntas.length === 0) return { erro: 'Escolha pelo menos uma categoria.' };
+  // Faixa estreita sobre uma parte pequena também pode não deixar nada.
+  if (faixa && !comPerguntas.some((id) => naFaixa(id, perguntasEscolhidas(escolha, id), faixa).length > 0)) {
+    return { erro: 'Nenhuma pergunta nessa faixa: marque mais categorias ou alargue a faixa.' };
+  }
 
   // Partida pelo número de músicas só existe nos modos musicais; nos outros
   // quem decide é sempre a meta de pontos.
@@ -242,6 +260,7 @@ function validarConfig(bruta) {
       categorias, subs, fora, modo: modo.id,
       metaPontos: Number.isInteger(metaPontos) ? metaPontos : 120,
       segundosPorPergunta, limiteMusica, fimPor, totalMusicas,
+      ...(faixa ? { faixa } : {}),
       ...bagunca
     }
   };

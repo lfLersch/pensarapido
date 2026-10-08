@@ -17,6 +17,17 @@
 
 const NOTAS = [
   {
+    versao: '1.32',
+    data: '2026-10-08',
+    titulo: 'Modo Tempo: escolha a dificuldade',
+    itens: [
+      'Quem cria a sala no Modo Tempo escolhe a faixa de dificuldade das perguntas, de 0 a 100, numa barra verde, amarela e vermelha: facil, medio e dificil.',
+      'A faixa da o titulo da sala: Primata so com as faceis, Analfabeto do facil ao medio, Esquisito so no meio, Palestrinha do medio ao dificil e Pseudo intelectual so com as dificeis. De 0 a 100 continua Normal.',
+      'A dificuldade e medida dentro de cada categoria, entao toda categoria tem pergunta em qualquer faixa.',
+      'O titulo aparece no resumo da sala e na lista de salas abertas do saguao.'
+    ]
+  },
+  {
     versao: '1.31',
     data: '2026-10-06',
     titulo: 'Bagunca: todos os modos num so',

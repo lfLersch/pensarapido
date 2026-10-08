@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Pseudo intelectual: so as dificeis. Fundo vermelho. -->
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fb7185"/>
+      <stop offset="1" stop-color="#be123c"/>
+    </linearGradient>
+    <clipPath id="circulo"><circle cx="32" cy="32" r="32"/></clipPath>
+  </defs>
+  <g clip-path="url(#circulo)">
+    <rect width="64" height="64" fill="url(#fundo)"/>
+    <!-- gola alta preta -->
+    <path d="M8 64 C8 52 19 48 32 48 C45 48 56 52 56 64 Z" fill="#18181b" stroke="#0a0a0a" stroke-width="1.6"/>
+    <rect x="26" y="42.5" width="12" height="8" rx="3" fill="#27272a" stroke="#0a0a0a" stroke-width="1.4"/>
+    <circle cx="32" cy="32" r="14" fill="#f6cba0" stroke="#2b1a10" stroke-width="1.6"/>
+    <path d="M18.4 31 Q18 26.5 20.5 23.5 M45.6 31 Q46 26.5 43.5 23.5" fill="none" stroke="#5b3a29" stroke-width="3" stroke-linecap="round"/>
+    <!-- boina de lado -->
+    <g transform="rotate(-14 31 20.5)">
+      <rect x="29.8" y="12.2" width="2.6" height="3.4" rx="1.1" fill="#1f1f23" stroke="#0a0a0a" stroke-width="1"/>
+      <ellipse cx="31" cy="20.5" rx="16" ry="5.8" fill="#1f1f23" stroke="#0a0a0a" stroke-width="1.4"/>
+    </g>
+    <!-- uma sobrancelha la em cima -->
+    <path d="M23 27.4 Q26 26.2 29.5 27.6" fill="none" stroke="#3f2a1d" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M34.5 26 Q37.5 23.8 41 25.2" fill="none" stroke="#3f2a1d" stroke-width="1.6" stroke-linecap="round"/>
+    <!-- oculos redondos e olhar de cima -->
+    <circle cx="27" cy="34" r="1.5" fill="#2b1a10"/>
+    <circle cx="38" cy="34" r="1.5" fill="#2b1a10"/>
+    <path d="M24 33 H29.8 M35 33 H40.8" fill="none" stroke="#2b1a10" stroke-width="1.6" stroke-linecap="round"/>
+    <circle cx="26.5" cy="33.2" r="4.6" fill="#fff" fill-opacity=".3" stroke="#111" stroke-width="1.7"/>
+    <circle cx="37.5" cy="33.2" r="4.6" fill="#fff" fill-opacity=".3" stroke="#111" stroke-width="1.7"/>
+    <path d="M31.1 33.2 Q32 32.2 32.9 33.2" fill="none" stroke="#111" stroke-width="1.5"/>
+    <path d="M21.9 32.6 L18.6 31.6 M42.1 32.6 L45.4 31.6" fill="none" stroke="#111" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- bigodinho, sorriso de canto e cachimbo -->
+    <path d="M27 40.3 Q29.8 38.4 32 39.8 Q34.2 38.4 37 40.3 Q34.4 41.2 32 40.7 Q29.6 41.2 27 40.3 Z" fill="#3f2a1d"/>
+    <path d="M29.5 43 Q32.5 44.3 35 42.6" fill="none" stroke="#2b1a10" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M35 43.2 L44.8 46.6" fill="none" stroke="#4a2c14" stroke-width="2" stroke-linecap="round"/>
+    <path d="M44 43.5 h6.2 v4.2 q0 3.3 -3.1 3.3 q-3.1 0 -3.1 -3.3 Z" fill="#6b4423" stroke="#2b1a10" stroke-width="1.2" stroke-linejoin="round"/>
+    <ellipse cx="47.1" cy="43.5" rx="3.1" ry="1" fill="#2b1a10"/>
+    <path d="M48 41 q-2 -2.5 0 -5 q2 -2.5 0 -5" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="1.4" stroke-linecap="round"/>
+  </g>
+  <circle cx="32" cy="32" r="31" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>
+</svg>

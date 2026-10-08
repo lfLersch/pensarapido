@@ -156,6 +156,37 @@ const MS_SORTEIO = 5500;           // a roleta gira, para e da tempo de ler a re
 // Duas equipes de dois: abaixo disso os modos em equipe nem entram na roleta.
 const MIN_JOGADORES_EQUIPES = 4;
 
+/* Modo Tempo: de que faixa de dificuldade saem as perguntas. A escala e a da
+   dificuldade crescente — 0 a 100 DENTRO da categoria, 0 a mais facil de la e
+   100 a mais dificil. Na escala da propria pergunta (o `dif`) quase nada passa
+   de 67: Cinema nao tem nenhuma la em cima, e "so dificeis" ficaria vazio. */
+const FAIXA_PADRAO = { min: 0, max: 100 };
+// Mais estreita que isto, categoria pequena fica sem pergunta. Com 10 pontos,
+// toda categoria de 10 perguntas ou mais tem pelo menos uma na faixa.
+const FAIXA_MIN_LARGURA = 10;
+// Os tres niveis da faixa, com a cor de cada um na barra.
+const NIVEIS_FAIXA = [
+  { id: 'facil', nome: 'Facil', de: 0, ate: 33, cor: '#22c55e' },
+  { id: 'medio', nome: 'Medio', de: 34, ate: 66, cor: '#fbbf24' },
+  { id: 'dificil', nome: 'Dificil', de: 67, ate: 100, cor: '#f43f5e' }
+];
+// O titulo da sala: o nivel onde a faixa comeca e o nivel onde ela termina.
+// A ilustracao de cada um mora em public/img/titulos/<id>.svg.
+const TITULOS_FAIXA = [
+  { id: 'primata', de: 'facil', ate: 'facil', nome: 'Primata',
+    dica: 'So as mais faceis de cada categoria.' },
+  { id: 'analfabeto', de: 'facil', ate: 'medio', nome: 'Analfabeto',
+    dica: 'Do facil ao medio: nada muito puxado.' },
+  { id: 'normal', de: 'facil', ate: 'dificil', nome: 'Normal',
+    dica: 'De tudo um pouco, do facil ao dificil.' },
+  { id: 'esquisito', de: 'medio', ate: 'medio', nome: 'Esquisito',
+    dica: 'So o meio: nem facil, nem dificil.' },
+  { id: 'palestrinha', de: 'medio', ate: 'dificil', nome: 'Palestrinha',
+    dica: 'Do medio ao dificil: para quem adora explicar.' },
+  { id: 'pseudo-intelectual', de: 'dificil', ate: 'dificil', nome: 'Pseudo intelectual',
+    dica: 'So as mais dificeis de cada categoria.' }
+];
+
 // Sala congelada que volta a ter gente: um respiro antes da proxima rodada.
 const MS_VOLTA_DA_SALA = 2500;
 // Todo mundo travou antes do tempo: um respiro curto para a mesa ler "todo
@@ -301,6 +332,27 @@ function configDaBagunca(bruta) {
   const modosBagunca = MODOS_SORTEAVEIS.filter((id) => pedidos.includes(id));
   if (!modosBagunca.length) return { erro: 'Deixe pelo menos um modo no sorteio da Bagunca.' };
   return { perguntasAteSorteio, modosBagunca };
+}
+
+/** Modo Tempo: a faixa de dificuldade conferida. Torta ou estreita demais vira 0 a 100. */
+function faixaDe(bruta) {
+  const min = Number(bruta && bruta.min);
+  const max = Number(bruta && bruta.max);
+  const ok = Number.isInteger(min) && Number.isInteger(max)
+    && min >= 0 && max <= 100 && max - min >= FAIXA_MIN_LARGURA;
+  return ok ? { min, max } : { ...FAIXA_PADRAO };
+}
+
+/** O nivel (facil, medio, dificil) de um ponto da faixa. */
+function nivelDaFaixa(valor) {
+  return NIVEIS_FAIXA.find((n) => valor <= n.ate) || NIVEIS_FAIXA[NIVEIS_FAIXA.length - 1];
+}
+
+/** "Primata", "Palestrinha"...: o titulo de uma faixa. */
+function tituloDaFaixa(faixa) {
+  const de = nivelDaFaixa(faixa.min).id;
+  const ate = nivelDaFaixa(faixa.max).id;
+  return TITULOS_FAIXA.find((t) => t.de === de && t.ate === ate);
 }
 
 /* ------------------------------ Utilidades ------------------------------ */
@@ -1298,7 +1350,7 @@ class Sala {
     if (this.ehBagunca() && this.ehMusical() && idCategoria === 'ouvir') {
       return (QUESTOES.ouvir || []).map((p) => ({ ...p, categoria: 'ouvir' })).filter(tipoMusical);
     }
-    const perguntas = perguntasEscolhidas(this.config, idCategoria);
+    const perguntas = naFaixa(idCategoria, perguntasEscolhidas(this.config, idCategoria), this.config.faixa);
     // Qual e a musica so faz pergunta que tem opcao: o nome ou quem canta.
     // "De qual anime e esta musica?" nao tem tres erradas para oferecer.
     return this.ehQualMusica() ? perguntas.filter((q) => tipoMusical(q)) : perguntas;
@@ -4176,10 +4228,40 @@ function perguntasEscolhidas(config, idCategoria) {
   return todas.filter((p) => p.sub && soEstas.has(p.sub));
 }
 
+/**
+ * Modo Tempo: so as perguntas de uma categoria que caem na faixa escolhida.
+ *
+ * A posicao e o lugar da pergunta na fila da mais facil para a mais dificil,
+ * (lugar + 0,5) / total, em 0-100. Empate e comum — pergunta que nunca caiu
+ * fica na base escrita a mao —, e com a posicao media do empate um bloco de
+ * 60 perguntas iguais entraria inteiro ou ficaria inteiro de fora. Pelo
+ * lugar, cada faixa leva a fatia dela: a de 0 a 33 leva um terco, sempre.
+ * Empate se desfaz pela ordem do arquivo, para a faixa nao mudar a cada
+ * chamada.
+ *
+ * Cada ponto da barra vale meio ponto para cada lado: 0 a 33 vai ate 33,5 e
+ * 34 a 66 comeca dali. Sem isso a pergunta na posicao 33,4 nao caia em
+ * nenhuma das duas.
+ */
+function naFaixa(categoria, perguntas, faixa) {
+  if (!faixa || (faixa.min <= 0 && faixa.max >= 100)) return perguntas;
+  const ordem = perguntas
+    .map((q, i) => ({ q, i, dif: dificuldade.dificuldadeDe(idDaPergunta(categoria, q), q.dif ?? 40) }))
+    .sort((a, b) => a.dif - b.dif || a.i - b.i);
+  const dentro = new Set();
+  ordem.forEach(({ q }, lugar) => {
+    const posicao = (100 * (lugar + 0.5)) / ordem.length;
+    if (posicao >= faixa.min - 0.5 && posicao < faixa.max + 0.5) dentro.add(q);
+  });
+  return perguntas.filter((q) => dentro.has(q));
+}
+
 module.exports = {
   Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, CHANCES_POR_PERGUNTA,
   LIMITE_MUSICA_PADRAO, TOTAL_MUSICAS_PADRAO,
   MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
+  FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
   gerarCodigo, calcularPontos, indicePerguntas, categoriasEmJogo, perguntasEscolhidas,
-  sortearInicio, montarOpcoes, tipoMusical, idDaPergunta, configDaBagunca
+  sortearInicio, montarOpcoes, tipoMusical, idDaPergunta, configDaBagunca,
+  faixaDe, naFaixa, tituloDaFaixa
 };

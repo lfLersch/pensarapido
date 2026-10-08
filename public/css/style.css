@@ -433,6 +433,158 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .bagunca__modos { display: flex; gap: 7px; flex-wrap: wrap; }
 .bagunca__equipes { margin: 12px 0 0; }
 
+/* Modo Tempo: a faixa de dificuldade das perguntas e o titulo dela */
+
+.faixa { --alca: 22px; }
+
+.faixa__titulo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px 12px 12px;
+  background: linear-gradient(100deg,
+    color-mix(in srgb, var(--cor-de, var(--primaria)) 16%, rgba(0, 0, 0, 0.22)),
+    color-mix(in srgb, var(--cor-ate, var(--primaria)) 16%, rgba(0, 0, 0, 0.22)));
+  border: 1.5px solid color-mix(in srgb, var(--cor-ate, var(--primaria)) 45%, var(--borda));
+  border-radius: var(--raio-peq);
+  transition: background var(--transicao), border-color var(--transicao);
+}
+.faixa__imagem { flex: none; width: 60px; height: 60px; }
+.faixa__texto  { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.faixa__nome   { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+.faixa__dica   { font-size: 13px; color: var(--texto-suave); }
+.faixa__valores {
+  margin-left: auto;
+  flex: none;
+  font-size: 14px;
+  color: var(--texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+.faixa__valores b { font-size: 17px; }
+
+/* A barra: duas alcas por cima de um trilho pintado nos tres niveis. As alcas
+   sao dois <input type="range"> empilhados; so a bolinha recebe o clique. */
+.faixa__controle {
+  position: relative;
+  height: 30px;
+  margin: 20px 0 4px;
+  cursor: pointer;
+  touch-action: none;
+}
+.faixa__trilho {
+  position: absolute;
+  left: calc(var(--alca) / 2);
+  right: calc(var(--alca) / 2);
+  top: 50%;
+  height: 10px;
+  transform: translateY(-50%);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.faixa__fora {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: rgba(13, 10, 31, 0.78);
+}
+.faixa__fora--min { left: 0; }
+.faixa__fora--max { right: 0; }
+
+.faixa__controle input[type='range'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.faixa__controle input[type='range']:focus { outline: none; }
+.faixa__controle input[type='range']::-webkit-slider-runnable-track { height: 100%; background: none; }
+.faixa__controle input[type='range']::-moz-range-track { background: none; }
+.faixa__controle input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: var(--alca);
+  height: var(--alca);
+  margin-top: calc((30px - var(--alca)) / 2);
+  background: #fff;
+  border: 4px solid var(--cor, var(--primaria));
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}
+.faixa__controle input[type='range']::-moz-range-thumb {
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: var(--alca);
+  height: var(--alca);
+  background: #fff;
+  border: 4px solid var(--cor, var(--primaria));
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}
+.faixa__controle input[type='range']:active::-webkit-slider-thumb { cursor: grabbing; }
+.faixa__controle input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor, var(--primaria)) 45%, transparent);
+}
+.faixa__controle input[type='range']:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor, var(--primaria)) 45%, transparent);
+}
+
+.faixa__niveis {
+  display: grid;
+  margin: 0 calc(var(--alca) / 2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  text-align: center;
+}
+.faixa__nivel { color: var(--cor); }
+
+/* Um atalho por titulo, com a ilustracao */
+.faixa__titulos {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.titulo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 13px 4px 4px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto-suave);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1.5px solid var(--borda);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all var(--transicao);
+}
+.titulo-chip img { width: 28px; height: 28px; }
+.titulo-chip:hover { color: var(--texto); border-color: var(--borda-forte); }
+.titulo-chip.escolhida {
+  color: #fff;
+  background: rgba(124, 92, 255, 0.28);
+  border-color: var(--primaria);
+}
+
+.resumo span.resumo__faixa { display: inline-flex; align-items: center; gap: 6px; }
+
+/* No celular os numeros descem para baixo do texto, senao o texto vira coluna. */
+@media (max-width: 480px) {
+  .faixa__titulo  { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 4px; }
+  .faixa__imagem  { grid-row: span 2; width: 52px; height: 52px; }
+  .faixa__valores { margin-left: 0; }
+}
+
 /* "4+" no chip dos modos em equipe */
 .subchip__tag {
   margin-left: 3px;

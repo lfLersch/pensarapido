@@ -93,6 +93,7 @@ e que a versão do topo seja a do jogo.
 | --- | --- |
 | Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
 | Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical**, **Qual é a música** ou **Bagunça**, todos num só (Equipes aparece como *em breve*) |
+| Dificuldade das perguntas | só no Modo Tempo: uma faixa de **0 a 100** (padrão, *Normal*), que dá o título da sala — ver [Faixa de dificuldade](#faixa-de-dificuldade-modo-tempo) |
 | Bagunça | só nela: quantas perguntas do Modo Tempo até cada sorteio (0 a 6, **3** de padrão) e quais modos entram no sorteio (**todos** de padrão) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
@@ -940,6 +941,46 @@ entre as perguntas da frente da fila, a de dificuldade mais perto dele.
 
 `testes/crescente.test.js` simula uma partida: em Cinema, a média sai de
 0,05 (entre as mais fáceis) no começo para 0,98 no fim.
+
+### Faixa de dificuldade (Modo Tempo)
+
+No Modo Tempo, quem cria a sala escolhe **de que pedaço de cada categoria**
+saem as perguntas: uma barra de duas alças de 0 a 100, pintada em três níveis
+— **Fácil** (0–33, verde), **Médio** (34–66, amarelo) e **Difícil** (67–100,
+vermelho). O nível onde a faixa começa e o nível onde ela termina dão o
+**título da sala**, com uma ilustração para cada um:
+
+| Começa em | Termina em | Título | Atalho |
+| --- | --- | --- | --- |
+| Fácil | Fácil | **Primata** | 0–33 |
+| Fácil | Médio | **Analfabeto** | 0–66 |
+| Fácil | Difícil | **Normal** (o padrão) | 0–100 |
+| Médio | Médio | **Esquisito** | 34–66 |
+| Médio | Difícil | **Palestrinha** | 34–100 |
+| Difícil | Difícil | **Pseudo intelectual** | 67–100 |
+
+- A escala é a mesma da dificuldade crescente: **dentro da categoria**, 0 é a
+  pergunta mais fácil de lá e 100 a mais difícil. Na escala da própria
+  pergunta (o `dif`) quase nada passa de 67 — Cinema não tem nenhuma —, e "só
+  difíceis" ficaria vazio.
+- A posição é o **lugar** da pergunta na fila da mais fácil para a mais
+  difícil, não a média dos empates. Pergunta que nunca caiu fica na base
+  escrita à mão, e um bloco de 60 perguntas iguais entraria inteiro ou ficaria
+  inteiro de fora. Pelo lugar, os três níveis repartem a categoria sem sobra:
+  cada um leva um terço.
+- Cada ponto da barra vale meio ponto para cada lado (0–33 vai até 33,5), para
+  duas faixas vizinhas não deixarem pergunta no meio.
+- A faixa tem pelo menos **10 pontos** de largura: assim toda categoria de 10
+  perguntas ou mais tem pergunta em qualquer faixa. Se as categorias marcadas
+  não deixarem nenhuma, a sala não é criada.
+- Dentro da faixa a partida continua **crescente**: um Palestrinha começa
+  pelas médias e termina nas mais difíceis.
+- O título aparece no resumo da sala e na lista de salas abertas do saguão
+  (o *Normal* não, porque é o de sempre).
+
+Os níveis e os títulos ficam em `NIVEIS_FAIXA` e `TITULOS_FAIXA`, no topo de
+[`server/sala.js`](server/sala.js); as ilustrações em `public/img/titulos/`.
+`testes/faixa.test.js` cobre a validação, os títulos e o sorteio.
 
 ## Perfil e conquistas
 

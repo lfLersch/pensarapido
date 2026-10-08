@@ -228,6 +228,36 @@
         <div class="grade-modos" id="grade-modos"></div>
       </div>
 
+      <!-- Modo Tempo: de que faixa de dificuldade saem as perguntas. A faixa
+           da o titulo da sala: de Primata a Pseudo intelectual. -->
+      <div class="bloco" id="bloco-faixa" hidden>
+        <h3 class="bloco__titulo">Dificuldade das perguntas</h3>
+        <p class="bloco__dica">De 0 a 100 dentro de cada categoria: 0 e a pergunta mais facil de la, 100 a mais dificil. A partida continua comecando pelas mais faceis da faixa.</p>
+
+        <div class="faixa" id="faixa">
+          <div class="faixa__titulo">
+            <img class="faixa__imagem" id="faixa-imagem" src="img/titulos/normal.svg" alt="" width="60" height="60" />
+            <div class="faixa__texto">
+              <strong class="faixa__nome" id="faixa-nome">Normal</strong>
+              <span class="faixa__dica" id="faixa-dica"></span>
+            </div>
+            <span class="faixa__valores" id="faixa-valores" aria-live="polite"></span>
+          </div>
+
+          <div class="faixa__controle" id="faixa-controle">
+            <div class="faixa__trilho">
+              <i class="faixa__fora faixa__fora--min" id="faixa-fora-min"></i>
+              <i class="faixa__fora faixa__fora--max" id="faixa-fora-max"></i>
+            </div>
+            <input type="range" id="faixa-min" min="0" max="100" step="1" value="0" aria-label="Comeco da faixa" />
+            <input type="range" id="faixa-max" min="0" max="100" step="1" value="100" aria-label="Fim da faixa" />
+          </div>
+          <div class="faixa__niveis" id="faixa-niveis"></div>
+
+          <div class="faixa__titulos" id="faixa-titulos"></div>
+        </div>
+      </div>
+
       <!-- Bagunca: quantas perguntas do Modo Tempo entre um sorteio e outro, e
            quais modos entram na roleta. -->
       <div class="bloco" id="bloco-bagunca" hidden>

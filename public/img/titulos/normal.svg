@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Normal: do facil ao dificil. Fundo nas tres cores da faixa. -->
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset=".5" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#e11d48"/>
+    </linearGradient>
+    <clipPath id="circulo"><circle cx="32" cy="32" r="32"/></clipPath>
+  </defs>
+  <g clip-path="url(#circulo)">
+    <rect width="64" height="64" fill="url(#fundo)"/>
+    <rect x="28" y="42" width="8" height="8" fill="#f6cba0"/>
+    <path d="M10 64 C10 52 20 48 32 48 C44 48 54 52 54 64 Z" fill="#6366f1" stroke="#2b1a10" stroke-width="1.6"/>
+    <circle cx="32" cy="31" r="15" fill="#f6cba0" stroke="#2b1a10" stroke-width="1.6"/>
+    <path d="M17.2 29 C17 19 23.5 14.5 32 14.5 C40.5 14.5 47 19 46.8 29 C43 24 38 22.5 32 23.5 C26 22.5 21 24 17.2 29 Z" fill="#5b3a29" stroke="#2b1a10" stroke-width="1.6" stroke-linejoin="round"/>
+    <circle cx="26.5" cy="31" r="1.9" fill="#2b1a10"/>
+    <circle cx="37.5" cy="31" r="1.9" fill="#2b1a10"/>
+    <circle cx="23" cy="36" r="2.4" fill="#f48a8a" opacity=".5"/>
+    <circle cx="41" cy="36" r="2.4" fill="#f48a8a" opacity=".5"/>
+    <path d="M26.5 37 Q32 42 37.5 37" fill="none" stroke="#2b1a10" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+  <circle cx="32" cy="32" r="31" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>
+</svg>

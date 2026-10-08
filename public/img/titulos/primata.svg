@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Primata: so as faceis. Fundo verde. -->
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4ade80"/>
+      <stop offset="1" stop-color="#15803d"/>
+    </linearGradient>
+    <clipPath id="circulo"><circle cx="32" cy="32" r="32"/></clipPath>
+  </defs>
+  <g clip-path="url(#circulo)">
+    <rect width="64" height="64" fill="url(#fundo)"/>
+    <path d="M8 64 C8 51 19 47 32 47 C45 47 56 51 56 64 Z" fill="#6b3f1e" stroke="#2b1a10" stroke-width="1.6"/>
+    <circle cx="14.5" cy="31" r="7" fill="#7c4a24" stroke="#2b1a10" stroke-width="1.6"/>
+    <circle cx="14.5" cy="31" r="3.8" fill="#e8b48a"/>
+    <circle cx="49.5" cy="31" r="7" fill="#7c4a24" stroke="#2b1a10" stroke-width="1.6"/>
+    <circle cx="49.5" cy="31" r="3.8" fill="#e8b48a"/>
+    <circle cx="32" cy="31" r="17" fill="#7c4a24" stroke="#2b1a10" stroke-width="1.6"/>
+    <path d="M29 14.6 Q30.5 10 32.3 14.2 Q34.3 10.4 35.6 14.9" fill="none" stroke="#2b1a10" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M32 24.5 C29.5 20.5 20 20.5 20 28 C20 31.5 21.5 33 22.5 34.5 C20.5 37 21 44.5 32 45 C43 44.5 43.5 37 41.5 34.5 C42.5 33 44 31.5 44 28 C44 20.5 34.5 20.5 32 24.5 Z" fill="#e8b48a" stroke="#2b1a10" stroke-width="1.2"/>
+    <path d="M23.5 25.6 Q27 23.4 30 25.3 M34 25.3 Q37 23.4 40.5 25.6" fill="none" stroke="#2b1a10" stroke-width="1.4" stroke-linecap="round"/>
+    <circle cx="27" cy="29" r="2.3" fill="#1f130b"/>
+    <circle cx="27.7" cy="28.3" r=".7" fill="#fff"/>
+    <circle cx="37" cy="29" r="2.3" fill="#1f130b"/>
+    <circle cx="37.7" cy="28.3" r=".7" fill="#fff"/>
+    <ellipse cx="30" cy="35.3" rx="1.1" ry=".8" fill="#2b1a10"/>
+    <ellipse cx="34" cy="35.3" rx="1.1" ry=".8" fill="#2b1a10"/>
+    <path d="M25.5 38.8 Q32 44.5 38.5 38.8" fill="none" stroke="#2b1a10" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M43.5 50 C46.5 58.5 54 59.5 58.5 54 C53.5 55.5 49 53 46.5 48 Z" fill="#fde047" stroke="#2b1a10" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M46.5 48 L45.6 46.2" stroke="#2b1a10" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+  <circle cx="32" cy="32" r="31" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>
+</svg>
