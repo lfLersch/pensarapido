@@ -17,6 +17,16 @@
 
 const NOTAS = [
   {
+    versao: '1.33',
+    data: '2026-10-08',
+    titulo: 'Volume da musica e Formula 1',
+    itens: [
+      'O tocador das rodadas de musica ganhou volume: um botao de mudo e uma barra. O volume fica guardado no navegador e vale para as proximas musicas.',
+      'Esportes ganhou a parte Formula 1, com 76 perguntas novas: campeoes de cada ano, escuderias, os brasileiros, pistas, bandeiras e regras.',
+      'Nas perguntas de piloto, o sobrenome basta: Hamilton, Senna, Verstappen.'
+    ]
+  },
+  {
     versao: '1.32',
     data: '2026-10-08',
     titulo: 'Modo Tempo: escolha a dificuldade',

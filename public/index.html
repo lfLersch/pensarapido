@@ -477,6 +477,18 @@
               <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
             </div>
             <span class="tocador__aviso" id="tocador-aviso"></span>
+            <!-- O volume de cada um: fica guardado no navegador e vale para toda musica. -->
+            <div class="volume" id="volume">
+              <button class="volume__mudo" id="volume-mudo" type="button" aria-label="Tirar o som" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path class="volume__falante" d="M4 9h4l5-4v14l-5-4H4z" />
+                  <path class="volume__onda volume__onda--perto" d="M16 9.5a3.5 3.5 0 0 1 0 5" />
+                  <path class="volume__onda volume__onda--longe" d="M18.5 7a7 7 0 0 1 0 10" />
+                  <path class="volume__x" d="M16 9.5l5 5M21 9.5l-5 5" />
+                </svg>
+              </button>
+              <input class="volume__barra" id="volume-barra" type="range" min="0" max="100" step="1" value="80" aria-label="Volume" />
+            </div>
             <audio id="tocador-audio" preload="auto"></audio>
           </div>
 

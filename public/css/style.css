@@ -1317,6 +1317,95 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
 /* O pedaco chegou ao limite da sala: o aviso sai do amarelo de "faca algo". */
 .tocador.acabou .tocador__aviso { color: var(--texto-fraco); }
 
+/* Volume: o mudo e a barra, na ponta direita do tocador */
+.volume {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.volume__mudo {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: var(--texto);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background var(--transicao);
+}
+.volume__mudo:hover { background: rgba(255, 255, 255, 0.08); }
+.volume__mudo:focus-visible { outline: 2px solid #a855f7; outline-offset: 1px; }
+.volume__mudo svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.volume__falante { fill: currentColor; }
+.volume__x { display: none; }
+.volume--baixo .volume__onda--longe { display: none; }
+.volume--mudo .volume__onda { display: none; }
+.volume--mudo .volume__x { display: inline; }
+.volume--mudo .volume__mudo { color: var(--texto-fraco); }
+
+/* A barra pinta ate o nivel: roxa no que toca, apagada no resto. */
+.volume__barra {
+  width: 96px;
+  height: 18px;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.volume__barra:focus { outline: none; }
+.volume__barra::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #a855f7 var(--nivel, 80%), rgba(255, 255, 255, 0.18) var(--nivel, 80%));
+}
+.volume__barra::-moz-range-track {
+  height: 5px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #a855f7 var(--nivel, 80%), rgba(255, 255, 255, 0.18) var(--nivel, 80%));
+}
+.volume__barra::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4.5px;
+  background: #fff;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+.volume__barra::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+.volume__barra:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.5); }
+.volume__barra:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.5); }
+
+/* No celular o volume desce para uma linha so dele: na mesma linha do aviso
+   ("Toque para ouvir") o tocador passava da tela. E a barra larga e mais
+   facil de acertar com o dedo. */
+@media (max-width: 480px) {
+  .tocador { flex-wrap: wrap; row-gap: 8px; }
+  .volume { flex-basis: 100%; }
+  .volume__barra { flex: 1; width: auto; }
+}
+
 /* Qual e a musica: as quatro opcoes, em grade de 2 por 2. */
 .opcoes {
   display: grid;

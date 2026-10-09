@@ -467,6 +467,7 @@ function tocarTrecho(botao, url) {
   if (aba.tocando === botao) { pararTrecho(); return; }
   pararTrecho();
   aba.audio = aba.audio || new Audio();
+  aplicarVolume(aba.audio);
   aba.audio.src = url;
   aba.audio.onended = pararTrecho;
   // O arquivo e a musica inteira: aqui toca 30s a partir de um terco dela,
@@ -3286,15 +3287,17 @@ function tocarNoPonto() {
 
 /**
  * Entrada suave: o pedaco cai no meio de uma frase, e comecar no volume cheio
- * soa como um tranco. (O iPhone ignora o volume do <audio>: la entra seco.)
+ * soa como um tranco. Sobe ate o volume que a pessoa escolheu. (O iPhone
+ * ignora o volume do <audio>: la entra seco.)
  */
 function subirVolume(player) {
   clearInterval(estado.subindoVolume);
+  aplicarVolume(player);
   player.volume = 0;
   const comeco = Date.now();
   estado.subindoVolume = setInterval(() => {
     const fracao = Math.min(1, (Date.now() - comeco) / 600);
-    player.volume = fracao;
+    player.volume = fracao * volumeDoAudio();
     if (fracao >= 1) clearInterval(estado.subindoVolume);
   }, 40);
 }
@@ -3379,6 +3382,93 @@ $('tocador-audio').addEventListener('error', () => {
   $('tocador').classList.remove('tocando');
   $('tocador-aviso').textContent = 'Audio indisponivel';
 });
+
+/* ------------------------------ Volume ------------------------------- */
+
+// O volume e de cada navegador: fica guardado e vale para toda musica, da
+// rodada e do trecho das estatisticas.
+const VOLUME = 'pensarapido:volume';
+const VOLUME_PADRAO = { nivel: 80, mudo: false };
+
+function lerVolume() {
+  try {
+    const salvo = JSON.parse(localStorage.getItem(VOLUME));
+    if (salvo && Number.isFinite(salvo.nivel)) {
+      return { nivel: Math.min(100, Math.max(0, Math.round(salvo.nivel))), mudo: Boolean(salvo.mudo) };
+    }
+  } catch { /* sem armazenamento, ou guardado torto: fica o padrao */ }
+  return { ...VOLUME_PADRAO };
+}
+
+function guardarVolume() {
+  try { localStorage.setItem(VOLUME, JSON.stringify(estado.volume)); } catch { /* sem armazenamento: vale so ate fechar */ }
+}
+
+estado.volume = lerVolume();
+
+// No iPhone o volume do <audio> e so do aparelho: a pagina escreve e ele
+// continua em 1. La a barra nao mexeria em nada, entao fica so o mudo.
+const volumeFixo = (() => {
+  const teste = document.createElement('audio');
+  teste.volume = 0.5;
+  return teste.volume === 1;
+})();
+
+/**
+ * O volume do <audio>, de 0 a 1, para o nivel da barra. A conta e o
+ * quadrado: o ouvido sente o volume em escala, e na reta a metade de baixo
+ * da barra seria quase toda alta.
+ */
+function volumeDoAudio() {
+  return (estado.volume.nivel / 100) ** 2;
+}
+
+function aplicarVolume(player) {
+  if (!player) return;
+  player.muted = estado.volume.mudo || estado.volume.nivel === 0;
+  player.volume = volumeDoAudio();
+}
+
+/** Mexeu no volume: vale na hora, inclusive no meio da entrada suave. */
+function mudarVolume(mudanca) {
+  Object.assign(estado.volume, mudanca);
+  guardarVolume();
+  clearInterval(estado.subindoVolume);
+  aplicarVolume($('tocador-audio'));
+  aplicarVolume(abaEstatisticas.audio);
+  desenharVolume();
+}
+
+function desenharVolume() {
+  const { nivel, mudo } = estado.volume;
+  const calado = mudo || nivel === 0;
+  const caixa = $('volume');
+  caixa.classList.toggle('volume--mudo', calado);
+  caixa.classList.toggle('volume--baixo', !calado && nivel < 50);
+  const barra = $('volume-barra');
+  barra.value = nivel;
+  barra.hidden = volumeFixo;
+  barra.style.setProperty('--nivel', `${calado ? 0 : nivel}%`);
+  barra.setAttribute('aria-valuetext', calado ? 'Sem som' : `${nivel}%`);
+  const botao = $('volume-mudo');
+  botao.setAttribute('aria-pressed', String(calado));
+  botao.setAttribute('aria-label', calado ? 'Ligar o som' : 'Tirar o som');
+  botao.title = calado ? 'Ligar o som' : 'Tirar o som';
+}
+
+// Arrastar a barra liga o som de novo, como em qualquer tocador.
+$('volume-barra').addEventListener('input', () => {
+  mudarVolume({ nivel: Number($('volume-barra').value), mudo: false });
+});
+
+$('volume-mudo').addEventListener('click', () => {
+  const { nivel, mudo } = estado.volume;
+  // Calado pela barra no zero: o botao devolve um volume que se ouca.
+  if (nivel === 0) return mudarVolume({ nivel: 50, mudo: false });
+  mudarVolume({ mudo: !mudo });
+});
+
+desenharVolume();
 
 /* ------------------------------- Chat -------------------------------- */
 

@@ -91,7 +91,7 @@ e que a versão do topo seja a do jogo.
 
 | Ajuste | Opções |
 | --- | --- |
-| Categorias | Bandeiras, Geografia, Matemática, Esportes, **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
+| Categorias | Bandeiras, Geografia, Matemática, Esportes (com a parte **Fórmula 1**), **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
 | Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical**, **Qual é a música** ou **Bagunça**, todos num só (Equipes aparece como *em breve*) |
 | Dificuldade das perguntas | só no Modo Tempo: uma faixa de **0 a 100** (padrão, *Normal*), que dá o título da sala — ver [Faixa de dificuldade](#faixa-de-dificuldade-modo-tempo) |
 | Bagunça | só nela: quantas perguntas do Modo Tempo até cada sorteio (0 a 6, **3** de padrão) e quais modos entram no sorteio (**todos** de padrão) |
@@ -1510,6 +1510,14 @@ qualquer um dos nomes.
   iPhone só deixa tocar sozinho um áudio que já tocou dentro de um toque da
   pessoa. Ainda assim, quando o navegador bloqueia, o tocador pede um toque.
 - A entrada é suave (600 ms), menos no iPhone, que ignora o volume do áudio.
+- **Volume:** o tocador tem um botão de mudo e uma barra. A escolha fica
+  guardada no navegador (`pensarapido:volume`), não no perfil: vale para toda
+  música dali em diante, da rodada e do trecho das estatísticas, e a entrada
+  suave sobe até ela, não até o máximo. A barra é quadrática (o ouvido sente o
+  volume em escala, e na reta a metade de baixo seria quase toda alta).
+  Arrastar a barra tira o mudo. No iPhone, onde a página não muda o volume do
+  áudio, fica só o mudo. No celular o volume desce para uma linha própria,
+  senão o tocador passava da tela junto com o aviso "Toque para ouvir".
 - A mesma música não toca duas vezes na partida, mesmo tendo duas perguntas.
 - O id de cada pergunta continua saindo do nome antigo do arquivo
   (`trecho-<nome>.mp3`): a dificuldade e o rodízio de antes da troca não se
