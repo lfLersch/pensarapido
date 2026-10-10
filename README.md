@@ -1717,7 +1717,8 @@ npm run avaliar-imagens
 
 Abre em `http://localhost:3457` todas as imagens da pasta provisória, cada uma
 com as perguntas que vão sair dela (de `perguntas.json`, na mesma pasta), um
-**Pode subir** e uma caixa para dizer o que mudar. O que for marcado é gravado
+**Pode subir**, um **tirar** em cada pergunta (a foto sobe com as que sobrarem)
+e uma caixa para dizer o que mudar. O que for marcado é gravado
 na hora em `imagens-para-avaliar/avaliacao.json`: as aprovadas vão para
 `public/img` e viram pergunta; as outras voltam com o pedido de mudança.
 

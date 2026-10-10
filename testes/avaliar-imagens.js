@@ -46,7 +46,8 @@ function itens() {
       pagina: o.pagina || '',
       perguntas: perguntas[arquivo] || [],
       aprovada: Boolean(a.aprovada),
-      nota: a.nota || ''
+      nota: a.nota || '',
+      fora: Array.isArray(a.fora) ? a.fora : []
     };
   });
 }
@@ -78,6 +79,9 @@ async function salvar(req, res) {
   avaliacao[arquivo] = {
     aprovada: Boolean(dados.aprovada),
     nota: String(dados.nota || '').slice(0, 2000),
+    // As perguntas desta foto que nao entram no jogo, pelo enunciado.
+    fora: (Array.isArray(dados.fora) ? dados.fora : [])
+      .filter((f) => typeof f === 'string').slice(0, 10).map((f) => f.slice(0, 200)),
     quando: new Date().toISOString()
   };
   fs.writeFileSync(AVALIACAO, JSON.stringify(avaliacao, null, 2));
@@ -135,9 +139,16 @@ const PAGINA = `<!DOCTYPE html>
   .corpo { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   h2 { font-size: 16px; margin: 0; }
   ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
-  li { font-size: 13.5px; line-height: 1.35; }
+  li { font-size: 13.5px; line-height: 1.35; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
   li .p { color: var(--suave); display: block; }
   li small { color: var(--suave); display: block; font-size: 12px; }
+  li.fora .texto > * { text-decoration: line-through; opacity: .5; }
+  li.fora .texto::after { content: 'não entra no jogo'; display: block; color: var(--nota); font-size: 12px; font-weight: 600; }
+  .tirar { background: transparent; color: var(--suave); border: 1px solid var(--borda); border-radius: 6px;
+           padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; }
+  .tirar:hover { color: var(--texto); border-color: var(--suave); }
+  li.fora .tirar { color: var(--nota); border-color: var(--nota); }
+  .tirar:focus-visible { outline: 2px solid var(--destaque); outline-offset: 1px; }
   .sem-perguntas { color: var(--suave); font-size: 13px; margin: 0; }
   .subir { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 8px; cursor: pointer;
            border: 1px solid var(--borda); font-weight: 600; font-size: 14px; user-select: none; }
@@ -156,14 +167,14 @@ const PAGINA = `<!DOCTYPE html>
 <body>
 <header>
   <h1>Imagens para avaliar</h1>
-  <p>Marque <b>Pode subir</b> nas que estão boas e escreva o que mudar nas outras. Tudo é salvo sozinho; quando terminar, é só avisar.</p>
+  <p>Marque <b>Pode subir</b> nas que estão boas e escreva o que mudar nas outras. Pergunta que não serve: <b>tirar</b>, e a foto sobe com as que sobrarem. Tudo é salvo sozinho; quando terminar, é só avisar.</p>
   <div class="filtros" role="group" aria-label="Filtrar"></div>
 </header>
 <main aria-live="polite"></main>
 <script>
 const FILTROS = [
   ['todas', 'Todas', () => true],
-  ['faltam', 'Faltam avaliar', (i) => !i.aprovada && !i.nota.trim()],
+  ['faltam', 'Faltam avaliar', (i) => !i.aprovada && !i.nota.trim() && !i.fora.length],
   ['sobem', 'Podem subir', (i) => i.aprovada],
   ['pedidos', 'Com pedido de mudança', (i) => Boolean(i.nota.trim())]
 ];
@@ -204,7 +215,7 @@ function cartao(item) {
     try {
       const r = await fetch('/api/avaliacao', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ arquivo: item.arquivo, aprovada: item.aprovada, nota: item.nota })
+        body: JSON.stringify({ arquivo: item.arquivo, aprovada: item.aprovada, nota: item.nota, fora: item.fora })
       });
       if (!r.ok) throw new Error();
       estado.textContent = 'salvo ✓';
@@ -226,11 +237,34 @@ function cartao(item) {
   });
   nota.addEventListener('blur', () => { if (espera) { clearTimeout(espera); espera = null; salvar(); } });
 
-  const perguntas = item.perguntas.length
-    ? el('ol', {}, ...item.perguntas.map((p) => el('li', {},
+  // Cada pergunta pode sair sozinha: a foto sobe com as que sobrarem.
+  const linha = (p) => {
+    const botao = el('button', { type: 'button', className: 'tirar' });
+    const li = el('li', {},
+      el('div', { className: 'texto' },
         el('span', { className: 'p', textContent: p.pergunta }),
         el('b', { textContent: p.resposta }),
-        p.aceita && p.aceita.length ? el('small', { textContent: 'também vale: ' + p.aceita.join(', ') }) : null)))
+        p.aceita && p.aceita.length ? el('small', { textContent: 'também vale: ' + p.aceita.join(', ') }) : null),
+      botao);
+    const pintar = () => {
+      const fora = item.fora.includes(p.pergunta);
+      li.classList.toggle('fora', fora);
+      botao.textContent = fora ? 'voltar' : 'tirar';
+      botao.setAttribute('aria-pressed', String(fora));
+      botao.title = fora ? 'Esta pergunta volta para o jogo' : 'Esta pergunta não entra no jogo';
+    };
+    botao.addEventListener('click', () => {
+      item.fora = item.fora.includes(p.pergunta)
+        ? item.fora.filter((f) => f !== p.pergunta)
+        : [...item.fora, p.pergunta];
+      pintar();
+      salvar();
+    });
+    pintar();
+    return li;
+  };
+  const perguntas = item.perguntas.length
+    ? el('ol', {}, ...item.perguntas.map(linha))
     : el('p', { className: 'sem-perguntas', textContent: item.busca || 'Sem perguntas ainda.' });
 
   let site = '';
