@@ -10,6 +10,7 @@
     "test": "node testes/comparar.test.js && node testes/rodada.test.js && node testes/escalada.test.js && node testes/repeticao.test.js && node testes/carrossel.test.js && node testes/presente.test.js && node testes/equipes.test.js && node testes/formato.test.js && node testes/volta.test.js && node testes/usos.test.js && node testes/leilao.test.js && node testes/dicas.test.js && node testes/veni.test.js && node testes/ranking.test.js && node testes/notas.test.js && node testes/pular.test.js && node testes/subcategorias.test.js && node testes/variacao.test.js && node testes/listas.test.js && node testes/inclusoes.test.js && node testes/sobrenomes.test.js && node testes/perguntas.test.js && node testes/justica.test.js && node testes/nomes.test.js && node testes/banco.test.js && node testes/crescente.test.js && node testes/perfis.test.js && node testes/chances.test.js && node testes/circulo.test.js && node testes/imagem.test.js && node testes/pausa.test.js && node testes/estatisticas.test.js && node testes/musicas.test.js && node testes/bagunca.test.js && node testes/faixa.test.js && node testes/origem.test.js",
     "checar-imagens": "node testes/imagens.js",
     "baixar-imagens": "node testes/baixar-imagens.js",
+    "avaliar-imagens": "node testes/avaliar-imagens.js",
     "checar-letras": "node testes/letras.js",
     "creditos": "node testes/creditos.js",
     "imagens-locais": "node testes/imagens-locais.js"

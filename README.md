@@ -1697,9 +1697,7 @@ npm run baixar-imagens
 
 Lê `imagens-para-baixar.txt` (um nome por linha) e baixa a **primeira imagem
 do Google Imagens** de cada um para `imagens-para-avaliar/`, uma pasta
-provisória fora do git. Lá fica também `avaliar.html`, com todas as imagens
-lado a lado, a busca de cada uma e o site de onde veio; as aprovadas você passa
-para `public/img`. Um cabeçalho `[logo]` faz os nomes de baixo virarem
+provisória fora do git. Um cabeçalho `[logo]` faz os nomes de baixo virarem
 `logo-<nome>.jpg` e põe "logo" na busca; o que vem depois de `|` entra só na
 busca (`Puma | marca esportiva`); `#2` no fim começa do segundo resultado, para
 quando o primeiro veio errado; um endereço de imagem no fim da linha baixa
@@ -1712,6 +1710,16 @@ do git: `SERPER_API_KEY=...` ([serper.dev](https://serper.dev), 2500 buscas
 grátis uma vez só) ou `SERPAPI_KEY=...` ([serpapi.com](https://serpapi.com),
 250 por mês). Linha que traz o endereço da imagem não precisa de chave. É a
 primeira imagem, não uma escolhida: confira antes de virar pergunta.
+
+```bash
+npm run avaliar-imagens
+```
+
+Abre em `http://localhost:3457` todas as imagens da pasta provisória, cada uma
+com as perguntas que vão sair dela (de `perguntas.json`, na mesma pasta), um
+**Pode subir** e uma caixa para dizer o que mudar. O que for marcado é gravado
+na hora em `imagens-para-avaliar/avaliacao.json`: as aprovadas vão para
+`public/img` e viram pergunta; as outras voltam com o pedido de mudança.
 
 ## Limites atuais
 

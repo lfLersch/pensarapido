@@ -15,10 +15,10 @@
  *   Tony Ramos https://...  com o endereco da imagem no fim, baixa essa, sem buscar
  *
  * As imagens vao para imagens-para-avaliar/ (fora do git), com o nome sem
- * acento: logo-ferrari.jpg, ator-jim-carrey.jpg. Abra avaliar.html, que fica
- * na mesma pasta, para ver todas de uma vez; as aprovadas voce passa para
- * public/img. O que ja existe numa das duas pastas nao e baixado de novo: para
- * trocar uma imagem errada, apague o arquivo e rode de novo com #2, #3...
+ * acento: logo-ferrari.jpg, ator-jim-carrey.jpg. O npm run avaliar-imagens
+ * mostra todas de uma vez, para marcar as que podem subir para public/img. O
+ * que ja existe numa das duas pastas nao e baixado de novo: para trocar uma
+ * imagem errada, apague o arquivo e rode de novo com #2, #3...
  *
  * O Google fechou a API de busca para quem chega agora, entao a busca passa
  * por um servico que devolve os resultados do Google Imagens. Serve qualquer
@@ -40,7 +40,6 @@ const RAIZ = path.join(__dirname, '..');
 const PASTA = path.join(RAIZ, 'imagens-para-avaliar');
 const JOGO = path.join(RAIZ, 'public', 'img');
 const ORIGEM = path.join(PASTA, 'origem.json');
-const PAGINA = path.join(PASTA, 'avaliar.html');
 const LISTA_PADRAO = path.join(RAIZ, 'imagens-para-baixar.txt');
 const EXTENSOES = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif'];
 const AGENTE = 'Mozilla/5.0 (compatible; PensaRapido/1.0; jogo de perguntas)';
@@ -53,7 +52,6 @@ const PAUSA = 300;
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 const kb = (bytes) => `${Math.round(bytes / 1024)} KB`;
-const escapar = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const MODELO = `# Um nome por linha. Tire o # da frente para valer.
 #
@@ -230,53 +228,6 @@ const imagensDaPasta = () => fs.readdirSync(PASTA)
   .filter((f) => EXTENSOES.includes(path.extname(f).toLowerCase()))
   .sort();
 
-/** A pagina com todas as imagens da pasta, para avaliar de uma vez. */
-function montarPagina(origem) {
-  const arquivos = imagensDaPasta();
-  const cartoes = arquivos.map((f) => {
-    const o = origem[f] || {};
-    let site = '';
-    try { site = new URL(o.pagina).hostname.replace(/^www\./, ''); } catch (e) { /* sem origem */ }
-    return `  <figure>
-    <a href="${escapar(encodeURI(f))}" target="_blank"><img src="${escapar(encodeURI(f))}" alt="" loading="lazy"></a>
-    <figcaption>
-      <b>${escapar(f)}</b> <span>${kb(fs.statSync(path.join(PASTA, f)).size)}</span>
-      ${o.busca ? `<p>${escapar(o.busca)}</p>` : ''}
-      ${site ? `<a href="${escapar(o.pagina)}" target="_blank" rel="noopener">${escapar(site)}</a>` : ''}
-    </figcaption>
-  </figure>`;
-  }).join('\n');
-
-  fs.writeFileSync(PAGINA, `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Imagens para avaliar</title>
-<style>
-  body { margin: 0; padding: 20px; font-family: system-ui, sans-serif; background: #0d0a1f; color: #f4f2ff; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  body > p { color: #a79fc9; font-size: 14px; margin: 0 0 18px; }
-  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
-  figure { margin: 0; background: #1a1534; border-radius: 10px; overflow: hidden; }
-  figure img { display: block; width: 100%; height: 200px; object-fit: contain; background: #000; }
-  figcaption { padding: 8px 10px 10px; font-size: 12.5px; line-height: 1.4; word-break: break-word; }
-  figcaption span { color: #a79fc9; }
-  figcaption p { margin: 4px 0; color: #d6d0f5; }
-  a { color: #a78bfa; }
-</style>
-</head>
-<body>
-<h1>Imagens para avaliar (${arquivos.length})</h1>
-<p>As aprovadas vao para public/img; as erradas, apague e rode de novo com #2 na linha.</p>
-<main>
-${cartoes}
-</main>
-</body>
-</html>
-`, 'utf8');
-}
-
 async function main() {
   lerEnv();
 
@@ -361,7 +312,6 @@ async function main() {
   const naPasta = new Set(imagensDaPasta());
   origem = Object.fromEntries(Object.entries(origem).filter(([f]) => naPasta.has(f)));
   fs.writeFileSync(ORIGEM, JSON.stringify(origem, null, 2));
-  montarPagina(origem);
 
   console.log(`\nbaixadas: ${baixadas}   ja existiam: ${existentes.length}   falharam: ${falhas.length}`);
   if (parou) {
@@ -369,9 +319,9 @@ async function main() {
     console.log(`Faltaram ${parou.faltam} itens. Confira a chave no .env e rode de novo: o que ja baixou fica.`);
   }
   if (baixadas) {
-    const aviso = itens.some((i) => !i.url) ? ': e a primeira do Google, nao uma escolhida' : '';
-    console.log(`\nAvalie em ${path.relative(RAIZ, PAGINA).replace(/\\/g, '/')}${aviso}.`);
-    console.log('As aprovadas vao para public/img; as erradas, apague e ponha #2 na linha.');
+    const aviso = itens.some((i) => !i.url) ? ' (e a primeira do Google, nao uma escolhida)' : '';
+    console.log(`\nAvalie com npm run avaliar-imagens${aviso}.`);
+    console.log('As erradas: apague o arquivo e ponha #2 na linha.');
   }
   if (falhas.length) {
     console.log('\nPara as que falharam, mude a busca com | (ex.: "Puma | marca esportiva") ou use #2.');
