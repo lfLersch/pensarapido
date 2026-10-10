@@ -173,8 +173,10 @@ function extensaoDe(b) {
 
 async function baixar(url, minimo = MINIMO) {
   if (!url) throw new Error('resultado sem endereco');
+  // JPEG primeiro: CDN que escolhe o formato pelo Accept manda AVIF a quem
+  // aceita, e AVIF nao tem miniatura no Explorer nem abre em todo editor.
   const r = await fetch(url, {
-    headers: { 'User-Agent': AGENTE, Accept: 'image/avif,image/webp,image/*' },
+    headers: { 'User-Agent': AGENTE, Accept: 'image/jpeg,image/png;q=0.9,image/*;q=0.8' },
     signal: AbortSignal.timeout(20000)
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -367,7 +369,8 @@ async function main() {
     console.log(`Faltaram ${parou.faltam} itens. Confira a chave no .env e rode de novo: o que ja baixou fica.`);
   }
   if (baixadas) {
-    console.log(`\nAvalie em ${path.relative(RAIZ, PAGINA).replace(/\\/g, '/')}: e a primeira do Google, nao uma escolhida.`);
+    const aviso = itens.some((i) => !i.url) ? ': e a primeira do Google, nao uma escolhida' : '';
+    console.log(`\nAvalie em ${path.relative(RAIZ, PAGINA).replace(/\\/g, '/')}${aviso}.`);
     console.log('As aprovadas vao para public/img; as erradas, apague e ponha #2 na linha.');
   }
   if (falhas.length) {
