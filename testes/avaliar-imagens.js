@@ -174,7 +174,8 @@ const PAGINA = `<!DOCTYPE html>
 <script>
 const FILTROS = [
   ['todas', 'Todas', () => true],
-  ['faltam', 'Faltam avaliar', (i) => !i.aprovada && !i.nota.trim() && !i.fora.length],
+  // Tirar uma pergunta nao decide a foto: falta o "Pode subir" ou o pedido.
+  ['faltam', 'Faltam avaliar', (i) => !i.aprovada && !i.nota.trim()],
   ['sobem', 'Podem subir', (i) => i.aprovada],
   ['pedidos', 'Com pedido de mudança', (i) => Boolean(i.nota.trim())]
 ];
@@ -198,8 +199,9 @@ function desenharFiltros() {
 }
 
 function titulo(item) {
+  // A foto de papel se chama pelo ator; o logo, pela marca (a unica resposta).
   const ator = item.perguntas.find((p) => p.sub === 'atores');
-  return ator ? ator.resposta : item.arquivo;
+  return (ator || item.perguntas[0] || { resposta: item.arquivo }).resposta;
 }
 
 function cartao(item) {
