@@ -30,6 +30,21 @@ qualquer momento (ver [Cair e voltar](#cair-e-voltar)). A lista vem de
 `GET /api/salas` e se atualiza sozinha a cada 4 segundos enquanto o saguão
 está na tela.
 
+**Uma sala por rede.** Quem está numa rede só lidera uma sala por vez: a
+segunda aba (ou o segundo aparelho no mesmo wi-fi) que tentar criar outra
+recebe *"Já tem uma sala aberta nesta rede"* e é mandada para a lista. Entrar
+continua livre — a casa inteira joga junta na mesma sala. O que conta é quem
+é o **líder**, não quem criou: se a coroa passa para alguém de outra rede, a
+sala deixa de contar; se a sala esvazia, também.
+
+A rede é o IP de quem abriu a aba, lido no cabeçalho do proxy do Render
+(`cf-connecting-ip`, ou o primeiro do `x-forwarded-for`). No IPv6 vale o bloco
+`/64`, que é o que uma casa recebe. Endereço de rede interna — `localhost`, o
+wi-fi de casa, o próprio proxy — fica fora do limite: jogando no PC ou na rede
+local não muda nada, e se o cabeçalho sumir o limite desliga em vez de deixar o
+site inteiro com uma sala só. Quem está em `server/origem.js`; o número
+(`MAX_SALAS_POR_ORIGEM`), em `server/index.js`.
+
 ### Cair e voltar
 
 Wi-fi que pisca, aba que fecha sem querer, celular que dorme. Nada disso custa
@@ -1247,6 +1262,7 @@ server/
   comparar.js    normalização e a régua de acerto / quase / chat
   escalada.js    listas de resposta múltipla do Modo Escalada
   banco.js       conexão com o Postgres (só com DATABASE_URL)
+  origem.js      de que rede vem cada conexão (o limite de uma sala por rede)
   dificuldade.js dificuldade adaptativa e persistência das estatísticas
   questions.js   banco de perguntas por categoria
   musicas.js     duração e estilo de cada música de Ouvir músicas
@@ -1656,7 +1672,9 @@ honestas do Qual é a música e a partida pelo número de músicas),
 a **Bagunça** (o ritmo de Modo Tempo e sorteio, os modos em equipe só com 4
 ou mais, só sai o que foi marcado e nunca duas vezes seguidas, as equipes
 sorteadas, a Escalada que sobe a cada sorteio e a música que não vaza para o
-Modo Tempo)
+Modo Tempo),
+a **origem da conexão** (o IP certo atrás do proxy, a rede interna que fica de
+fora e o bloco `/64` do IPv6)
 e a regra de nomes:
 percorre as formas de nome dos 162 jogadores, confirma que todas valem como
 acerto e falha se algum apelido servir para duas pessoas diferentes (foi assim
@@ -1703,3 +1721,6 @@ primeira imagem, não uma escolhida: confira antes de virar pergunta.
 - Máximo de 12 jogadores por sala; não dá para entrar com a partida em andamento.
 - O chat tem limite de 120 caracteres por mensagem e uma pausa de 350ms entre
   mensagens, para conter spam.
+- Cada rede lidera uma sala por vez (ver [Saguão](#saguão)). Quem troca de IP
+  — VPN, dados móveis — passa pelo limite: ele segura o computador que abria
+  uma sala por aba, não alguém decidido a encher o saguão.
