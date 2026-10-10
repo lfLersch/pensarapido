@@ -11,7 +11,7 @@
  * que mudar. Tudo e gravado na hora em avaliacao.json, na mesma pasta: e de
  * la que sai a lista do que entra no jogo. So escuta na propria maquina.
  * Pergunta com "antes" troca a foto de uma que ja esta no jogo: a de hoje
- * aparece no canto da nova, para comparar.
+ * aparece no canto da nova, para comparar. Com "novo", entra no jogo agora.
  */
 
 const fs = require('fs');
@@ -142,6 +142,8 @@ const PAGINA = `<!DOCTYPE html>
   .antes { position: absolute; right: 6px; bottom: 6px; width: 78px; background: #000; color: var(--suave);
            border: 1px solid var(--borda); border-radius: 6px; overflow: hidden; font-size: 10.5px; text-align: center; }
   .cartao .antes img { width: 78px; height: 78px; object-fit: cover; }
+  .novo { position: absolute; right: 6px; bottom: 6px; background: var(--destaque); color: #120d29;
+          font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
   .corpo { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   h2 { font-size: 16px; margin: 0; }
   ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
@@ -278,14 +280,17 @@ function cartao(item) {
   let site = '';
   try { site = new URL(item.pagina).hostname.replace(/^www\\./, ''); } catch (e) { /* sem origem */ }
   const endereco = '/imagens/' + encodeURIComponent(item.arquivo);
-  // Foto que troca uma que ja esta no jogo: a de hoje fica no canto, para comparar.
+  // Foto que troca uma que ja esta no jogo: a de hoje fica no canto, para
+  // comparar. Pergunta que ainda nao existe ganha a etiqueta de nova.
   const antes = (item.perguntas.find((p) => p.antes) || {}).antes;
+  const nova = item.perguntas.some((p) => p.novo);
   const c = el('article', { className: 'cartao' },
     el('div', { className: 'foto' },
       el('a', { href: endereco, target: '_blank', title: 'Abrir a imagem inteira' },
         el('img', { src: endereco, alt: titulo(item), loading: 'lazy' })),
       antes ? el('a', { className: 'antes', href: antes, target: '_blank', rel: 'noopener', title: 'Foto que está no jogo hoje' },
-        el('img', { src: antes, alt: 'Hoje no jogo', loading: 'lazy' }), 'hoje no jogo') : null),
+        el('img', { src: antes, alt: 'Hoje no jogo', loading: 'lazy' }), 'hoje no jogo') : null,
+      nova ? el('span', { className: 'novo', textContent: 'novo no jogo' }) : null),
     el('div', { className: 'corpo' },
       el('h2', { textContent: titulo(item) }),
       perguntas,
