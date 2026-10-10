@@ -1458,11 +1458,12 @@ eles — Argentina, Grécia, Irlanda, Rússia e China dão 404 nesse padrão.
 
 ### Categoria Futebol
 
-**162 jogadores, todos com foto.** A lista cobre:
+**156 jogadores, todos com foto.** A lista cobre:
 
-- **os vencedores da Bola de Ouro masculina de 1981 para cá** — Rummenigge,
-  Platini, van Basten, Baggio, Ronaldo, Zidane, Figo, Ronaldinho, Kaká, Messi,
-  Cristiano Ronaldo, Modrić, Benzema, Rodri;
+- **os vencedores da Bola de Ouro masculina de 1981 para cá** — Platini,
+  van Basten, Baggio, Ronaldo, Zidane, Figo, Ronaldinho, Kaká, Messi,
+  Cristiano Ronaldo, Modrić, Benzema, Rodri. Belanov, Papin e Sammer saíram
+  na avaliação das fotos: quase ninguém os reconhece aqui;
 - **todas as vencedoras da Bola de Ouro feminina** — Ada Hegerberg, Megan
   Rapinoe, Alexia Putellas e Aitana Bonmatí (enunciado *"Quem é esta jogadora?"*);
 - os nomes mais conhecidos da década de 2010, por seleção e por liga.
@@ -1472,10 +1473,14 @@ jogadores que quase ninguém reconhece hoje, e a rodada morria sem acerto. Se
 quiser Cruyff, Beckenbauer, Yashin e companhia de volta, eles estão no histórico
 do git — o commit que os removeu diz quais foram.
 
-As fotos vêm do **Wikimedia Commons** (licença livre), buscadas pela API da
-Wikipédia e gravadas como URL em `questions.js` — nada é baixado para o projeto.
-Como são imagens de terceiros, dependem do Commons continuar no ar; o comando
-`npm run checar-imagens` percorre todas e avisa se alguma sair.
+**94 jogadores têm foto do auge da carreira**, no clube ou na seleção da melhor
+fase (`public/img/jogador-*.jpg`), escolhida uma a uma e aprovada na página do
+`npm run avaliar-imagens`. Fotos com marca d'água foram recortadas acima dela.
+
+Os outros ainda usam a foto do **Wikimedia Commons** (licença livre), buscada
+pela API da Wikipédia e gravada como URL em `questions.js`. Essas dependem do
+Commons continuar no ar; o comando `npm run checar-imagens` percorre todas e
+avisa se alguma sair.
 
 ### Categoria Marcas — logos
 

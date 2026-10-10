@@ -10,6 +10,8 @@
  * quando a pasta tiver um), um botao "pode subir" e uma caixa para dizer o
  * que mudar. Tudo e gravado na hora em avaliacao.json, na mesma pasta: e de
  * la que sai a lista do que entra no jogo. So escuta na propria maquina.
+ * Pergunta com "antes" troca a foto de uma que ja esta no jogo: a de hoje
+ * aparece no canto da nova, para comparar.
  */
 
 const fs = require('fs');
@@ -136,6 +138,10 @@ const PAGINA = `<!DOCTYPE html>
   .cartao.aprovada { border-color: var(--ok); }
   .cartao.pedido { border-color: var(--nota); }
   .cartao img { display: block; width: 100%; height: 220px; object-fit: contain; background: #000; }
+  .foto { position: relative; }
+  .antes { position: absolute; right: 6px; bottom: 6px; width: 78px; background: #000; color: var(--suave);
+           border: 1px solid var(--borda); border-radius: 6px; overflow: hidden; font-size: 10.5px; text-align: center; }
+  .cartao .antes img { width: 78px; height: 78px; object-fit: cover; }
   .corpo { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   h2 { font-size: 16px; margin: 0; }
   ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
@@ -272,9 +278,14 @@ function cartao(item) {
   let site = '';
   try { site = new URL(item.pagina).hostname.replace(/^www\\./, ''); } catch (e) { /* sem origem */ }
   const endereco = '/imagens/' + encodeURIComponent(item.arquivo);
+  // Foto que troca uma que ja esta no jogo: a de hoje fica no canto, para comparar.
+  const antes = (item.perguntas.find((p) => p.antes) || {}).antes;
   const c = el('article', { className: 'cartao' },
-    el('a', { href: endereco, target: '_blank', title: 'Abrir a imagem inteira' },
-      el('img', { src: endereco, alt: titulo(item), loading: 'lazy' })),
+    el('div', { className: 'foto' },
+      el('a', { href: endereco, target: '_blank', title: 'Abrir a imagem inteira' },
+        el('img', { src: endereco, alt: titulo(item), loading: 'lazy' })),
+      antes ? el('a', { className: 'antes', href: antes, target: '_blank', rel: 'noopener', title: 'Foto que está no jogo hoje' },
+        el('img', { src: antes, alt: 'Hoje no jogo', loading: 'lazy' }), 'hoje no jogo') : null),
     el('div', { className: 'corpo' },
       el('h2', { textContent: titulo(item) }),
       perguntas,
