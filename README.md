@@ -1615,6 +1615,26 @@ no Windows (🇺🇸 aparece como "US"), então só entra onde as letras também
 servem de pista. `testes/perguntas.test.js` reprova charada com emoji novo
 demais, emoji fora do fim do enunciado e filme repetido.
 
+### Cinema — papéis marcantes
+
+**69 atores e atrizes** no papel mais conhecido de cada um, numa foto só
+(`public/img/papel-*.jpg`): DiCaprio como Jordan Belfort, Wagner Moura como
+Capitão Nascimento, Fernanda Torres como Eunice Paiva… A mesma foto rende até
+três perguntas, cada uma na sua parte de Cinema & TV:
+
+```js
+{ pergunta: 'Que filme e este?', sub: 'cenas', imagem: '/img/papel-wagner-moura.jpg', resposta: 'Tropa de Elite', dif: 10 }
+{ pergunta: 'Quem e este ator?', sub: 'atores', imagem: '/img/papel-wagner-moura.jpg', resposta: 'Wagner Moura', dif: 15 }
+{ pergunta: 'Qual personagem e este?', sub: 'personagens', imagem: '/img/papel-wagner-moura.jpg', resposta: 'Capitao Nascimento', aceita: ['Nascimento', 'Roberto Nascimento'], dif: 10 }
+```
+
+As fotos passaram uma a uma pela página do `npm run avaliar-imagens`, e a
+pergunta que quase ninguém acertaria saiu de 16 delas — quase sempre o nome do
+personagem (Chuck Noland, de *Náufrago*; Mia Thermopolis, de *O Diário da
+Princesa*). Quando há mais gente na foto, o enunciado diz quem: *"Quem é o ator
+da esquerda?"*. Como são perguntas "Quem…?" e "Qual personagem…?", o sobrenome
+vale sozinho.
+
 ### Cinema — perguntas de dentro da série
 
 A resposta é algo **da própria obra** (personagem, lugar, bordão, número), e o
