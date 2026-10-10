@@ -18,6 +18,7 @@ const perfis = require('./perfis');
 const estatisticas = require('./estatisticas');
 const google = require('./google');
 const banco = require('./banco');
+const { origemDe } = require('./origem');
 const { NOTAS, VERSAO } = require('./notas');
 
 const PORTA = process.env.PORT || 3000;
@@ -31,6 +32,9 @@ const TOTAIS_MUSICAS = [10, 15, 20, 30];
 // Sala que esvaziou no meio da partida nao morre na hora: quem caiu tem esse
 // tempo para voltar e reencontrar o proprio placar.
 const MS_ESPERANDO_VOLTA = 10 * 60 * 1000;
+// Quantas salas uma rede lidera ao mesmo tempo. Um computador abrindo uma
+// sala por aba enchia o saguao; a casa no mesmo wi-fi joga junta numa so.
+const MAX_SALAS_POR_ORIGEM = 1;
 
 const app = express();
 const servidor = http.createServer(app);
@@ -177,6 +181,22 @@ function publicarEstado(sala) {
   io.to(sala.codigo).emit('sala:estado', sala.estadoPublico());
 }
 
+/**
+ * Quantas salas com gente dentro tem como lider alguem desta rede. Conta o
+ * lider, nao quem criou: quem sai passa a coroa adiante, e a sala deixa de
+ * ser dele.
+ */
+function salasLideradasPor(origem) {
+  if (!origem) return 0;
+  let total = 0;
+  for (const sala of salas.values()) {
+    const lider = [...sala.jogadores.values()].find((j) => j.lider);
+    const conexao = lider && io.sockets.sockets.get(lider.id);
+    if (conexao && conexao.data.origem === origem) total++;
+  }
+  return total;
+}
+
 /* --------------------------- Validação de entrada --------------------------- */
 
 function limparNickname(valor) {
@@ -271,6 +291,8 @@ function validarConfig(bruta) {
 io.on('connection', (socket) => {
   // Cada socket participa de no máximo uma sala.
   socket.data.codigo = null;
+  // De que rede veio: ela lidera no maximo MAX_SALAS_POR_ORIGEM salas.
+  socket.data.origem = origemDe(socket.handshake);
 
   const salaDoSocket = () => (socket.data.codigo ? salas.get(socket.data.codigo) : null);
 
@@ -289,6 +311,11 @@ io.on('connection', (socket) => {
     const nome = limparNickname(nickname);
     if (!nome) return responder(callback, { erro: 'Escolha um nickname de 2 a 16 caracteres.' });
     if (salaDoSocket()) return responder(callback, { erro: 'Você já está em uma sala.' });
+    if (salasLideradasPor(socket.data.origem) >= MAX_SALAS_POR_ORIGEM) {
+      return responder(callback, {
+        erro: 'Já tem uma sala aberta nesta rede, em outra aba ou outro aparelho. Entre nela pela lista do saguão, ou saia dela antes de criar outra.'
+      });
+    }
 
     const validacao = validarConfig(config);
     if (validacao.erro) return responder(callback, { erro: validacao.erro });
