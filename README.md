@@ -1671,6 +1671,30 @@ npm run checar-imagens
 Percorre as imagens do banco (fotos de jogadores e bandeiras) e lista as que
 saíram do ar. Vai devagar de propósito — o Wikimedia recusa cliente apressado.
 
+### Baixar imagens novas
+
+```bash
+npm run baixar-imagens
+```
+
+Lê `imagens-para-baixar.txt` (um nome por linha) e baixa a **primeira imagem
+do Google Imagens** de cada um para `imagens-para-avaliar/`, uma pasta
+provisória fora do git. Lá fica também `avaliar.html`, com todas as imagens
+lado a lado, a busca de cada uma e o site de onde veio; as aprovadas você passa
+para `public/img`. Um cabeçalho `[logo]` faz os nomes de baixo virarem
+`logo-<nome>.jpg` e põe "logo" na busca; o que vem depois de `|` entra só na
+busca (`Puma | marca esportiva`); `#2` no fim começa do segundo resultado, para
+quando o primeiro veio errado; um endereço de imagem no fim da linha baixa
+aquela, sem buscar. O que já existe numa das duas pastas não é baixado de novo.
+Na primeira vez, sem a lista, o comando cria um modelo dela.
+
+O Google fechou a API de busca para quem chega agora, então a busca passa por
+um serviço que devolve os resultados dele. A chave vai num `.env` na raiz, fora
+do git: `SERPER_API_KEY=...` ([serper.dev](https://serper.dev), 2500 buscas
+grátis uma vez só) ou `SERPAPI_KEY=...` ([serpapi.com](https://serpapi.com),
+250 por mês). Linha que traz o endereço da imagem não precisa de chave. É a
+primeira imagem, não uma escolhida: confira antes de virar pergunta.
+
 ## Limites atuais
 
 - As salas vivem **na memória do processo**: reiniciar apaga todas as partidas

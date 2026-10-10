@@ -14,3 +14,12 @@ public/musicas/
 
 # pagina de trabalho: imagens ainda sem identificacao
 imagens-para-identificar.html
+
+# chave do servico de busca de imagens (npm run baixar-imagens)
+.env
+
+# lista de trabalho do npm run baixar-imagens
+imagens-para-baixar.txt
+
+# imagens baixadas esperando avaliacao: as aprovadas vao para public/img
+imagens-para-avaliar/
