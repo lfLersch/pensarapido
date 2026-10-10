@@ -1479,7 +1479,7 @@ Como são imagens de terceiros, dependem do Commons continuar no ar; o comando
 
 ### Categoria Marcas — logos
 
-**103 logos** em cinco partes: Carros, Tecnologia, Moda e esporte, Comida e
+**150 logos** em cinco partes: Carros, Tecnologia, Moda e esporte, Comida e
 bebida e Outras. O enunciado é sempre *"De quem é este logo?"*. Só entra logo
 **sem o nome da marca escrito**: se a palavra está na imagem, a pergunta entrega
 a resposta. Pelo mesmo motivo, sigla que aparece no logo (NB, LV, TS) não vale
