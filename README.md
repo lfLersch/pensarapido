@@ -1479,7 +1479,7 @@ Como são imagens de terceiros, dependem do Commons continuar no ar; o comando
 
 ### Categoria Marcas — logos
 
-**150 logos** em cinco partes: Carros, Tecnologia, Moda e esporte, Comida e
+**176 logos** em cinco partes: Carros, Tecnologia, Moda e esporte, Comida e
 bebida e Outras. O enunciado é sempre *"De quem é este logo?"*. Só entra logo
 **sem o nome da marca escrito**: se a palavra está na imagem, a pergunta entrega
 a resposta. Pelo mesmo motivo, sigla que aparece no logo (NB, LV, TS) não vale
@@ -1617,7 +1617,7 @@ demais, emoji fora do fim do enunciado e filme repetido.
 
 ### Cinema — papéis marcantes
 
-**69 atores e atrizes** no papel mais conhecido de cada um, numa foto só
+**70 atores e atrizes** no papel mais conhecido de cada um, numa foto só
 (`public/img/papel-*.jpg`): DiCaprio como Jordan Belfort, Wagner Moura como
 Capitão Nascimento, Fernanda Torres como Eunice Paiva… A mesma foto rende até
 três perguntas, cada uma na sua parte de Cinema & TV:
@@ -1629,7 +1629,7 @@ três perguntas, cada uma na sua parte de Cinema & TV:
 ```
 
 As fotos passaram uma a uma pela página do `npm run avaliar-imagens`, e a
-pergunta que quase ninguém acertaria saiu de 16 delas — quase sempre o nome do
+pergunta que quase ninguém acertaria saiu de 17 delas — quase sempre o nome do
 personagem (Chuck Noland, de *Náufrago*; Mia Thermopolis, de *O Diário da
 Princesa*). Quando há mais gente na foto, o enunciado diz quem: *"Quem é o ator
 da esquerda?"*. Como são perguntas "Quem…?" e "Qual personagem…?", o sobrenome
