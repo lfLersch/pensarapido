@@ -1458,7 +1458,7 @@ eles — Argentina, Grécia, Irlanda, Rússia e China dão 404 nesse padrão.
 
 ### Categoria Futebol
 
-**279 jogadores, todos com foto do auge da carreira** — no clube ou na seleção
+**280 jogadores, todos com foto do auge da carreira** — no clube ou na seleção
 da melhor fase, em `public/img/jogador-*.jpg`, escolhida uma a uma e aprovada
 na página do `npm run avaliar-imagens`. A lista cobre:
 

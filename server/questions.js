@@ -690,6 +690,7 @@ const QUESTOES = {
     { pergunta: 'Quem e este jogador?', imagem: '/img/jogador-aurelien-tchouameni.jpg', resposta: 'Aurelien Tchouameni', aceita: ['Tchouameni'], dif: 55 },
     { pergunta: 'Quem e este jogador?', imagem: '/img/jogador-diego-ribas.jpg', resposta: 'Diego Ribas', aceita: ['Diego'], dif: 55 },
     { pergunta: 'Quem e este jogador?', imagem: '/img/jogador-deco.jpg', resposta: 'Deco', aceita: ['Anderson Luis de Souza'], dif: 55 },
+    { pergunta: 'Quem e este jogador?', imagem: '/img/jogador-eric-cantona.jpg', resposta: 'Eric Cantona', aceita: ['Cantona'], dif: 55 },
 
     { pergunta: 'Quem e esta jogadora?', imagem: '/img/jogadora-ada-hegerberg.jpg', resposta: 'Ada Hegerberg', aceita: ['Hegerberg'], dif: 70 },
     { pergunta: 'Quem e esta jogadora?', imagem: '/img/jogadora-megan-rapinoe.jpg', resposta: 'Megan Rapinoe', aceita: ['Rapinoe'], dif: 60 },
