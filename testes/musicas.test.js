@@ -191,6 +191,7 @@ function abrir(sala) {
   conferir('  que nao pontua', sala.jogadores.get('c').pontos, 0);
 
   sala.escolherOpcao('c', certa);
+  conferir('  o segundo a acertar, no mesmo tempo, leva 1 a menos', sala.jogadores.get('c').pontos, 9);
   conferir('todo mundo clicou: a rodada fecha', sala.agendado && sala.agendado.ms, 0);
   sala.agendado.fn();
   const resultado = ultimo('rodada:resultado').dados;

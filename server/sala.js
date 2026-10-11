@@ -156,6 +156,8 @@ const PERGUNTAS_ATE_SORTEIO_PADRAO = 3;
 // tela pelo resto do tempo. Quem ainda nao conhece os modos pede mais.
 const SEGUNDOS_SORTEIO = [6, 10, 15, 20, 30];
 const SEGUNDOS_SORTEIO_PADRAO = 6;
+// Quanto a roleta da tela gira ate parar no sorteado (public/js/app.js).
+const MS_ROLETA = 2500;
 // Duas equipes de dois: abaixo disso os modos em equipe nem entram na roleta.
 const MIN_JOGADORES_EQUIPES = 4;
 
@@ -293,7 +295,7 @@ const MODOS = [
     id: 'qual-musica',
     nome: 'Qual e a musica',
     icone: '🎵',
-    descricao: 'Toca um pedaco sorteado de uma musica e aparecem 4 opcoes. Clique na certa: quanto mais rapido, mais pontos (10 nos primeiros 5s, 1 a menos a cada 5s). Um clique por musica, e errou e zero. Pode cair o nome da musica ou quem canta.',
+    descricao: 'Toca um pedaco sorteado de uma musica e aparecem 4 opcoes. Clique na certa: quanto mais rapido, mais pontos (10 nos primeiros 5s, 1 a menos a cada 5s), e cada um que acertou antes de voce tira mais 1 — o segundo sempre leva menos que o primeiro. Um clique por musica, e errou e zero. Pode cair o nome da musica ou quem canta.',
     disponivel: true,
     musical: true
   },
@@ -336,7 +338,9 @@ function configDaBagunca(bruta) {
   if (!modosBagunca.length) return { erro: 'Deixe pelo menos um modo no sorteio da Bagunca.' };
   const seg = Number(bruta && bruta.segundosSorteio);
   const segundosSorteio = SEGUNDOS_SORTEIO.includes(seg) ? seg : SEGUNDOS_SORTEIO_PADRAO;
-  return { perguntasAteSorteio, modosBagunca, segundosSorteio };
+  // Pausar quando sai um modo que ainda nao tinha aparecido na partida.
+  const pausarModoNovo = Boolean(bruta && bruta.pausarModoNovo === true);
+  return { perguntasAteSorteio, modosBagunca, segundosSorteio, pausarModoNovo };
 }
 
 /** Modo Tempo: a faixa de dificuldade conferida. Torta ou estreita demais vira 0 a 100. */
@@ -1975,7 +1979,19 @@ class Sala {
       placar: this.placar()
     });
     this.avisar(`Sorteio da Bagunca: ${modo.icone} ${modo.nome}!`, true);
-    this.agendar(() => this.comecarRodada(), this.msSorteio());
+
+    // Modo que ainda nao tinha saido na partida: com a opcao ligada, a sala
+    // para assim que a roleta para, e so segue quando o lider continuar.
+    const ms = this.msSorteio();
+    if (this.config.pausarModoNovo && this.bagunca.vezes[id] === 1) {
+      this.agendar(() => {
+        this.agendar(() => this.comecarRodada(), Math.max(0, ms - MS_ROLETA));
+        this.pausarRelogios('Bagunca', { ...cara(modo), descricao: modo.descricao });
+        this.avisar(`Modo novo na partida: ${modo.icone} ${modo.nome}. O jogo segue quando o lider continuar.`, true);
+      }, Math.min(MS_ROLETA, ms));
+      return;
+    }
+    this.agendar(() => this.comecarRodada(), ms);
   }
 
   /** Na Bagunca, o que a tela da categoria conta: o modo, ou quanto falta para o sorteio. */
@@ -3266,8 +3282,9 @@ class Sala {
 
   /**
    * Qual e a musica: o clique numa das quatro opcoes. Vale um por pessoa, e
-   * nao da para trocar. Certo, leva os pontos do Modo Tempo pelo relogio (10
-   * nos primeiros 5s, 1 a menos a cada 5s); errado, zero.
+   * nao da para trocar. Certo, leva os pontos do Modo Tempo: 10 nos primeiros
+   * 5s, 1 a menos a cada 5s, e 1 a menos para cada um que acertou antes;
+   * errado, zero.
    *
    * Ninguem fica sabendo na hora se acertou — nem quem clicou. A certa so
    * aparece no resultado, senao a mesa descobriria pelo placar ou pela cara
@@ -3290,8 +3307,10 @@ class Sala {
     this.opcoesEscolhidas.set(socketId, { indice, ms });
 
     if (indice === this.perguntaAtual.opcaoCerta) {
+      // Como no Modo Tempo: o relogio tira 1 a cada 5s, e cada um que acertou
+      // antes tira mais 1 — o segundo a acertar sempre leva menos que o primeiro.
       const posicao = this.acertos.size + 1;
-      const pontos = calcularPontos(ms, 1);
+      const pontos = calcularPontos(ms, posicao);
       jogador.pontos += pontos;
       jogador.acertos += 1;
       this.pontosRodada.set(socketId, pontos);
@@ -4084,7 +4103,7 @@ class Sala {
         : null,
       avataresLivres: this.avataresLivres(),
       // Quem entra com o jogo pausado ja abre a tela de pausa.
-      pausa: this.pausa ? { por: this.pausa.por } : null
+      pausa: this.pausa ? { por: this.pausa.por, ...(this.pausa.modo ? { modo: this.pausa.modo } : {}) } : null
     };
   }
 
@@ -4153,16 +4172,23 @@ class Sala {
     if (!this.emPartida()) return { erro: 'Nao tem partida rolando.' };
     if (this.pausa) return { ok: true };
 
+    this.pausarRelogios(jogador.nickname);
+    this.avisar(`${jogador.nickname} pausou o jogo.`, true);
+    return { ok: true };
+  }
+
+  /**
+   * Para os dois relogios onde estavam e avisa a sala. `modo` vai junto quando
+   * quem pausou foi a Bagunca, para a tela da pausa mostrar a regra dele.
+   */
+  pausarRelogios(por, modo = null) {
     const agora = Date.now();
     const resto = (a) => (a ? { fn: a.fn, restante: Math.max(0, a.fim - agora) } : null);
     const rodada = resto(this.agendado);
     const vez = resto(this.agendadoVez);
     this.limparTemporizador();
-    this.pausa = { desde: agora, por: jogador.nickname, rodada, vez };
-
-    this.emitir('sala:pausa', { pausado: true, por: jogador.nickname });
-    this.avisar(`${jogador.nickname} pausou o jogo.`, true);
-    return { ok: true };
+    this.pausa = { desde: agora, por, rodada, vez, ...(modo ? { modo } : {}) };
+    this.emitir('sala:pausa', { pausado: true, por, ...(modo ? { modo } : {}) });
   }
 
   /**

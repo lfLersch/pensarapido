@@ -270,6 +270,9 @@
         <span class="campo__rotulo">Tempo para ler a regra do modo sorteado</span>
         <div class="meta__opcoes" id="bagunca-segundos"></div>
 
+        <span class="campo__rotulo">Pausar quando sair um modo novo na partida</span>
+        <div class="meta__opcoes" id="bagunca-pausar"></div>
+
         <div class="bloco__cabecalho bagunca__cabecalho">
           <span class="campo__rotulo">Modos no sorteio</span>
           <div class="bloco__acoes">
@@ -422,6 +425,8 @@
         <div class="pausa__icone" aria-hidden="true">⏸</div>
         <h2 class="pausa__titulo" id="pausa-titulo">Jogo pausado</h2>
         <p class="pausa__quem" id="pausa-quem"></p>
+        <!-- Bagunca: a pausa do modo novo traz a regra dele, que a pausa cobriria. -->
+        <p class="pausa__regra" id="pausa-regra" hidden></p>
         <button class="btn btn--primario" id="btn-continuar" type="button">▶ Continuar</button>
         <p class="pausa__espera" id="pausa-espera">Esperando o lider continuar…</p>
       </div>

@@ -109,7 +109,7 @@ e que a versão do topo seja a do jogo.
 | Categorias | Bandeiras, Geografia, Matemática, Esportes (com a parte **Fórmula 1**), **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
 | Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical**, **Qual é a música** ou **Bagunça**, todos num só (Equipes aparece como *em breve*) |
 | Dificuldade das perguntas | só no Modo Tempo: uma faixa de **0 a 100** (padrão, *Normal*), que dá o título da sala — ver [Faixa de dificuldade](#faixa-de-dificuldade-modo-tempo) |
-| Bagunça | só nela: quantas perguntas do Modo Tempo até cada sorteio (0 a 6, **3** de padrão) , quais modos entram no sorteio (**todos** de padrão) e quanto tempo a regra do modo sorteado fica na tela (6 / 10 / 15 / 20 / 30 s, **6 s** de padrão) |
+| Bagunça | só nela: quantas perguntas do Modo Tempo até cada sorteio (0 a 6, **3** de padrão) , quais modos entram no sorteio (**todos** de padrão) e quanto tempo a regra do modo sorteado fica na tela (6 / 10 / 15 / 20 / 30 s, **6 s** de padrão) e se o jogo pausa na primeira vez de cada modo (**não** de padrão) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
 | Limite da música | 15s / 20s / **30s (padrão)** / 45s / 60s — por quanto tempo a música toca, no máximo |
@@ -675,8 +675,10 @@ música?"*, como na categoria.
 Toca um pedaço sorteado de uma música e aparecem **4 opções**. A resposta é o
 clique, e o chat vira só conversa.
 
-- **Um clique por música**, sem troca. Certo vale o esquema do Modo Tempo (10
-  nos primeiros 5 s, 1 a menos a cada 5 s); errado, zero.
+- **Um clique por música**, sem troca. Certo vale o esquema do Modo Tempo: 10
+  nos primeiros 5 s, 1 a menos a cada 5 s, e **1 a menos para cada um que
+  acertou antes** — o segundo a acertar sempre leva menos que o primeiro,
+  mesmo clicando no mesmo segundo. Errado, zero.
 - **Ninguém fica sabendo na hora se acertou**, nem quem clicou: a certa só
   aparece no resultado, em verde, com a errada de cada um em vermelho e o que
   cada pessoa marcou na lista.
@@ -707,7 +709,7 @@ essa rodada, volta o Modo Tempo e a conta recomeça:
 Tempo, Tempo, Tempo, 🎲 Escalada, Tempo, Tempo, Tempo, 🎲 Presente Grego, …
 ```
 
-O líder ajusta três coisas na configuração:
+O líder ajusta quatro coisas na configuração:
 
 - **quantas perguntas até cada sorteio**, de 0 a 6. Com **0** não há Modo
   Tempo no meio: toda rodada sai do sorteio;
@@ -715,7 +717,12 @@ O líder ajusta três coisas na configuração:
   menos um. O Modo Tempo não aparece na lista — ele já é o recheio;
 - **quanto tempo a regra do modo sorteado fica na tela**: 6 s (padrão), 10,
   15, 20 ou 30 s. Mesa que ainda não conhece os modos pede mais tempo para ler
-  antes de a rodada começar.
+  antes de a rodada começar;
+- **pausar quando sai um modo novo** (desligado de padrão). Ligado, na
+  primeira vez que cada modo sai na partida a roleta para e o jogo pausa
+  sozinho: a caixa da pausa mostra o nome e a regra do modo, e a rodada só
+  começa quando o líder clica em *Continuar*. Da segunda vez em diante o modo
+  já é conhecido e segue sem parar.
 
 **Quem cabe no sorteio é decidido na hora dele**, pela sala daquele momento:
 

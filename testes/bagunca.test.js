@@ -75,7 +75,7 @@ function ritmo(sala, n) {
 /* ---------------- 2. A configuracao conferida ---------------- */
 {
   conferir('sem dizer nada: 3 perguntas, todos os modos e 6s para ler a regra',
-    configDaBagunca({}), { perguntasAteSorteio: 3, modosBagunca: MODOS_SORTEAVEIS, segundosSorteio: 6 });
+    configDaBagunca({}), { perguntasAteSorteio: 3, modosBagunca: MODOS_SORTEAVEIS, segundosSorteio: 6, pausarModoNovo: false });
   conferir('o tempo da regra vale o que o lider escolheu',
     configDaBagunca({ segundosSorteio: 20 }).segundosSorteio, 20);
   conferir('  e fora da lista volta para 6',
@@ -121,6 +121,13 @@ function ritmo(sala, n) {
   conferir('  e a rodada seguinte', sorteio.dados.rodada, 2);
   conferir('  a tela fica 6s sem o lider mexer', sorteio.dados.duracaoMs, 6000);
 
+  const categorias = eventos.filter((e) => e.evento === 'rodada:categoria');
+  conferir('a tela da categoria diz de que modo e a rodada',
+    categorias.map((e) => e.dados.modo), ['tempo', sala.modo]);
+  conferir('  e no Modo Tempo, quanto falta para o sorteio',
+    categorias.map((e) => e.dados.bagunca.pergunta), [1, null]);
+  sala.destruir();
+
   // Com mais tempo para ler a regra, a tela e a espera da rodada crescem juntas.
   const lenta = montar(3, { perguntasAteSorteio: 1, modosBagunca: ['veni'], segundosSorteio: 20 });
   lenta.sala.pularRodada();
@@ -130,12 +137,32 @@ function ritmo(sala, n) {
   conferir('  e a rodada so comeca depois deles',
     [lenta.sala.estado, lenta.sala.agendado.ms], ['sorteio', 20000]);
   lenta.sala.destruir();
+}
 
-  const categorias = eventos.filter((e) => e.evento === 'rodada:categoria');
-  conferir('a tela da categoria diz de que modo e a rodada',
-    categorias.map((e) => e.dados.modo), ['tempo', sala.modo]);
-  conferir('  e no Modo Tempo, quanto falta para o sorteio',
-    categorias.map((e) => e.dados.bagunca.pergunta), [1, null]);
+/* ---------------- 4b. Pausar quando sai um modo novo ---------------- */
+{
+  conferir('a pausa no modo novo vem desligada', configDaBagunca({}).pausarModoNovo, false);
+
+  const { sala, eventos } = montar(3, { perguntasAteSorteio: 1, modosBagunca: ['veni'], pausarModoNovo: true });
+  const lider = NOMES[0];
+  sala.pularRodada();
+  sala.agendado.fn();
+  conferir('modo novo: a roleta gira antes de pausar', [sala.estado, sala.agendado.ms, Boolean(sala.pausa)], ['sorteio', 2500, false]);
+  sala.agendado.fn();
+  const pausa = eventos.filter((e) => e.evento === 'sala:pausa').pop();
+  conferir('  e a sala para, com a regra do modo na pausa',
+    [Boolean(sala.pausa), pausa.dados.pausado, pausa.dados.modo.id, Boolean(pausa.dados.modo.descricao)],
+    [true, true, 'veni', true]);
+  conferir('  ninguem fora o lider continua', Boolean(sala.continuar(NOMES[1]).erro), true);
+  sala.continuar(lider);
+  sala.agendado.fn();
+  conferir('  o lider continua e a rodada do modo comeca', [sala.estado !== 'sorteio', sala.modo], [true, 'veni']);
+
+  // A segunda vez do mesmo modo ja e conhecida: a roleta nao para o jogo.
+  proxima(sala);
+  sala.pularRodada();
+  sala.agendado.fn();
+  conferir('o mesmo modo de novo nao pausa', [sala.estado, sala.agendado.ms, Boolean(sala.pausa)], ['sorteio', 6000, false]);
   sala.destruir();
 }
 

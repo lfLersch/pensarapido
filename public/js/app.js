@@ -24,6 +24,7 @@ const estado = {
     totalMusicas: 15,
     perguntasAteSorteio: 3,    // Bagunca: perguntas do Modo Tempo entre um sorteio e outro
     segundosSorteio: 6,        // Bagunca: quanto tempo a regra do modo sorteado fica na tela
+    pausarModoNovo: false,     // Bagunca: parar o jogo na primeira vez que um modo sai
     modosBagunca: new Set()    // Bagunca: os modos que entram na roleta
   },
   musica: null,     // a musica da rodada: { inicio, limite, abriuEm, parada }
@@ -1154,6 +1155,14 @@ function montarBagunca() {
       sincronizarBagunca();
     });
 
+  // Ou o jogo para de vez na primeira vez de cada modo, ate o lider continuar.
+  estado.escolhas.pausarModoNovo = false;
+  montarPilulas($('bagunca-pausar'), [false, true], (v) => (v ? 'Sim' : 'Nao'),
+    estado.escolhas.pausarModoNovo, (v) => {
+      estado.escolhas.pausarModoNovo = v;
+      sincronizarBagunca();
+    });
+
   const caixa = $('bagunca-modos');
   caixa.innerHTML = '';
   for (const modo of modosSorteaveis()) {
@@ -1342,12 +1351,13 @@ function resumoDaFaixa(faixa) {
 }
 
 /** "7 modos · sorteio a cada 3 perguntas", para os dois resumos. */
-function resumoDaBagunca(perguntas, quantosModos, segundos) {
+function resumoDaBagunca(perguntas, quantosModos, segundos, pausarModoNovo) {
   const ritmo = perguntas === 0
     ? 'toda rodada sorteada'
     : `sorteio a cada <b>${perguntas}</b> ${perguntas === 1 ? 'pergunta' : 'perguntas'}`;
   const regra = segundos ? ` · <b>${segundos}s</b> para ler a regra` : '';
-  return `<span><b>${quantosModos}</b> ${quantosModos === 1 ? 'modo' : 'modos'} · ${ritmo}${regra}</span>`;
+  const pausa = pausarModoNovo ? ' · pausa no modo novo' : '';
+  return `<span><b>${quantosModos}</b> ${quantosModos === 1 ? 'modo' : 'modos'} · ${ritmo}${regra}${pausa}</span>`;
 }
 
 /** Pilulas de escolha unica: marca a do valor atual e chama `escolher` no clique. */
@@ -1598,7 +1608,7 @@ function atualizarResumo() {
     : `
     <span>${plural(total, 'categoria', 'categorias')}</span>
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
-    ${bagunca ? resumoDaBagunca(estado.escolhas.perguntasAteSorteio, estado.escolhas.modosBagunca.size, estado.escolhas.segundosSorteio) : ''}
+    ${bagunca ? resumoDaBagunca(estado.escolhas.perguntasAteSorteio, estado.escolhas.modosBagunca.size, estado.escolhas.segundosSorteio, estado.escolhas.pausarModoNovo) : ''}
     ${modo && modo.id === 'tempo' ? resumoDaFaixa(estado.escolhas.faixa) : ''}
     <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
@@ -1646,6 +1656,7 @@ $('btn-criar').addEventListener('click', () => {
     ...(bagunca ? {
       perguntasAteSorteio: estado.escolhas.perguntasAteSorteio,
       segundosSorteio: estado.escolhas.segundosSorteio,
+      pausarModoNovo: estado.escolhas.pausarModoNovo,
       modosBagunca: [...estado.escolhas.modosBagunca]
     } : {})
   };
@@ -1686,7 +1697,7 @@ function renderizarSala() {
     <span>Musica de ate <b>${sala.config.limiteMusica}s</b></span>`
     : `
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
-    ${modo && modo.bagunca ? resumoDaBagunca(sala.config.perguntasAteSorteio, (sala.config.modosBagunca || []).length, sala.config.segundosSorteio) : ''}
+    ${modo && modo.bagunca ? resumoDaBagunca(sala.config.perguntasAteSorteio, (sala.config.modosBagunca || []).length, sala.config.segundosSorteio, sala.config.pausarModoNovo) : ''}
     ${resumoDaFaixa(sala.config.faixa)}
     <span>Meta <b>${sala.config.metaPontos} pts</b></span>
     <span><b>${sala.config.segundosPorPergunta}s</b> por pergunta</span>
@@ -3913,7 +3924,7 @@ function atualizarBotoesDePausa() {
   $('pausa-espera').hidden = souLider();
 }
 
-function aplicarPausa(pausado, por) {
+function aplicarPausa(pausado, por, modo = null) {
   if (pausado && !estado.pausado) {
     pausarRelogios();
     estado.pausado = true;
@@ -3943,7 +3954,16 @@ function aplicarPausa(pausado, por) {
       else $('tocador-audio').play().then(() => marcarTocando(true)).catch(() => {});
     }
   }
-  if (pausado) $('pausa-quem').textContent = por ? `${por} pausou o jogo.` : '';
+  // Pausa da Bagunca num modo novo: a caixa vira a regra do modo, com calma.
+  const regra = $('pausa-regra');
+  regra.hidden = !(pausado && modo);
+  $('pausa-titulo').textContent = pausado && modo ? `${modo.icone} Modo novo: ${modo.nome}` : 'Jogo pausado';
+  if (pausado && modo) {
+    regra.textContent = modo.descricao || '';
+    $('pausa-quem').textContent = 'Primeira vez deste modo na partida. Leia a regra; o jogo segue quando o lider continuar.';
+  } else if (pausado) {
+    $('pausa-quem').textContent = por ? `${por} pausou o jogo.` : '';
+  }
   atualizarBotoesDePausa();
 }
 
@@ -3961,7 +3981,7 @@ $('btn-continuar').addEventListener('click', () => {
   });
 });
 
-socket.on('sala:pausa', ({ pausado, por } = {}) => aplicarPausa(Boolean(pausado), por));
+socket.on('sala:pausa', ({ pausado, por, modo } = {}) => aplicarPausa(Boolean(pausado), por, modo));
 
 /* =====================================================================
    Eventos gerais da sala
@@ -4013,7 +4033,7 @@ socket.on('sala:estado', (sala) => {
   // Quem entra (ou volta) com o jogo pausado ja abre a tela de pausa; e a
   // partida que acaba ou volta ao saguao leva a pausa junto.
   const emJogo = sala.estado !== 'lobby' && sala.estado !== 'fim';
-  aplicarPausa(Boolean(emJogo && sala.pausa), sala.pausa?.por);
+  aplicarPausa(Boolean(emJogo && sala.pausa), sala.pausa?.por, sala.pausa?.modo);
 
   if (sala.estado === 'lobby') {
     renderizarSala();
