@@ -1707,6 +1707,20 @@ Sailor Moon é *"Qual heroína de anime é esta?"*. Primeiro nome e apelido vale
 ("Khaleesi", "Heisenberg", "Kakaroto", "Bruxa do 71"). Ficou de fora quem já
 tinha foto no jogo (Harry, Hermione, Jack Sparrow, Carminha…).
 
+### Celebridades e cenas de filmes
+
+**Celebridades** (`public/img/pessoa-*.jpg`), cada uma na categoria que combina
+com ela: apresentadores e gente da TV em Cinema & TV → Séries e TV (Silvio
+Santos, Faustão, Ana Maria Braga, Galvão, Bonner, Oprah, Jimmy Fallon…),
+atores em Atores (Marquezine, Marilyn, Chaplin, Mr. Bean), cantores em Música →
+Músicos (Anitta, Caetano, Michael Jackson, Madonna, Freddie Mercury, Bad
+Bunny…) e o resto em **Mainstream**, com *"Quem é este famoso?"* (Musk, Obama,
+Papa Francisco, Rainha Elizabeth, MrBeast, Whindersson, Casimiro…). O apelido
+vale: *Faustão*, *Lady Di*, *Mr. Bean*, *Ye*.
+
+**Cenas de filmes** (`public/img/cena-*.jpg`) entram em Cinema & TV → Cenas,
+com *"Que filme é este?"* e o título em inglês valendo (*Inside Out*, *Ghostbusters*).
+
 ### Geografia — pontos turísticos
 
 **101 fotos de cidades e paisagens** (`public/img/lugar-*.jpg`), 139 perguntas:
