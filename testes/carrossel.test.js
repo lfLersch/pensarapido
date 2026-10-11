@@ -111,7 +111,7 @@ function responderCerto(sala) {
   const { sala, eventos } = novaSala(3);
   const quem = daVez(sala);
   sala.jogadores.get(quem).ultimaMensagem = 0;
-  const r = sala.palpitar(quem, 'xilofone quadrado de nuvem');
+  const r = sala.palpitar(quem, 'qzxwvk ploft trumbz');
 
   conferir('resposta errada elimina', r.veredito, 'eliminado');
   conferir('  com motivo "errou"', r.motivo, 'errou');
@@ -129,7 +129,7 @@ function responderCerto(sala) {
   for (let i = 0; i < 2; i++) {
     const quem = daVez(sala);
     sala.jogadores.get(quem).ultimaMensagem = 0;
-    sala.palpitar(quem, 'resposta claramente errada ' + i);
+    sala.palpitar(quem, 'qzxwvk ploft ' + 'trumbz'.repeat(i + 1));
     sala.limparTemporizador();
   }
 
@@ -143,11 +143,11 @@ function responderCerto(sala) {
   const { sala } = novaSala(3);
   const primeiroASair = daVez(sala);
   sala.jogadores.get(primeiroASair).ultimaMensagem = 0;
-  sala.palpitar(primeiroASair, 'isso nao e resposta de nada');
+  sala.palpitar(primeiroASair, 'zzxqk vvwpl gruntz');
   sala.limparTemporizador();
   const segundoASair = daVez(sala);
   sala.jogadores.get(segundoASair).ultimaMensagem = 0;
-  sala.palpitar(segundoASair, 'outra resposta sem pe nem cabeca');
+  sala.palpitar(segundoASair, 'kkwqz plvvx brontz');
   sala.limparTemporizador();
 
   const sobrevivente = [...sala.vivos][0];
@@ -165,7 +165,7 @@ function responderCerto(sala) {
   const { sala } = novaSala(3);
   const fora = daVez(sala);
   sala.jogadores.get(fora).ultimaMensagem = 0;
-  sala.palpitar(fora, 'isso nao e resposta de nada');
+  sala.palpitar(fora, 'zzxqk vvwpl gruntz');
   sala.limparTemporizador();
   // Gasta a lista inteira menos um item, e o ultimo acerto a fecha.
   const itens = sala.perguntaAtual.itens.length;
@@ -253,7 +253,7 @@ function responderCerto(sala) {
   };
 
   const primeiro = daVez(sala);
-  const errou = tentar(primeiro, 'xilofone quadrado de nuvem');
+  const errou = tentar(primeiro, 'qzxwvk ploft trumbz');
   conferir('as cegas: errar nao elimina', errou.veredito, 'errado');
   conferir('  quem errou continua viva', sala.vivos.has(primeiro), true);
   conferir('  e continua com a vez', daVez(sala), primeiro);
