@@ -20,9 +20,19 @@ const PONTOS_MIN = 1;         // acertar sempre vale pelo menos 1
 // quem nao sabia metralhava palpites ate um colar. O "quase" tambem gasta.
 const CHANCES_POR_PERGUNTA = 5;
 
-// Escalada: cada item lembrado já vale ponto, e fechar a lista dá um empurrão.
-const PONTOS_POR_ITEM = 2;
-const BONUS_ESCALADA = 5;
+// Nenhuma rodada paga mais que 10 a uma pessoa, em modo nenhum. Os modos sem
+// relogio (Escalada, Carrossel, Mais ou Menos Pontos) pagam pela colocacao na
+// rodada: o 1o leva 10, o 2o leva 9 e assim por diante; quem empata divide a
+// posicao (dois em 1o levam 10 cada, e o seguinte e 3o, com 8).
+const PONTOS_MAX_RODADA = 10;
+// Leiloes: quem entrega o que prometeu leva 10; se nao entregar, cada um dos
+// outros leva 5.
+const PONTOS_LEILAO = 10;
+const CONSOLO_LEILAO = 5;
+// Escalada sorteada na Bagunca: 30s, sem limite de respostas — quem lembra
+// mais fica na frente. A lista precisa ser grande para nao acabar no meio.
+const MS_ESCALADA_LIVRE = 30000;
+const MIN_ITENS_ESCALADA_LIVRE = 12;
 
 const MS_REVELACAO = 2800;   // tela "categoria" antes da pergunta
 // Pergunta com imagem: a imagem baixa durante a tela da categoria, e o relogio
@@ -50,21 +60,19 @@ const JANELA_DIFICULDADE = 0.25;
 const JANELA_DIFICULDADE_MIN = 8;
 
 // Carrossel: a vez passa de jogador em jogador e quem não souber sai da
-// rodada. Cada pessoa tem 7s, e a cada 2 rodadas o carrossel dá uma volta a
-// mais — rodadas 1-2 uma volta, 3-4 duas, 5-6 três.
+// rodada. Cada pessoa tem 7s, e as voltas não têm fim: a rodada só acaba
+// quando sobra uma pessoa (ou quando a lista acaba). A colocação é a ordem
+// de saída ao contrário — quem sobra é o 1o.
 const MS_POR_VEZ = 7000;
-const RODADAS_POR_VOLTA = 2;
-// Para em 3 voltas. Sem teto, a rodada 15 pedia 8 voltas: com 2 pessoas isso
-// são 16 respostas seguidas, e quase nenhuma lista tem tamanho para isso.
-const MAX_VOLTAS = 3;
-const BONUS_CARROSSEL = 5;   // para quem chega vivo ao fim da rodada
+// Lista grande para a roda girar bastante antes de acabar as respostas.
+const MIN_ITENS_CARROSSEL = 20;
 const MS_ENTRE_VEZES = 900;  // respiro para a tela mostrar quem saiu
 
 // Presente Grego: joga-se em equipes. Um integrante ve a pergunta e leiloa
 // quantas respostas o PARCEIRO consegue dizer — e o parceiro so descobre a
 // pergunta quando o leilao acaba. Dai o nome: o lance e um presente
 // embrulhado que a outra metade da equipe tem que desembrulhar.
-const MS_POR_LANCE = 9000;       // tempo de cada equipe para cobrir, duvidar ou passar
+const MS_POR_LANCE = 10000;      // tempo de cada equipe para cobrir, duvidar ou passar
 // Quem abre o leilao decide no vazio: nao ha lance na mesa para se apoiar, e
 // e ele que ainda esta lendo a pergunta. Ganha um respiro a mais.
 const MS_EXTRA_PRIMEIRO_LANCE = 3000;
@@ -74,7 +82,6 @@ const MS_APOS_LEILAO = 3200;     // tela do "duvido" antes da pergunta aparecer
 // dela e a rodada vira conta de padaria em vez de conhecimento.
 const MIN_ITENS_PRESENTE = 15;
 const MAX_APOSTA = 60;           // teto so para barrar lance de brincadeira
-const PONTOS_POR_APOSTA = 2;     // cada item apostado vale isto para a equipe
 // Aqui uma pessoa so digita a lista inteira, entao cada resposta pedida pesa
 // mais que na Escalada, onde todo mundo responde em paralelo.
 const MS_BASE_LEILAO = 2000;       // relogio da entrega: 2s
@@ -123,7 +130,6 @@ const MAX_DICAS = 10;              // teto do lance de abertura
 const MS_BASE_DICAS = 15000;       // relogio da entrega: 15s
 const MS_POR_DICA = 9000;          //  + 9s por dica prometida
 const MS_TETO_DICAS = 105000;
-const PONTOS_POR_RODADA_DICAS = 10; // o que a rodada paga, valha 1 dica ou 10
 // Dica que carrega a resposta esta fora. Tres letras ja bastam para entregar
 // (`sol` dentro de `solar`), e recusar uma dica boa custa menos do que deixar
 // a palavra escapar.
@@ -228,28 +234,28 @@ const MODOS = [
     id: 'escalada',
     nome: 'Escalada',
     icone: '🧗',
-    descricao: 'Cada rodada pede uma resposta a mais: 1 na primeira, 2 na segunda, 3 na terceira… Cada item lembrado vale 2 pontos e fechar a lista da +5 de bonus. Sao 5 chances de errar por rodada.',
+    descricao: 'Cada rodada pede uma resposta a mais: 1 na primeira, 2 na segunda, 3 na terceira… Na Bagunca nao tem numero: 30s para citar o maximo que der. Quem lembrou mais leva 10, o segundo 9 e assim por diante — empate divide a posicao. Sao 5 chances de errar por rodada.',
     disponivel: true
   },
   {
     id: 'carrossel',
     nome: 'Carrossel visivel',
     icone: '🎠',
-    descricao: 'A vez passa de um em um, 7s para cada. Quem nao souber sai da rodada. O que ja foi respondido fica na tela. Rodadas 1-2 dao uma volta, 3-4 duas, 5-6 tres.',
+    descricao: 'A vez passa de um em um, 7s para cada. Quem nao souber sai da rodada, e a roda gira ate sobrar um. O que ja foi respondido fica na tela. Quem sobra leva 10, o ultimo a sair 9, e assim por diante.',
     disponivel: true
   },
   {
     id: 'carrossel-cego',
     nome: 'Carrossel as cegas',
     icone: '🙈',
-    descricao: 'O mesmo carrossel, mas sem a lista do que ja foi dito. Errar nao elimina: da para tentar de novo dentro dos 7s. Quem repetir uma resposta que ja saiu esta fora.',
+    descricao: 'O mesmo carrossel, mas sem a lista do que ja foi dito. Errar nao elimina: da para tentar de novo dentro dos 7s. Quem repetir uma resposta que ja saiu esta fora. Gira ate sobrar um: quem sobra leva 10, o ultimo a sair 9, e assim por diante.',
     disponivel: true
   },
   {
     id: 'presente-grego',
     nome: 'Presente Grego',
     icone: '🎁',
-    descricao: 'Em equipes. Um de cada equipe ve a pergunta e leiloa quantas respostas o PARCEIRO consegue dizer — e o parceiro so descobre a pergunta no fim. O lance sobe ate alguem duvidar; se a aposta nao sair, quem duvidou leva os pontos.',
+    descricao: 'Em equipes. Um de cada equipe ve a pergunta e leiloa quantas respostas o PARCEIRO consegue dizer — e o parceiro so descobre a pergunta no fim. O lance sobe ate alguem duvidar. Entregou o que prometeu: 10 para cada um da equipe. Nao entregou: 5 para cada um das outras equipes.',
     disponivel: true,
     equipes: true
   },
@@ -257,7 +263,7 @@ const MODOS = [
     id: 'ranking',
     nome: 'Mais ou Menos Pontos',
     icone: '📈',
-    descricao: 'Uma lista em ordem — os 100 paises mais populosos, as 100 maiores cidades do Brasil. A resposta vale a posicao dela na lista: o primeiro rende 1 ponto e o ultimo rende 100. Fora da lista, zero. Cada um responde uma vez por rodada, e a mesma lista rende tres rodadas — o que ja foi dito continua fora.',
+    descricao: 'Uma lista em ordem — os 100 paises mais populosos, as 100 maiores cidades do Brasil. A resposta vale a posicao dela na lista: o primeiro vale 1 e o ultimo vale 100. Quem disse a resposta que vale mais leva 10, o segundo 9, e assim por diante. Fora da lista, zero. Cada um responde uma vez por rodada, e a mesma lista rende tres rodadas — o que ja foi dito continua fora.',
     disponivel: true
   },
   {
@@ -271,14 +277,14 @@ const MODOS = [
     id: 'leilao-geral',
     nome: 'Leilao Geral',
     icone: '🔨',
-    descricao: 'Cada um por si. Todo mundo ve a pergunta e aposta quantas respostas consegue dizer sozinho; quem nao cobrir o lance esta fora da rodada. Quem leva o leilao ganha 2 pontos por resposta que der — e se nao chegar no que prometeu, cada um dos outros leva a aposta.',
+    descricao: 'Cada um por si. Todo mundo ve a pergunta e aposta quantas respostas consegue dizer sozinho; quem nao cobrir o lance esta fora da rodada. Quem leva o leilao e entrega o que prometeu ganha 10 — se nao chegar la, cada um dos outros leva 5.',
     disponivel: true
   },
   {
     id: 'dando-dicas',
     nome: 'Dando dicas',
     icone: '💡',
-    descricao: 'Leilao ao contrario, em duplas. Uma metade de cada dupla ve a mesma palavra secreta e leiloa em quantas dicas faz a outra metade acertar — e cada dica e UMA palavra. O lance desce ate todos passarem; quem ficou tem que entregar. A rodada vale 10 pontos, custe 1 dica ou 10: se a palavra nao sair, os 10 vao para as outras duplas.',
+    descricao: 'Leilao ao contrario, em duplas. Uma metade de cada dupla ve a mesma palavra secreta e leiloa em quantas dicas faz a outra metade acertar — e cada dica e UMA palavra. O lance desce ate todos passarem; quem ficou tem que entregar. A rodada vale 10 pontos, custe 1 dica ou 10: se a palavra nao sair, cada um das outras duplas leva 5.',
     disponivel: true,
     equipes: true,
     duplas: true
@@ -303,7 +309,7 @@ const MODOS = [
     id: 'bagunca',
     nome: 'Bagunca',
     icone: '🎲',
-    descricao: 'Todos os modos numa partida so. Depois de algumas perguntas do Modo Tempo (3, se ninguem mexer), um sorteio escolhe o modo da rodada seguinte — e volta o Modo Tempo. Os modos em equipe so entram no sorteio com 4 ou mais na sala. Quantas perguntas ate o sorteio, quais modos entram nele e quanto tempo a regra do modo sorteado fica na tela, voce escolhe.',
+    descricao: 'Todos os modos numa partida so. Depois de algumas perguntas do Modo Tempo (3, se ninguem mexer), um sorteio escolhe o modo da rodada seguinte — e volta o Modo Tempo. Com 0 perguntas ate o sorteio, toda rodada e sorteada e o Modo Tempo entra na roleta. Os modos em equipe so entram no sorteio com 4 ou mais na sala. Quantas perguntas ate o sorteio, quais modos entram nele e quanto tempo a regra do modo sorteado fica na tela, voce escolhe.',
     disponivel: true,
     bagunca: true
   },
@@ -601,7 +607,8 @@ class Sala {
     this.ordem = [];            // socketIds na ordem em que o carrossel gira
     this.vez = 0;               // índice em `ordem`
     this.vivos = new Set();     // ainda na rodada
-    this.voltasAlvo = 1;
+    this.voltasAlvo = null;      // sem limite: o carrossel gira ate sobrar um
+    this.eliminados = [];
     this.voltasFeitas = 0;
     this.inicioVez = 0;
 
@@ -1745,6 +1752,24 @@ class Sala {
     return this.montarListaEscalada(candidatas, necessarias);
   }
 
+  /**
+   * Escalada da Bagunca: uma lista grande, sem numero de respostas. Pede a
+   * lista inteira — ninguem fecha, e a rodada acaba no relogio de 30s.
+   */
+  perguntaEscaladaLivre() {
+    const semFixas = (lista) => !lista.fixo;
+    let candidatas = paraRodada(MIN_ITENS_ESCALADA_LIVRE, this.ultimoTema).filter(semFixas);
+    if (candidatas.length === 0) candidatas = paraRodada(MIN_ITENS_ESCALADA_LIVRE).filter(semFixas);
+    if (candidatas.length === 0) return this.perguntaEscalada(2);
+
+    const pergunta = this.montarListaEscalada(candidatas, MIN_ITENS_ESCALADA_LIVRE);
+    pergunta.pergunta = pergunta.pergunta.replace(/^Cite \d+ /, 'Cite o maximo de ');
+    pergunta.necessarias = pergunta.itens.length;
+    pergunta.livre = true;
+    pergunta.categoria = { id: 'escalada', nome: 'Sem limite · 30s', icone: '🧗', cor: '#f59e0b' };
+    return pergunta;
+  }
+
   montarListaEscalada(candidatas, necessarias) {
     // Tira do bolo as listas que já caíram nesta partida. Se não sobrar nada,
     // repetir é melhor do que travar a rodada.
@@ -1776,20 +1801,11 @@ class Sala {
   }
 
   /**
-   * Quantas voltas o carrossel dá nesta rodada.
-   * Rodadas 1-2 uma volta, 3-4 duas, 5-6 três, e assim por diante.
+   * Carrossel: as voltas nao tem fim, entao a lista precisa ser grande — a
+   * rodada so acaba antes de sobrar um se as respostas acabarem.
    */
-  voltasDaRodada(rodada) {
-    return Math.min(MAX_VOLTAS, Math.floor((rodada - 1) / RODADAS_POR_VOLTA) + 1);
-  }
-
-  /**
-   * Carrossel: precisa de uma lista grande o bastante para todo mundo
-   * responder em todas as voltas — 4 pessoas em 3 voltas pedem 12 respostas.
-   */
-  perguntaCarrossel(rodada) {
-    const voltas = this.voltasDaRodada(rodada);
-    const precisa = Math.max(2, this.jogadores.size * voltas);
+  perguntaCarrossel() {
+    const precisa = Math.max(MIN_ITENS_CARROSSEL, this.jogadores.size * 4);
 
     let candidatas = paraRodada(precisa, this.ultimoTema);
     let tamanho = precisa;
@@ -1809,7 +1825,7 @@ class Sala {
 
     // No carrossel ninguém precisa completar a lista sozinho: o que vale é
     // ter uma resposta na sua vez.
-    pergunta.categoria = { id: 'carrossel', nome: `${voltas} volta${voltas > 1 ? 's' : ''}`, icone: '🎠', cor: '#f59e0b' };
+    pergunta.categoria = { id: 'carrossel', nome: 'Ate sobrar um', icone: '🎠', cor: '#f59e0b' };
     return pergunta;
   }
 
@@ -1875,8 +1891,11 @@ class Sala {
     this.ordem = ids.slice(giro).concat(ids.slice(0, giro));
     this.vivos = new Set(this.ordem);
     this.vez = 0;
-    this.voltasAlvo = this.voltasDaRodada(this.rodadaDoModo());
+    // Sem numero de voltas: gira ate sobrar um.
+    this.voltasAlvo = null;
     this.voltasFeitas = 0;
+    // Quem saiu, na ordem: a colocacao da rodada e esta lista ao contrario.
+    this.eliminados = [];
   }
 
   /**
@@ -1909,7 +1928,11 @@ class Sala {
    */
   modosQueCabem() {
     const gente = this.jogadores.size;
-    return (this.config.modosBagunca || MODOS_SORTEAVEIS).filter((id) => {
+    const marcados = this.config.modosBagunca || MODOS_SORTEAVEIS;
+    // Sem Modo Tempo no meio (0 perguntas ate o sorteio), ele entra na roleta
+    // como mais um modo — senao sumiria da partida.
+    const roleta = this.perguntasAteSorteio() === 0 ? [...marcados, 'tempo'] : marcados;
+    return roleta.filter((id) => {
       const modo = MODOS.find((m) => m.id === id);
       if (!modo) return false;
       if (modo.equipes) return gente >= MIN_JOGADORES_EQUIPES;
@@ -2049,13 +2072,12 @@ class Sala {
     } else if (this.ehVeni()) {
       this.perguntaAtual = this.perguntaVeni();
     } else if (this.ehCarrossel()) {
-      this.perguntaAtual = this.perguntaCarrossel(this.rodadaDoModo());
+      this.perguntaAtual = this.perguntaCarrossel();
       this.prepararCarrossel();
     } else if (this.modo === 'escalada') {
-      // Na Bagunca a Escalada sobe um degrau a cada vez que sai, e comeca no
-      // 2: o degrau de uma resposta seria a pergunta comum do Modo Tempo.
-      const degrau = this.ehBagunca() ? this.rodadaDoModo() + 1 : this.rodada;
-      this.perguntaAtual = this.perguntaEscalada(degrau);
+      // Na Bagunca a Escalada nao tem numero: 30s para lembrar o maximo que
+      // der, e quem lembrou mais fica na frente.
+      this.perguntaAtual = this.ehBagunca() ? this.perguntaEscaladaLivre() : this.perguntaEscalada(this.rodada);
     } else {
       this.perguntaAtual = this.perguntaSimples();
     }
@@ -2193,6 +2215,8 @@ class Sala {
     // 1 eh bom 2 ok 3 eh demais: o relogio que aparece e o da janela de palpite, nao o
     // da rodada inteira — sao tres janelas iguais, uma por dica.
     if (this.ehVeni()) return MS_FASE_VENI;
+    // Escalada da Bagunca: o relogio e fixo, a lista e que nao tem fim.
+    if (this.perguntaAtual.livre) return MS_ESCALADA_LIVRE;
     // Nos modos musicais a rodada dura o que a musica toca. Nos outros modos
     // a pergunta de musica continua no tempo por pergunta da sala.
     if (this.ehMusical()) return this.limiteMusicaMs();
@@ -2226,6 +2250,7 @@ class Sala {
       opcoes: this.perguntaAtual.opcoes || null,
       letra: this.perguntaAtual.letra,
       necessarias: this.perguntaAtual.necessarias,
+      livre: Boolean(this.perguntaAtual.livre),
       // A resposta NUNCA vai junto — o servidor é quem confere.
       // Vai só o formato dela: "Johnny Depp" vira "•••••• ••••".
       // Em lista com várias respostas não há máscara: entregaria demais.
@@ -2332,7 +2357,8 @@ class Sala {
       rodada: this.rodada,
       msPorLance: this.tempoDoLance(),
       maxAposta: this.ehDandoDicas() ? MAX_DICAS : MAX_APOSTA,
-      pontosPorAposta: this.ehDandoDicas() ? PONTOS_POR_RODADA_DICAS : PONTOS_POR_APOSTA,
+      // O que a rodada paga: 10 a quem entrega, 5 a cada um dos outros se nao.
+      premio: { entregou: PONTOS_LEILAO, naoEntregou: CONSOLO_LEILAO },
       // Leilao ao contrario: a tela precisa saber que o lance desce.
       reverso: this.ehLeilaoReverso(),
       equipes: this.leilao.equipes.map((id) => this.equipePublica(this.equipePorId(id)))
@@ -2694,6 +2720,7 @@ class Sala {
     this.pararVez();
 
     this.vivos.delete(jogadorId);
+    this.eliminados.push(jogadorId);
     const jogador = this.jogadores.get(jogadorId);
 
     this.emitir('carrossel:eliminado', {
@@ -2714,13 +2741,14 @@ class Sala {
 
   /**
    * Passa a vez para o próximo que ainda está na rodada. Fecha a rodada
-   * quando as voltas terminam ou quando sobra no máximo uma pessoa.
+   * quando sobra no máximo uma pessoa ou quando a lista acaba.
    */
   avancarVez() {
     this.pararVez();
     if (this.estado !== 'pergunta') return;
 
-    if (this.vivos.size <= 1) {
+    const acabouALista = this.itensUsados.size >= this.perguntaAtual.itens.length;
+    if (this.vivos.size <= 1 || acabouALista) {
       this.agendar(() => this.encerrarRodada(), MS_ENTRE_VEZES);
       return;
     }
@@ -2731,10 +2759,6 @@ class Sala {
       if (this.vez >= this.ordem.length) {
         this.vez = 0;
         this.voltasFeitas += 1;
-        if (this.voltasFeitas >= this.voltasAlvo) {
-          this.agendar(() => this.encerrarRodada(), MS_ENTRE_VEZES);
-          return;
-        }
       }
       if (this.vivos.has(this.ordem[this.vez])) {
         this.agendar(() => this.iniciarVez(), MS_ENTRE_VEZES);
@@ -2976,17 +3000,12 @@ class Sala {
     const necessarias = this.perguntaAtual.necessarias;
 
     // Ainda falta responder mais: confirma só para quem escreveu, para não
-    // entregar o item aos outros.
-    // Na Escalada cada item lembrado já pontua, mesmo sem fechar a lista.
-    if (necessarias > 1) {
-      jogador.pontos += PONTOS_POR_ITEM;
-      this.pontosRodada.set(socketId, (this.pontosRodada.get(socketId) || 0) + PONTOS_POR_ITEM);
-    }
-
+    // entregar o item aos outros. Na Escalada o item não paga na hora: no
+    // fim da rodada, quem lembrou mais fica na frente.
     if (jaTenho.size < necessarias) {
       return {
-        veredito: 'item', item: nomeItem, pontos: PONTOS_POR_ITEM,
-        quantos: jaTenho.size, necessarias
+        veredito: 'item', item: nomeItem, pontos: 0,
+        quantos: jaTenho.size, necessarias, livre: Boolean(this.perguntaAtual.livre)
       };
     }
 
@@ -2998,11 +3017,8 @@ class Sala {
     let bonus = 0;
 
     if (necessarias > 1) {
-      // Escalada: os itens já foram pagos a 2 cada; fechar a lista dá o bônus.
-      bonus = BONUS_ESCALADA;
-      jogador.pontos += bonus;
-      this.pontosRodada.set(socketId, (this.pontosRodada.get(socketId) || 0) + bonus);
-      pontos = this.pontosRodada.get(socketId);
+      // Escalada: fechou a lista, mas o ponto vem no fim, pela colocação.
+      pontos = 0;
     } else {
       // Modo Tempo: faixa de 5s menos quem acertou antes.
       pontos = calcularPontos(ms, posicao);
@@ -3050,9 +3066,7 @@ class Sala {
     const meus = this.progresso.get(socketId) || new Set();
     meus.add(indice);
     this.progresso.set(socketId, meus);
-
-    jogador.pontos += PONTOS_POR_ITEM;
-    this.pontosRodada.set(socketId, (this.pontosRodada.get(socketId) || 0) + PONTOS_POR_ITEM);
+    // O ponto vem no fim, pela colocacao: aqui so a vez anda.
 
     const nomeItem = this.perguntaAtual.itens[indice].oficial;
 
@@ -3065,7 +3079,7 @@ class Sala {
       jogadorId: socketId,
       nickname: jogador.nickname,
       avatar: jogador.avatar,
-      pontos: PONTOS_POR_ITEM,
+      pontos: 0,
       texto: this.mostraDitos() ? nomeItem : null,
       item: true
     });
@@ -3077,7 +3091,7 @@ class Sala {
     });
 
     this.avancarVez();
-    return { veredito: 'item', item: nomeItem, pontos: PONTOS_POR_ITEM };
+    return { veredito: 'item', item: nomeItem, pontos: 0 };
   }
 
   /**
@@ -3352,9 +3366,9 @@ class Sala {
   /**
    * Fecha a conta do Presente Grego: é tudo ou nada.
    *
-   * Entregou o que foi prometido, a equipe que apostou leva; faltou um item que
-   * seja, quem duvidou leva. Nos dois casos o prêmio é o tamanho da aposta —
-   * por isso o lance alto é tentador e perigoso na mesma medida.
+   * Entregou o que foi prometido, a equipe que apostou leva 10 cada; faltou um
+   * item que seja, cada um das OUTRAS equipes leva 5. O lance alto não rende
+   * mais ponto — rende o leilão, e o risco de não entregar.
    */
   pagarPresente() {
     const leilao = this.leilao;
@@ -3362,18 +3376,13 @@ class Sala {
 
     leilao.ditas = (this.progresso.get(leilao.respondedor) || new Set()).size;
     leilao.conseguiu = leilao.ditas >= leilao.aposta;
-    leilao.premio = leilao.aposta * PONTOS_POR_APOSTA;
+    leilao.premio = leilao.conseguiu ? PONTOS_LEILAO : CONSOLO_LEILAO;
 
-    const vencedora = this.equipePorId(leilao.conseguiu ? leilao.equipeAposta : leilao.equipeDuvidou);
-    if (!vencedora) return;
-
-    for (const id of vencedora.jogadores) {
-      const jogador = this.jogadores.get(id);
-      if (!jogador) continue;
-      jogador.pontos += leilao.premio;
-      this.pontosRodada.set(id, (this.pontosRodada.get(id) || 0) + leilao.premio);
-      this.acertos.set(id, { ms: null, pontos: leilao.premio, posicao: null, bonus: 0 });
-    }
+    const apostou = this.equipePorId(leilao.equipeAposta);
+    const ids = leilao.conseguiu
+      ? (apostou ? apostou.jogadores : [])
+      : this.equipes.filter((e) => e.id !== leilao.equipeAposta).flatMap((e) => e.jogadores);
+    this.pagarLeilao(ids, leilao.premio);
 
     const entregador = this.jogadores.get(leilao.respondedor);
     if (entregador && leilao.conseguiu) entregador.acertos += 1;
@@ -3384,8 +3393,7 @@ class Sala {
    *
    * Sair em uma dica ou em dez paga igual — o lance baixo nao rende mais
    * ponto, rende o direito de tentar. O que ele compra e o risco: se a palavra
-   * nao sai, a rodada inteira vai para as OUTRAS duplas, que passaram
-   * justamente por acharem a promessa grande demais.
+   * nao sai, cada um das OUTRAS duplas leva 5, como nos outros leiloes.
    */
   pagarDicas() {
     const leilao = this.leilao;
@@ -3393,33 +3401,22 @@ class Sala {
 
     leilao.ditas = leilao.dicasUsadas.length;
     leilao.conseguiu = leilao.acertouEm !== null;
-    leilao.premio = PONTOS_POR_RODADA_DICAS;
+    leilao.premio = leilao.conseguiu ? PONTOS_LEILAO : CONSOLO_LEILAO;
 
     // Só as duplas que estavam no leilão dividem a rodada; uma dupla que se
     // desfez no meio não leva nada.
     const donas = leilao.conseguiu
       ? [this.equipePorId(leilao.equipeAposta)]
       : leilao.equipes.filter((id) => id !== leilao.equipeAposta).map((id) => this.equipePorId(id));
-
-    for (const dupla of donas) {
-      if (!dupla) continue;
-      for (const id of this.presentesDe(dupla)) {
-        const jogador = this.jogadores.get(id);
-        if (!jogador) continue;
-        jogador.pontos += leilao.premio;
-        this.pontosRodada.set(id, (this.pontosRodada.get(id) || 0) + leilao.premio);
-        this.acertos.set(id, { ms: null, pontos: leilao.premio, posicao: null, bonus: 0 });
-      }
-    }
+    this.pagarLeilao(donas.filter(Boolean).flatMap((dupla) => this.presentesDe(dupla)), leilao.premio);
 
     const adivinhou = this.jogadores.get(leilao.respondedor);
     if (adivinhou && leilao.conseguiu) adivinhou.acertos += 1;
   }
 
   /**
-   * Leilao Geral: quem levou o leilao ganha 2 pontos por resposta que deu.
-   * Se nao chegou no que prometeu, cada um dos outros leva a aposta — e ele
-   * fica so com o que entregou.
+   * Leilao Geral: quem levou o leilao e entregou o que prometeu leva 10. Se
+   * nao chegou la, nao leva nada — e cada um dos outros leva 5.
    */
   pagarLeilaoGeral() {
     const leilao = this.leilao;
@@ -3427,35 +3424,31 @@ class Sala {
 
     leilao.ditas = (this.progresso.get(leilao.respondedor) || new Set()).size;
     leilao.conseguiu = leilao.ditas >= leilao.aposta;
-    leilao.premio = leilao.ditas * PONTOS_POR_APOSTA;
-    leilao.consolo = leilao.conseguiu ? 0 : leilao.aposta;
+    leilao.premio = leilao.conseguiu ? PONTOS_LEILAO : 0;
+    leilao.consolo = leilao.conseguiu ? 0 : CONSOLO_LEILAO;
 
     const dono = this.jogadores.get(leilao.respondedor);
-    if (dono) {
-      dono.pontos += leilao.premio;
-      this.pontosRodada.set(dono.id, (this.pontosRodada.get(dono.id) || 0) + leilao.premio);
-      this.acertos.set(dono.id, { ms: null, pontos: leilao.premio, posicao: null, bonus: 0 });
-      if (leilao.conseguiu) dono.acertos += 1;
+    if (dono && leilao.conseguiu) {
+      this.pagarLeilao([dono.id], leilao.premio);
+      dono.acertos += 1;
     }
 
     if (leilao.consolo <= 0) return;
-    for (const jogador of this.jogadores.values()) {
-      if (jogador.id === leilao.respondedor) continue;
-      jogador.pontos += leilao.consolo;
-      this.pontosRodada.set(jogador.id, (this.pontosRodada.get(jogador.id) || 0) + leilao.consolo);
-      this.acertos.set(jogador.id, { ms: null, pontos: leilao.consolo, posicao: null, bonus: 0 });
-    }
+    const outros = [...this.jogadores.keys()].filter((id) => id !== leilao.respondedor);
+    this.pagarLeilao(outros, leilao.consolo);
   }
 
   /**
-   * Mais ou Menos Pontos: paga a posicao do item na lista.
+   * Mais ou Menos Pontos: a resposta vale a posicao dela na lista.
    *
-   * O primeiro da lista rende 1 ponto e o ultimo rende o tamanho dela: dizer o
-   * obvio quase nao pontua, e lembrar de quem esta la no fim vale uma rodada
-   * inteira. O item dito vai publico no chat, senao os outros repetiriam.
+   * O primeiro da lista vale 1 e o ultimo vale o tamanho dela: dizer o obvio
+   * quase nao vale nada, e lembrar de quem esta la no fim e o que poe a pessoa
+   * na frente. O valor nao vira ponto direto: no fim da rodada, a resposta
+   * que valia mais leva 10, a seguinte 9 (`pagarRanking`). O item dito vai
+   * publico no chat, senao os outros repetiriam.
    */
   acertoNoRanking(socketId, jogador, indice, agora) {
-    const pontos = indice + 1;
+    const vale = indice + 1;
     const nomeItem = this.perguntaAtual.itens[indice].oficial;
     const ms = agora - this.inicioPergunta;
     const posicao = this.acertos.size + 1;
@@ -3463,10 +3456,8 @@ class Sala {
     this.itensUsados.add(indice);
     this.progresso.set(socketId, new Set([indice]));
 
-    jogador.pontos += pontos;
-    this.pontosRodada.set(socketId, pontos);
     if (this.primeiroAcertoEm === null) this.primeiroAcertoEm = agora;
-    this.acertos.set(socketId, { ms, pontos, posicao, bonus: 0 });
+    this.acertos.set(socketId, { ms, pontos: 0, posicao, bonus: 0, vale });
     jogador.acertos += 1;
 
     this.emitir('chat:mensagem', {
@@ -3474,11 +3465,11 @@ class Sala {
       jogadorId: socketId,
       nickname: jogador.nickname,
       avatar: jogador.avatar,
-      pontos,
+      pontos: 0,
       posicao,
       ms,
       necessarias: 1,
-      texto: `${nomeItem} — ${pontos}o da lista`,
+      texto: `${nomeItem} — ${vale}o da lista`,
       item: true
     });
 
@@ -3491,7 +3482,68 @@ class Sala {
 
     if (this.todosAcertaram()) this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
 
-    return { veredito: 'certo', pontos, posicao, item: nomeItem, quantos: 1, necessarias: 1 };
+    return { veredito: 'certo', pontos: 0, vale, posicao, item: nomeItem, quantos: 1, necessarias: 1 };
+  }
+
+  /* ------------------------ Pontos pela colocacao ------------------------ */
+
+  /**
+   * Paga a rodada pela colocacao. `marcas` diz quanto cada um fez (itens
+   * lembrados, valor da resposta, ate onde chegou no carrossel); quem fez 0
+   * nao entra. O 1o leva 10, o 2o 9 — e quem empata divide a posicao: dois
+   * em 1o levam 10 cada, e o seguinte e o 3o, com 8. Ninguem que entrou na
+   * conta sai com menos de 1.
+   */
+  pagarPorColocacao(marcas) {
+    const valores = [...marcas.values()].filter((v) => v > 0);
+    for (const [id, valor] of marcas) {
+      if (!(valor > 0)) continue;
+      const jogador = this.jogadores.get(id);
+      if (!jogador) continue;
+      const posicao = 1 + valores.filter((v) => v > valor).length;
+      const pontos = Math.max(1, PONTOS_MAX_RODADA - (posicao - 1));
+      jogador.pontos += pontos;
+      this.pontosRodada.set(id, pontos);
+      const antes = this.acertos.get(id);
+      this.acertos.set(id, { ...(antes || { ms: null, bonus: 0 }), pontos, posicao, colocacao: true });
+    }
+  }
+
+  /** Escalada: quem lembrou mais itens da lista fica na frente. */
+  pagarEscalada() {
+    const marcas = new Map();
+    for (const [id, itens] of this.progresso) marcas.set(id, itens.size);
+    this.pagarPorColocacao(marcas);
+  }
+
+  /** Mais ou Menos Pontos: a resposta que valia mais na lista fica na frente. */
+  pagarRanking() {
+    const marcas = new Map();
+    for (const [id, acerto] of this.acertos) if (acerto.vale) marcas.set(id, acerto.vale);
+    this.pagarPorColocacao(marcas);
+  }
+
+  /**
+   * Carrossel: quem sobrou e o 1o (todos empatados, se a lista acabou com
+   * mais de um vivo); depois, quem saiu por ultimo, e assim ate o primeiro
+   * que saiu.
+   */
+  pagarCarrossel() {
+    const marcas = new Map();
+    this.eliminados.forEach((id, i) => marcas.set(id, i + 1));
+    for (const id of this.vivos) marcas.set(id, this.eliminados.length + 1);
+    this.pagarPorColocacao(marcas);
+  }
+
+  /** Leiloes: soma `pontos` na rodada de cada um em `ids`. */
+  pagarLeilao(ids, pontos) {
+    for (const id of ids) {
+      const jogador = this.jogadores.get(id);
+      if (!jogador) continue;
+      jogador.pontos += pontos;
+      this.pontosRodada.set(id, (this.pontosRodada.get(id) || 0) + pontos);
+      this.acertos.set(id, { ms: null, pontos: this.pontosRodada.get(id), posicao: null, bonus: 0 });
+    }
   }
 
   /** O que esta pessoa fez na rodada de leilao, para o resultado. */
@@ -3688,16 +3740,10 @@ class Sala {
     else if (this.ehLeilaoGeral()) this.pagarLeilaoGeral();
     else if (this.ehPresenteGrego()) this.pagarPresente();
 
-    // Carrossel: quem chegou vivo ao fim da rodada leva o bônus.
-    if (this.ehCarrossel()) {
-      for (const id of this.vivos) {
-        const jogador = this.jogadores.get(id);
-        if (!jogador) continue;
-        jogador.pontos += BONUS_CARROSSEL;
-        this.pontosRodada.set(id, (this.pontosRodada.get(id) || 0) + BONUS_CARROSSEL);
-        this.acertos.set(id, { ms: null, pontos: this.pontosRodada.get(id), posicao: null, bonus: BONUS_CARROSSEL });
-      }
-    }
+    // Os modos sem relogio pagam aqui, pela colocacao na rodada.
+    if (this.ehCarrossel()) this.pagarCarrossel();
+    else if (this.ehRanking()) this.pagarRanking();
+    else if (this.modo === 'escalada' && this.perguntaAtual.necessarias > 1) this.pagarEscalada();
 
     // Se ninguém ficou de fora, a espera é mais curta.
     const msResultado = this.todosAcertaram() ? MS_RESULTADO_TODOS : MS_RESULTADO;
@@ -3733,6 +3779,8 @@ class Sala {
         avatar: jogador.avatar,
         acertou: Boolean(acerto),
         posicao: acerto ? acerto.posicao : null,
+        // Nos modos sem relogio a posicao e a colocacao na rodada, nao a ordem do acerto.
+        colocacao: Boolean(acerto && acerto.colocacao),
         ganhou: this.pontosRodada.get(jogador.id) || 0,
         bonus: acerto && acerto.bonus ? acerto.bonus : 0,
         ms: acerto ? acerto.ms : null,
@@ -3826,7 +3874,9 @@ class Sala {
       textoResposta = listaCompleta.join(', ');
     } else {
       listaCompleta = embaralhar(pergunta.itens.map((i) => i.oficial)).slice(0, 12);
-      textoResposta = `qualquer ${pergunta.necessarias} de ${pergunta.itens.length} possiveis`;
+      textoResposta = pergunta.livre
+        ? `${pergunta.itens.length} possiveis — quem lembrou mais ficou na frente`
+        : `qualquer ${pergunta.necessarias} de ${pergunta.itens.length} possiveis`;
     }
 
     this.avisar(this.ehLeilao()
@@ -3849,6 +3899,7 @@ class Sala {
       listaCompleta,
       listaParcial: !pergunta.fixo && pergunta.necessarias > 1,
       necessarias: pergunta.necessarias,
+      livre: Boolean(pergunta.livre),
       aceita: pergunta.aceita,
       dificuldade: {
         valor: Math.round(novaDificuldade),

@@ -333,10 +333,10 @@ function falar(sala, socketId, texto) {
 
   conferir('quem prometeu demais fica a zero',
     dupla.jogadores.map((id) => sala.jogadores.get(id).pontos), [0, 0]);
-  conferir('  e as outras duas duplas levam 10 cada',
+  conferir('  e cada um das outras duas duplas leva 5',
     [...sala.jogadores.values()].filter((j) => !dupla.jogadores.includes(j.id))
-      .map((j) => j.pontos), [10, 10, 10, 10]);
-  conferir('  o premio nao depende do lance', sala.resumoDoPresente().premio, 10);
+      .map((j) => j.pontos), [5, 5, 5, 5]);
+  conferir('  o premio nao depende do lance', sala.resumoDoPresente().premio, 5);
   sala.destruir();
 }
 

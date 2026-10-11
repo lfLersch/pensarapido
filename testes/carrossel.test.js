@@ -2,7 +2,7 @@
 
 /*
  * Modo Carrossel: a vez passa de um em um, 7s para cada, e quem nao souber sai
- * da rodada. Rodadas 1-2 dao uma volta, 3-4 duas voltas, 5-6 tres.
+ * da rodada. A roda gira ate sobrar um, e a colocacao paga a rodada.
  */
 
 const { Sala } = require('../server/sala.js');
@@ -59,19 +59,14 @@ function responderCerto(sala) {
   return { quem, ...r };
 }
 
-/* ---------------- Quantas voltas cada rodada da ---------------- */
+/* ---------------- As voltas nao tem fim ---------------- */
 {
-  const { sala } = novaSala(3);
-  conferir('rodada 1 da 1 volta', sala.voltasDaRodada(1), 1);
-  conferir('rodada 2 da 1 volta', sala.voltasDaRodada(2), 1);
-  conferir('rodada 3 da 2 voltas', sala.voltasDaRodada(3), 2);
-  conferir('rodada 4 da 2 voltas', sala.voltasDaRodada(4), 2);
-  conferir('rodada 5 da 3 voltas', sala.voltasDaRodada(5), 3);
-  conferir('rodada 6 da 3 voltas', sala.voltasDaRodada(6), 3);
-  // Para em 3: sem teto a rodada 15 pedia 8 voltas, e com 2 pessoas isso sao
-  // 16 respostas seguidas, que quase nenhuma lista tem.
-  conferir('rodada 9 nao passa de 3 voltas', sala.voltasDaRodada(9), 3);
-  conferir('rodada 30 tambem para em 3', sala.voltasDaRodada(30), 3);
+  const { sala } = novaSala(2);
+  conferir('a lista e grande: pelo menos 20 respostas', sala.perguntaAtual.itens.length >= 20, true);
+  // Quatro voltas de acerto com 2 pessoas: antes a rodada parava na 1a.
+  for (let i = 0; i < 8; i++) responderCerto(sala);
+  conferir('com todo mundo acertando, a roda continua girando', [sala.estado, sala.vivos.size], ['pergunta', 2]);
+  conferir('  ja na 5a volta', sala.voltasFeitas, 4);
   sala.destruir();
 }
 
@@ -92,13 +87,13 @@ function responderCerto(sala) {
   sala.destruir();
 }
 
-/* ---------------- Acertar passa a vez e vale 2 pontos ---------------- */
+/* ---------------- Acertar passa a vez (o ponto vem no fim) ---------------- */
 {
   const { sala } = novaSala(3);
   const primeiro = daVez(sala);
   const r = responderCerto(sala);
 
-  conferir('acerto na vez vale 2 pontos', r.pontos, 2);
+  conferir('acerto na vez nao paga na hora', [r.veredito, r.pontos], ['item', 0]);
   conferir('  e a vez passa para o proximo', daVez(sala) !== primeiro, true);
   conferir('  o item sai de circulacao para todos', sala.itensUsados.size, 1);
 
@@ -143,22 +138,51 @@ function responderCerto(sala) {
   sala.destruir();
 }
 
-/* ---------------- Quem sobrevive leva bonus ---------------- */
+/* ---------------- Colocacao: quem sobra e o 1o ---------------- */
 {
   const { sala } = novaSala(3);
-  const perdedor = daVez(sala);
-  sala.jogadores.get(perdedor).ultimaMensagem = 0;
-  sala.palpitar(perdedor, 'isso nao e resposta de nada');
+  const primeiroASair = daVez(sala);
+  sala.jogadores.get(primeiroASair).ultimaMensagem = 0;
+  sala.palpitar(primeiroASair, 'isso nao e resposta de nada');
+  sala.limparTemporizador();
+  const segundoASair = daVez(sala);
+  sala.jogadores.get(segundoASair).ultimaMensagem = 0;
+  sala.palpitar(segundoASair, 'outra resposta sem pe nem cabeca');
   sala.limparTemporizador();
 
   const sobrevivente = [...sala.vivos][0];
-  const antes = sala.jogadores.get(sobrevivente).pontos;
   sala.encerrarRodada();
   sala.limparTemporizador();
+  const pontos = (id) => sala.jogadores.get(id).pontos;
 
-  conferir('sobrevivente ganha o bonus de 5',
-    sala.jogadores.get(sobrevivente).pontos - antes, 5);
-  conferir('eliminado nao ganha bonus', sala.jogadores.get(perdedor).pontos, 0);
+  conferir('quem sobra leva 10, o ultimo a sair 9, o primeiro a sair 8',
+    [pontos(sobrevivente), pontos(segundoASair), pontos(primeiroASair)], [10, 9, 8]);
+  sala.destruir();
+}
+
+/* ---------------- A lista acabou com mais de um vivo: empate ---------------- */
+{
+  const { sala } = novaSala(3);
+  const fora = daVez(sala);
+  sala.jogadores.get(fora).ultimaMensagem = 0;
+  sala.palpitar(fora, 'isso nao e resposta de nada');
+  sala.limparTemporizador();
+  // Gasta a lista inteira menos um item, e o ultimo acerto a fecha.
+  const itens = sala.perguntaAtual.itens.length;
+  for (let i = 0; i < itens; i++) sala.itensUsados.add(i);
+  sala.itensUsados.delete(itens - 1);
+  const quem = daVez(sala);
+  sala.jogadores.get(quem).ultimaMensagem = 0;
+  sala.palpitar(quem, sala.perguntaAtual.itens[itens - 1].oficial);
+  const agendado = sala.agendado;
+  sala.limparTemporizador();
+  agendado.fn();
+  sala.limparTemporizador();
+
+  conferir('lista acabou: a rodada fecha sem mais vez', sala.estado, 'resultado');
+  const vivos = [...sala.vivos].map((id) => sala.jogadores.get(id).pontos);
+  conferir('  os dois que sobraram empatam em 1o: 10 cada', vivos, [10, 10]);
+  conferir('  e quem saiu e o 3o: 8', sala.jogadores.get(fora).pontos, 8);
   sala.destruir();
 }
 

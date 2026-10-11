@@ -1195,7 +1195,7 @@ function sincronizarBagunca() {
 
   const n = estado.escolhas.perguntasAteSorteio;
   $('bagunca-dica').textContent = n === 0
-    ? 'Sem Modo Tempo no meio: toda rodada sai do sorteio.'
+    ? 'Sem Modo Tempo no meio: toda rodada sai do sorteio, e o Modo Tempo entra na roleta.'
     : `${plural(n, 'pergunta', 'perguntas')} do Modo Tempo, um sorteio, uma rodada do modo sorteado — e de novo.`;
 
   // Os modos em equipe dependem de quem estiver na sala na hora do sorteio.
@@ -2435,6 +2435,8 @@ socket.on('rodada:pergunta', (dados) => {
 
   // Modo Escalada: painel com quantas respostas faltam.
   estado.necessarias = dados.necessarias || 1;
+  // Escalada da Bagunca: sem numero, conta so quantas a pessoa ja lembrou.
+  estado.livre = Boolean(dados.livre);
   estado.meusItens = [];
   const painel = $('escalada');
   // No Carrossel e no Presente Grego o painel "suas respostas — so voce ve"
@@ -2478,8 +2480,8 @@ socket.on('rodada:pergunta', (dados) => {
   if (dados.carrossel) {
     estado.vivos = new Set(dados.carrossel.ordem);
     montarFilaCarrossel(dados.carrossel.ordem, null);
-    $('carrossel-volta').textContent =
-      `${dados.carrossel.voltas} volta${dados.carrossel.voltas > 1 ? 's' : ''}`;
+    // Sem numero de voltas: a roda gira ate sobrar um.
+    $('carrossel-volta').textContent = 'ate sobrar um';
     // Enquanto a vez não chega, ninguém escreve.
     mostrarDitos(dados.carrossel.visivel ? [] : null);
     trancarChat('Espere a sua vez…');
@@ -2590,7 +2592,9 @@ socket.on('carrossel:vez', (dados) => {
   const rotulo = $('carrossel-vez');
   rotulo.classList.toggle('minha', minha);
   rotulo.textContent = minha ? 'Sua vez!' : `Vez de ${jogador ? jogador.nickname : '…'}`;
-  $('carrossel-volta').textContent = `volta ${dados.volta} de ${dados.voltas}`;
+  $('carrossel-volta').textContent = dados.voltas
+    ? `volta ${dados.volta} de ${dados.voltas}`
+    : `volta ${dados.volta} · ate sobrar um`;
 
   if (minha) destrancarChat('Rapido! Escreva sua resposta…');
   else trancarChat(`Vez de ${jogador ? jogador.nickname : 'outro jogador'}…`);
@@ -3221,8 +3225,10 @@ $('presente-duvidar').addEventListener('click', () => {
 function atualizarEscalada() {
   const contador = $('escalada-contador');
   const quantos = estado.meusItens.length;
-  contador.textContent = `${quantos} de ${estado.necessarias}`;
-  contador.classList.toggle('completo', quantos >= estado.necessarias);
+  contador.textContent = estado.livre
+    ? `${quantos} ${quantos === 1 ? 'resposta' : 'respostas'}`
+    : `${quantos} de ${estado.necessarias}`;
+  contador.classList.toggle('completo', !estado.livre && quantos >= estado.necessarias);
 }
 
 function registrarItem(nome) {
@@ -3538,7 +3544,7 @@ function avisoDeItem(resposta) {
   const el = criar('div', 'msg msg--item');
   const eu = estado.eu || {};
   const quanto = resposta.pontos ? ` · +${resposta.pontos} pts` : '';
-  const falta = resposta.necessarias && resposta.quantos != null
+  const falta = resposta.necessarias && resposta.quantos != null && !resposta.livre
     ? ` · faltam ${resposta.necessarias - resposta.quantos}`
     : '';
 
@@ -3790,8 +3796,9 @@ socket.on('rodada:resultado', (dados) => {
     item.innerHTML = `
       <span class="jogador__avatar">${detalhe.avatar}</span>
       <span class="resultado__nome">${escapar(detalhe.nickname)}</span>
-      ${detalhe.posicao === 1 && !dados.presente ? '<span class="selo-primeiro">1º a acertar</span>' : ''}
-      ${mostraContagem ? `<span class="resultado__tempo">${conseguiu.length}/${pedia}</span>` : ''}
+      ${detalhe.posicao && !dados.presente && (detalhe.posicao === 1 || detalhe.colocacao)
+        ? `<span class="selo-primeiro">${detalhe.colocacao ? `${detalhe.posicao}º lugar` : '1º a acertar'}</span>` : ''}
+      ${mostraContagem ? `<span class="resultado__tempo">${dados.livre ? conseguiu.length : `${conseguiu.length}/${pedia}`}</span>` : ''}
       <span class="resultado__tempo">${tempo}</span>
       <span class="resultado__ganho ${detalhe.ganhou > 0 ? 'positivo' : ''}">
         ${detalhe.ganhou > 0 ? '+' + detalhe.ganhou : '0'}

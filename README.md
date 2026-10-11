@@ -259,15 +259,42 @@ simplesmente continua a escada: 10, 9, 8, 7, 6, 5.
 O relógio que vale é o do **servidor**, contado a partir do instante em que a
 pergunta foi enviada — o cronômetro da tela é só visual.
 
+### Teto de 10 pontos por rodada
+
+**Nenhuma rodada paga mais que 10 pontos a uma pessoa**, em modo nenhum. Os
+modos com relógio (Modo Tempo, Corrida, Qual é a música, 1 é bom 2 ok 3 é
+demais) já cabiam nisso. Os outros pagam assim:
+
+- **Modos sem relógio pagam pela colocação na rodada**: o 1º leva **10**, o 2º
+  **9**, o 3º **8**, e assim por diante (ninguém que pontuou leva menos de 1).
+  **Empate divide a posição**: dois em 1º levam 10 cada, e o seguinte é o 3º,
+  com 8. Quem não fez nada leva 0.
+  - **Escalada**: quem lembrou mais itens da lista.
+  - **Mais ou Menos Pontos**: quem disse a resposta que vale mais na lista.
+  - **Carrossel** (visível e às cegas): quem sobra é o 1º; depois, quem saiu
+    por último, e assim até o primeiro que saiu.
+- **Leilões** (Presente Grego, Leilão Geral e Dando dicas): **entregou o que
+  prometeu, leva 10**; não entregou, **cada um dos outros leva 5**. O tamanho
+  do lance não muda o prêmio — ele compra o leilão e o risco.
+
+O cálculo da colocação é `pagarPorColocacao` em `server/sala.js`; os pontos
+desses modos só entram no placar no fim da rodada, e o resultado mostra a
+colocação de cada um (*2º lugar*).
+
 ### Modo Escalada
 
 Cada rodada pede uma resposta a mais que a anterior: 1 na primeira, 2 na
 segunda, 3 na terceira. A rodada ganha **3 segundos por resposta extra** — a de
 6 respostas dura 45s.
 
-**Pontuação:** cada item lembrado vale **2 pontos**, e fechar a lista dá **+5 de
-bônus**. Quem lembra 3 de 4 leva 6; quem fecha as 4 leva 8 + 5 = 13. Progresso
-parcial conta, então ninguém sai de mãos vazias por ter parado a um item do fim.
+**Pontuação:** pela colocação (ver [Teto de 10 pontos por
+rodada](#teto-de-10-pontos-por-rodada)): quem lembrou mais itens leva 10, o
+seguinte 9. Progresso parcial conta — quem lembrou 3 de 4 fica na frente de
+quem lembrou 2.
+
+**Na Bagunça a Escalada não tem número:** a lista é grande (12 ou mais itens),
+o enunciado vira *"Cite o máximo de…"*, a rodada dura **30s** e quem lembrar
+mais fica na frente.
 
 Cada rodada dá **5 chances de errar**, como no Modo Tempo: item fora da lista
 gasta uma, item novo e item repetido não.
@@ -315,18 +342,20 @@ nunca caem em rodadas seguidas.
 ### Mais ou Menos Pontos
 
 Uma **lista em ordem** — os 100 países mais populosos, as 100 maiores cidades do
-Brasil, os 30 filmes de maior bilheteria. **A posição é a pontuação**:
+Brasil, os 30 filmes de maior bilheteria. **A posição é o valor da resposta**:
 
 | Resposta | Vale |
 | --- | --- |
-| o 1º da lista | **1 ponto** |
-| o 30º da lista | **30 pontos** |
+| o 1º da lista | **1** |
+| o 30º da lista | **30** |
 | o último da lista | **o tamanho dela** |
 | qualquer coisa fora da lista | **0** |
 
-Dizer *Índia* nos países mais populosos rende 1 ponto; lembrar da *Eslovênia*,
-lá no fim da lista, rende quase 100. O óbvio quase não pontua, e o nome que
-ninguém lembra vale uma rodada inteira — daí o nome do modo.
+Dizer *Índia* nos países mais populosos vale 1; lembrar da *Eslovênia*, lá no
+fim da lista, vale quase 100. O valor não vira ponto direto: no fim da rodada,
+**quem disse a resposta que vale mais leva 10, o seguinte 9** (ver [Teto de 10
+pontos por rodada](#teto-de-10-pontos-por-rodada)). O óbvio deixa a pessoa lá
+atrás, e o nome que ninguém lembra a põe na frente — daí o nome do modo.
 
 **A mesma lista fica por três rodadas.** Uma lista de 100 nomes morreria com
 quatro respostas; em três voltas a mesa raspa o que sabe, e o que já saiu
@@ -504,8 +533,8 @@ esconde: a mensagem nem chega a quem vai responder, então não adianta abrir o
 inspetor. Durante o leilão o chat fica trancado para todo mundo — quem leiloa
 já leu a pergunta, e uma frase solta entregaria o assunto.
 
-**O leilão.** A palavra passa de uma equipe para a outra, **9s para cada** —
-**12s para quem abre**, que decide sem lance na mesa e ainda está lendo a
+**O leilão.** A palavra passa de uma equipe para a outra, **10s para cada** —
+**13s para quem abre**, que decide sem lance na mesa e ainda está lendo a
 pergunta:
 
 - **cobrir** — apostar qualquer número **maior** que o lance na mesa (de 4 pode
@@ -523,17 +552,15 @@ no mínimo (quem começa é obrigado a apostar); **com lance na mesa** vale como
 segundos; quem prometeu 12, 50 — o tempo cresce com o tamanho do que foi
 prometido, porque é uma pessoa só digitando a lista. Errar não elimina: só queima relógio.
 
-**Pontuação: tudo ou nada.** O prêmio é `aposta × 2`, e vai inteiro para uma das
-equipes — todo mundo dela recebe:
+**Pontuação: tudo ou nada.**
 
 | O que aconteceu | Quem leva |
 | --- | --- |
-| Entregou as respostas prometidas | a equipe que **apostou** |
-| Faltou uma que seja | a equipe que **duvidou** |
+| Entregou as respostas prometidas | **10** para cada um da equipe que **apostou** |
+| Faltou uma que seja | **5** para cada um das **outras** equipes |
 
-Parar a um item do combinado vale o mesmo que parar em zero. É isso que torna o
-lance alto tentador e perigoso na mesma medida: apostar 12 e não entregar dá 24
-pontos para quem duvidou.
+Parar a um item do combinado vale o mesmo que parar em zero. O lance alto não
+rende mais ponto — rende o leilão, e o risco de não entregar.
 
 **As listas.** Só entram repertórios com **15 itens ou mais**, e o número some
 do enunciado — *"Cite {n} países da África"* vira *"Cite países da África"*,
@@ -553,7 +580,7 @@ pública desde o começo e cada pessoa aposta **quantas respostas ela mesma
 consegue dizer**. A sala precisa de duas pessoas, porque alguém tem que ter a
 chance de cobrir o lance.
 
-**O leilão.** A palavra passa de pessoa em pessoa, 9s para cada (12s para quem
+**O leilão.** A palavra passa de pessoa em pessoa, 10s para cada (13s para quem
 abre), e na sua vez
 há duas saídas:
 
@@ -566,16 +593,15 @@ Deixar o tempo acabar conta como passar. Quando sobra uma pessoa só, o leilão
 fecha nela: a rodada passa a pedir exatamente o que ela prometeu, e só ela
 escreve — o chat fica trancado para o resto da mesa, como no Presente Grego.
 
-**Pontuação.** Diferente do Presente Grego, aqui não é tudo ou nada:
+**Pontuação.**
 
 | O que aconteceu | Quem leva |
 | --- | --- |
-| Cada resposta entregue | **2 pontos** para quem levou o leilão |
-| Não chegou no que prometeu | **cada um dos outros** leva o tamanho da aposta |
+| Entregou o que prometeu | **10** para quem levou o leilão |
+| Não chegou no que prometeu | **5** para cada um dos outros, e nada para quem levou |
 
-Apostar 5 e dizer 5 vale 10 pontos e deixa a mesa a zero; apostar 5 e dizer 2
-vale 4 pontos — e dá 5 para cada uma das outras pessoas. Entregar tudo é o
-único jeito de não pagar ninguém.
+Apostar 3 ou apostar 9 paga os mesmos 10 — o lance alto só serve para tirar o
+leilão dos outros. Entregar tudo é o único jeito de não pagar ninguém.
 
 ### Dando dicas
 
@@ -608,8 +634,8 @@ esconde: a mensagem nem chega a quem vai adivinhar. Durante o leilão o chat
 fica trancado para todo mundo, e a rodada abre **sem máscara** — o formato da
 palavra entregaria o que se está tentando arrancar a duras penas.
 
-**O leilão ao contrário.** A palavra passa de dupla em dupla, **9s para cada** —
-**12s para quem abre**:
+**O leilão ao contrário.** A palavra passa de dupla em dupla, **10s para cada** —
+**13s para quem abre**:
 
 - **cobrir** — prometer um número **menor** que o lance na mesa. O teto de
   abertura é **10 dicas** e o chão é **1**;
@@ -644,12 +670,12 @@ dica ou dez:
 
 | O que aconteceu | Quem leva |
 | --- | --- |
-| A palavra saiu dentro do orçamento | os **dois** da dupla que levou o leilão |
-| As dicas acabaram e a palavra não saiu | **cada uma** das outras duplas |
+| A palavra saiu dentro do orçamento | **10** para os **dois** da dupla que levou o leilão |
+| As dicas acabaram e a palavra não saiu | **5** para cada um das **outras** duplas |
 
 É aí que o leilão ao contrário morde: descer o lance **não rende mais ponto**,
 rende o direito de tentar. Fechar em 1 paga igual a fechar em 8 — o que muda é
-o risco de a palavra não sair e a rodada inteira ir para quem passou.
+o risco de a palavra não sair e quem passou levar 5 cada.
 
 Rodada de Dando dicas **não alimenta a dificuldade adaptativa**: adivinha uma
 pessoa só, e o que ela tem na frente não é a pergunta, são as palavras que o
@@ -712,7 +738,8 @@ Tempo, Tempo, Tempo, 🎲 Escalada, Tempo, Tempo, Tempo, 🎲 Presente Grego, �
 O líder ajusta quatro coisas na configuração:
 
 - **quantas perguntas até cada sorteio**, de 0 a 6. Com **0** não há Modo
-  Tempo no meio: toda rodada sai do sorteio;
+  Tempo no meio: toda rodada sai do sorteio, e o **Modo Tempo entra na
+  roleta** como mais um modo (senão sumiria da partida);
 - **quais modos entram no sorteio**, um chip para cada. Precisa sobrar pelo
   menos um. O Modo Tempo não aparece na lista — ele já é o recheio;
 - **quanto tempo a regra do modo sorteado fica na tela**: 6 s (padrão), 10,
@@ -750,12 +777,10 @@ Dando dicas em duplas (com gente ímpar, uma delas vira trio). A equipe vale
 **uma rodada**: os pontos vão para cada integrante, e o placar final é de
 cada um.
 
-**Cada modo joga como ele mesmo**, numa rodada só, com três ajustes:
+**Cada modo joga como ele mesmo**, numa rodada só, com dois ajustes:
 
-- a **Escalada** sobe um degrau a cada vez que é sorteada e começa no 2 (a
-  de uma resposta seria a pergunta comum do Modo Tempo);
-- o **Carrossel** também cresce pelas vezes em que saiu, e não pela rodada da
-  partida: o primeiro dá uma volta;
+- a **Escalada** não tem número: *"Cite o máximo de…"*, 30s, e quem lembrar
+  mais fica na frente;
 - o **Mais ou Menos Pontos** abre e fecha a lista na mesma rodada, sem as
   três voltas — e o topo dela aparece no resultado.
 
@@ -843,6 +868,12 @@ para tentar de novo. O que tira da rodada é **repetir** uma resposta que já
 saiu, que é justamente o que o modo pede para lembrar. A dica do "quase" nunca
 aponta para um item já dito. O carrossel visível continua como era: errou,
 saiu.
+
+Nos dois, **as voltas não têm fim**: a roda gira até sobrar uma pessoa (ou até
+a lista acabar, e aí quem sobrou empata em 1º). Por isso a lista sorteada tem
+**20 itens ou mais**. A pontuação é a ordem de saída ao contrário — quem sobra
+leva 10, o último a sair 9 (ver [Teto de 10 pontos por
+rodada](#teto-de-10-pontos-por-rodada)).
 
 ### Sobrenome basta
 

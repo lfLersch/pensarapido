@@ -129,7 +129,7 @@ function responder(sala, socketId) {
   sala.destruir();
 }
 
-/* ---------------- Entregou: leva 2 pontos por resposta ---------------- */
+/* ---------------- Entregou: leva 10 ---------------- */
 {
   const { sala } = novaSala(3);
   const dono = apostar(sala, 2).quem;
@@ -147,14 +147,14 @@ function responder(sala, socketId) {
   sala.encerrarRodada();
   sala.limparTemporizador();
 
-  conferir('entregou 2: leva 4 pontos', sala.jogadores.get(dono).pontos, 4);
+  conferir('entregou 2: leva 10, seja qual for o lance', sala.jogadores.get(dono).pontos, 10);
   conferir('  e os outros nao levam nada',
     [...sala.jogadores.values()].filter((j) => j.id !== dono).map((j) => j.pontos), [0, 0]);
   conferir('  o resultado diz que conseguiu', sala.leilao.conseguiu, true);
   sala.destruir();
 }
 
-/* ---------------- Nao entregou: os outros levam a aposta ---------------- */
+/* ---------------- Nao entregou: os outros levam 5 ---------------- */
 {
   const { sala } = novaSala(3);
   const dono = apostar(sala, 5).quem;
@@ -168,8 +168,8 @@ function responder(sala, socketId) {
   sala.encerrarRodada();
   sala.limparTemporizador();
 
-  conferir('disse 2 de 5: leva 4 pontos pelo que deu', sala.jogadores.get(dono).pontos, 4);
-  conferir('  e cada um dos outros leva a aposta',
+  conferir('disse 2 de 5: nao leva nada', sala.jogadores.get(dono).pontos, 0);
+  conferir('  e cada um dos outros leva 5',
     [...sala.jogadores.values()].filter((j) => j.id !== dono).map((j) => j.pontos), [5, 5]);
   conferir('  o resumo leva a aposta e o consolo',
     [sala.resumoDoPresente().aposta, sala.resumoDoPresente().consolo], [5, 5]);

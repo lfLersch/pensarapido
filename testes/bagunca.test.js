@@ -106,7 +106,13 @@ function ritmo(sala, n) {
   um.sala.destruir();
 
   const zero = montar(2, { perguntasAteSorteio: 0, modosBagunca: ['veni', 'ranking'] });
-  conferir('com 0, toda rodada e sorteada', ritmo(zero.sala, 6).includes('tempo'), false);
+  zero.eventos.length = 0;
+  // Sem Modo Tempo no meio, ele entra na roleta como mais um modo.
+  const sorteadas = ritmo(zero.sala, 30);
+  conferir('com 0, toda rodada e sorteada e o Modo Tempo entra na roleta',
+    [...new Set(sorteadas)].sort(), ['ranking', 'tempo', 'veni']);
+  conferir('  com tela de sorteio antes de cada uma, Modo Tempo inclusive',
+    zero.eventos.filter((e) => e.evento === 'bagunca:sorteio').length, 29);
   zero.sala.destruir();
 }
 
@@ -202,21 +208,31 @@ function ritmo(sala, n) {
 {
   const { sala } = montar(3, { perguntasAteSorteio: 0, modosBagunca: ['veni', 'ranking', 'escalada'] });
   const modos = ritmo(sala, 60);
-  conferir('so saem os modos marcados',
-    [...new Set(modos)].filter((m) => !['veni', 'ranking', 'escalada'].includes(m)), []);
+  conferir('so saem os modos marcados (e o Modo Tempo, com 0 perguntas)',
+    [...new Set(modos)].filter((m) => !['veni', 'ranking', 'escalada', 'tempo'].includes(m)), []);
   conferir('o mesmo modo nunca sai duas vezes seguidas',
     modos.some((m, i) => i > 0 && m === modos[i - 1]), false);
   sala.destruir();
 
   const unico = montar(2, { perguntasAteSorteio: 0, modosBagunca: ['veni'] });
-  conferir('com um modo so marcado, ele repete', ritmo(unico.sala, 3), ['veni', 'veni', 'veni']);
+  const alterna = ritmo(unico.sala, 6);
+  conferir('com um modo so marcado e 0 perguntas, ele alterna com o Modo Tempo',
+    [new Set(alterna).size, alterna.some((m, i) => i > 0 && m === alterna[i - 1])], [2, false]);
   unico.sala.destruir();
+
+  const soUm = montar(2, { perguntasAteSorteio: 1, modosBagunca: ['veni'] });
+  const sorteados = ritmo(soUm.sala, 6).filter((m) => m !== 'tempo');
+  conferir('com um modo so marcado, o sorteio repete ele', sorteados, ['veni', 'veni', 'veni']);
+  soUm.sala.destruir();
 }
 
 /* ---------------- 8. As equipes saem do sorteio ---------------- */
 {
   const equipesDe = (quantos, modo) => {
-    const { sala, eventos } = montar(quantos, { perguntasAteSorteio: 0, modosBagunca: [modo] });
+    // Com 1 pergunta ate o sorteio: com 0 o Modo Tempo tambem entraria na roleta.
+    const { sala, eventos } = montar(quantos, { perguntasAteSorteio: 1, modosBagunca: [modo] });
+    sala.pularRodada();
+    sala.agendado.fn();
     const sorteio = eventos.find((e) => e.evento === 'bagunca:sorteio');
     const tamanhos = sala.equipes.map((e) => e.jogadores.length).sort().reverse();
     const todos = sala.equipes.flatMap((e) => e.jogadores).sort();
@@ -249,16 +265,18 @@ function ritmo(sala, n) {
 
 /* ---------------- 9. A rodada sorteada joga como o modo dela ---------------- */
 {
-  // Escalada: comeca no 2 e sobe um degrau a cada vez que sai.
+  // Escalada: na Bagunca nao tem numero — 30s para lembrar o maximo que der.
   const esc = montar(2, { perguntasAteSorteio: 1, modosBagunca: ['escalada'] });
-  const degraus = [];
+  const escaladas = [];
   const noTempo = new Set();
   for (let i = 0; i < 8; i++) {
     proxima(esc.sala);
-    if (esc.sala.modo === 'escalada') degraus.push(esc.sala.perguntaAtual.necessarias);
-    else noTempo.add(esc.sala.perguntaAtual.necessarias);
+    const p = esc.sala.perguntaAtual;
+    if (esc.sala.modo === 'escalada') escaladas.push([p.livre, p.necessarias === p.itens.length, esc.sala.duracaoDaRodada()]);
+    else noTempo.add(p.necessarias);
   }
-  conferir('Escalada sorteada pede 2, depois 3, depois 4', degraus.slice(0, 3), [2, 3, 4]);
+  conferir('Escalada sorteada e livre: pede a lista inteira, em 30s', escaladas[0], [true, true, 30000]);
+  conferir('  e o enunciado nao tem numero', /^Cite o maximo de /.test(esc.sala.perguntaAtual.pergunta) || esc.sala.modo !== 'escalada', true);
   conferir('  e o Modo Tempo do meio continua pedindo uma', [...noTempo], [1]);
   esc.sala.destruir();
 
@@ -273,10 +291,10 @@ function ritmo(sala, n) {
   conferir('  e numa volta so', rank.sala.voltasRanking(), 1);
   rank.sala.destruir();
 
-  // Carrossel: a primeira vez da uma volta, como a rodada 1 do modo.
+  // Carrossel: sem numero de voltas, gira ate sobrar um.
   const car = montar(3, { perguntasAteSorteio: 1, modosBagunca: ['carrossel'] });
   proxima(car.sala);
-  conferir('Carrossel sorteado a primeira vez da uma volta', car.sala.voltasAlvo, 1);
+  conferir('Carrossel sorteado gira ate sobrar um', [car.sala.modo, car.sala.voltasAlvo], ['carrossel', null]);
   car.sala.destruir();
 }
 

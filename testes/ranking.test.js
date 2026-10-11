@@ -3,7 +3,8 @@
 /*
  * Modo Mais ou Menos Pontos: listas em ordem, e a posicao e a pontuacao.
  *
- * O primeiro da lista vale 1 ponto e o ultimo vale o tamanho dela. A mesma
+ * O primeiro da lista vale 1 e o ultimo vale o tamanho dela; no fim da
+ * rodada, quem disse a resposta que vale mais leva 10, o seguinte 9. A mesma
  * lista rende tres rodadas: em cada uma, cada pessoa responde uma vez so — e
  * quem chuta fora da lista gastou a vez dele. O que ja foi dito nao conta de
  * novo em nenhuma das tres, senao bastava copiar o chat.
@@ -106,11 +107,16 @@ const ultima = (eventos, nome) => eventos.filter((e) => e.evento === nome).pop()
   conferir('a rodada pede uma resposta so', pergunta.necessarias, 1);
 
   const topo = dizer(sala, 'ana', itens[0].oficial);
-  conferir('o primeiro da lista vale 1 ponto', topo.pontos, 1);
+  conferir('o primeiro da lista vale 1', topo.vale, 1);
 
   const fundo = dizer(sala, 'bia', itens[itens.length - 1].oficial);
-  conferir('o ultimo da lista vale o tamanho dela', fundo.pontos, itens.length);
-  conferir('  e o placar soma isso', sala.jogadores.get('bia').pontos, itens.length);
+  conferir('o ultimo da lista vale o tamanho dela', fundo.vale, itens.length);
+  conferir('  mas nada vira ponto na hora', sala.jogadores.get('bia').pontos, 0);
+
+  sala.encerrarRodada();
+  sala.limparTemporizador();
+  conferir('no fim, a resposta que vale mais leva 10 e a outra 9',
+    [sala.jogadores.get('bia').pontos, sala.jogadores.get('ana').pontos], [10, 9]);
   sala.destruir();
 }
 
@@ -127,7 +133,7 @@ const ultima = (eventos, nome) => eventos.filter((e) => e.evento === nome).pop()
     dizer(sala, 'bia', itens[2].oficial).veredito, 'repetido');
 
   conferir('  mas repetir nao gasta a vez',
-    dizer(sala, 'bia', itens[4].oficial).pontos, 5);
+    dizer(sala, 'bia', itens[4].oficial).vale, 5);
 
   const fora = dizer(sala, 'caio', 'xilofone quadrado de nuvem');
   conferir('chutar fora da lista gasta a vez', [fora.veredito, fora.gastou], ['errado', true]);
@@ -157,7 +163,7 @@ const ultima = (eventos, nome) => eventos.filter((e) => e.evento === nome).pop()
   conferir('o que saiu na volta anterior nao conta de novo',
     dizer(sala, 'ana', itens[0].oficial).veredito, 'repetido');
   conferir('  mas item novo vale a posicao dele',
-    dizer(sala, 'ana', itens[5].oficial).pontos, 6);
+    dizer(sala, 'ana', itens[5].oficial).vale, 6);
   dizer(sala, 'bia', itens[6].oficial);
 
   virarRodada(sala);

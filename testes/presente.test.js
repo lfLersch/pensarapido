@@ -260,7 +260,7 @@ function responder(sala, socketId) {
   sala.destruir();
 }
 
-/* ---------------- Entregou: a equipe que apostou leva ---------------- */
+/* ---------------- Entregou: a equipe que apostou leva 10 ---------------- */
 {
   const { sala } = novaSala(4);
   apostar(sala, 2);
@@ -279,14 +279,14 @@ function responder(sala, socketId) {
   sala.limparTemporizador();
 
   conferir('entregou as 3 prometidas', sala.leilao.conseguiu, true);
-  conferir('a equipe que apostou leva 3x2',
-    equipeQueApostou.jogadores.map((id) => sala.jogadores.get(id).pontos), [6, 6]);
+  conferir('a equipe que apostou leva 10 cada, seja qual for o lance',
+    equipeQueApostou.jogadores.map((id) => sala.jogadores.get(id).pontos), [10, 10]);
   conferir('  e quem duvidou nao leva nada',
     equipeQueDuvidou.jogadores.map((id) => sala.jogadores.get(id).pontos), [0, 0]);
   sala.destruir();
 }
 
-/* ---------------- Faltou um item: quem duvidou leva ---------------- */
+/* ---------------- Faltou um item: as outras equipes levam 5 ---------------- */
 {
   const { sala } = novaSala(4);
   apostar(sala, 2);
@@ -307,8 +307,8 @@ function responder(sala, socketId) {
 
   conferir('4 de 5 nao entrega o presente', sala.leilao.conseguiu, false);
   conferir('  e o placar registra o que saiu', sala.leilao.ditas, 4);
-  conferir('quem duvidou leva 5x2',
-    equipeQueDuvidou.jogadores.map((id) => sala.jogadores.get(id).pontos), [10, 10]);
+  conferir('cada um das outras equipes leva 5',
+    equipeQueDuvidou.jogadores.map((id) => sala.jogadores.get(id).pontos), [5, 5]);
   conferir('  e quem apostou fica a zero',
     equipeQueApostou.jogadores.map((id) => sala.jogadores.get(id).pontos), [0, 0]);
   sala.destruir();

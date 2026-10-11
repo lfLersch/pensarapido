@@ -218,13 +218,10 @@ console.log('');
   const pontosDe = (nome) => [...sala.jogadores.values()].find((j) => j.nickname === nome).pontos;
 
   conferir('1o item da Ana conta como progresso', a1.veredito, 'item');
-  conferir('  e ja vale 2 pontos', a1.pontos, 2);
-  conferir('2o item tambem vale 2', a2.pontos, 2);
+  conferir('  e nao paga na hora', a1.pontos, 0);
   conferir('3o item fecha a lista', a3.veredito, 'certo');
-  conferir('  total da Ana = 3x2 + 5 de bonus', a3.pontos, 11);
-  conferir('placar da Ana', pontosDe('Ana'), 11);
+  conferir('  mas o ponto vem no fim da rodada', pontosDe('Ana'), 0);
   conferir('Bia lembrou so 1 item', b1.veredito, 'item');
-  conferir('  e leva os 2 pontos dele, sem bonus', pontosDe('Bia'), 2);
 
   sala.encerrarRodada();
   sala.limparTemporizador();
@@ -233,8 +230,8 @@ console.log('');
   const ana = resultado.detalhes.find((d) => d.nickname === 'Ana');
   const bia = resultado.detalhes.find((d) => d.nickname === 'Bia');
 
-  conferir('resultado mostra o bonus da Ana', ana.bonus, 5);
-  conferir('resultado mostra o que a Bia fez sem completar', bia.ganhou, 2);
+  conferir('quem lembrou mais (Ana, 3) e a 1a: 10 pontos', [ana.ganhou, pontosDe('Ana')], [10, 10]);
+  conferir('  a Bia (1) e a 2a: 9 pontos', [bia.ganhou, pontosDe('Bia')], [9, 9]);
 
   sala.destruir();
 }
