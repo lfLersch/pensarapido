@@ -1643,6 +1643,32 @@ Princesa*). Quando há mais gente na foto, o enunciado diz quem: *"Quem é o ato
 da esquerda?"*. Como são perguntas "Quem…?" e "Qual personagem…?", o sobrenome
 vale sozinho.
 
+### Personagens de séries, filmes, desenhos e animes
+
+**321 personagens com foto** (`public/img/personagem-<obra>-<nome>.jpg`): 246 em
+Cinema & TV (Harry Potter, Friends, Breaking Bad, Game of Thrones, Simpsons,
+Chaves, Turma da Mônica, Shrek, Toy Story, Disney/Pixar, Looney Tunes, The
+Office, Cartoon Network…) e 75 em Anime (Naruto, Dragon Ball, One Piece,
+Haikyuu, Sword Art Online, My Hero Academia…). A obra vai no enunciado e a
+resposta é o personagem:
+
+```js
+{ pergunta: 'Qual personagem de Game of Thrones e esta?', sub: 'personagens', imagem: '/img/personagem-got-arya-stark.jpg', resposta: 'Arya Stark', aceita: ['Arya'], dif: 25 }
+```
+
+Quando o nome da obra entregaria a resposta, o enunciado não a cita: o Chaves
+é *"Qual personagem é este?"*, o Nemo é *"Qual peixinho da Pixar é este?"*, a
+Sailor Moon é *"Qual heroína de anime é esta?"*. Primeiro nome e apelido valem
+("Khaleesi", "Heisenberg", "Kakaroto", "Bruxa do 71"). Ficou de fora quem já
+tinha foto no jogo (Harry, Hermione, Jack Sparrow, Carminha…).
+
+### Geografia — pontos turísticos
+
+**101 fotos de cidades e paisagens** (`public/img/lugar-*.jpg`), 139 perguntas:
+*"Que lugar é este?"*, *"Que cidade é esta?"* e *"Em qual cidade / país / estado
+do Brasil fica este lugar?"*. Lugares na fronteira aceitam os dois países
+(Niágara vale Canadá ou EUA; Everest, Nepal ou China).
+
 ### Cinema — perguntas de dentro da série
 
 A resposta é algo **da própria obra** (personagem, lugar, bordão, número), e o
