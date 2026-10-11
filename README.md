@@ -1458,29 +1458,32 @@ eles — Argentina, Grécia, Irlanda, Rússia e China dão 404 nesse padrão.
 
 ### Categoria Futebol
 
-**156 jogadores, todos com foto.** A lista cobre:
+**279 jogadores, todos com foto do auge da carreira** — no clube ou na seleção
+da melhor fase, em `public/img/jogador-*.jpg`, escolhida uma a uma e aprovada
+na página do `npm run avaliar-imagens`. A lista cobre:
 
 - **os vencedores da Bola de Ouro masculina de 1981 para cá** — Platini,
   van Basten, Baggio, Ronaldo, Zidane, Figo, Ronaldinho, Kaká, Messi,
   Cristiano Ronaldo, Modrić, Benzema, Rodri. Belanov, Papin e Sammer saíram
   na avaliação das fotos: quase ninguém os reconhece aqui;
-- **todas as vencedoras da Bola de Ouro feminina** — Ada Hegerberg, Megan
-  Rapinoe, Alexia Putellas e Aitana Bonmatí (enunciado *"Quem é esta jogadora?"*);
-- os nomes mais conhecidos da década de 2010, por seleção e por liga.
+- **as vencedoras da Bola de Ouro feminina** — Ada Hegerberg, Megan Rapinoe,
+  Alexia Putellas e Aitana Bonmatí — e a Marta (enunciado *"Quem é esta jogadora?"*);
+- **ídolos brasileiros** — Pelé, Romário, Bebeto, Cafu, Roberto Carlos, Adriano,
+  Rogério Ceni, Marcos, Gabigol, Vini Jr, Endrick e companhia — e os
+  estrangeiros que marcaram o futebol daqui (Arrascaeta, Guerrero, Cano,
+  D'Alessandro, Lugano, Loco Abreu, Tévez);
+- **as lendas dos anos 90 e 2000** — Maradona, Totti, Maldini, Henry, Beckham,
+  Zanetti, Riquelme, Gattuso, Inzaghi, Giggs, Schmeichel…;
+- os nomes mais conhecidos das décadas de 2010 e 2020, por seleção e por liga.
 
 Os vencedores até 1980 saíram de propósito: são fotos em preto e branco de
 jogadores que quase ninguém reconhece hoje, e a rodada morria sem acerto. Se
 quiser Cruyff, Beckenbauer, Yashin e companhia de volta, eles estão no histórico
 do git — o commit que os removeu diz quais foram.
 
-**94 jogadores têm foto do auge da carreira**, no clube ou na seleção da melhor
-fase (`public/img/jogador-*.jpg`), escolhida uma a uma e aprovada na página do
-`npm run avaliar-imagens`. Fotos com marca d'água foram recortadas acima dela.
-
-Os outros ainda usam a foto do **Wikimedia Commons** (licença livre), buscada
-pela API da Wikipédia e gravada como URL em `questions.js`. Essas dependem do
-Commons continuar no ar; o comando `npm run checar-imagens` percorre todas e
-avisa se alguma sair.
+Fotos com marca d'água foram recortadas acima dela. Na avaliação também saíram
+Lovren, Mertens, Matić e Xhaka. O mexicano tem resposta **Chicharito**:
+"Javier Hernández" ficava a uma letra de "Xavier Hernández", o nome do Xavi.
 
 ### Categoria Marcas — logos
 
