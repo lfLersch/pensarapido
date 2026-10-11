@@ -1566,6 +1566,43 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   transform-origin: left;
 }
 
+/* Qual e a musica: quem ja escolheu, no ponto da barra em que clicou. A barra
+   encolhe da direita para a esquerda, entao quem clicou cedo fica a direita. */
+.barra-marcas {
+  position: relative;
+  height: 30px;
+  margin-top: 3px;
+}
+.barra-marca {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  font-size: 18px;
+  line-height: 1;
+  animation: marca-entra 0.25s ease-out;
+}
+.barra-marca::before {
+  content: '';
+  width: 2px;
+  height: 5px;
+  margin-bottom: 1px;
+  background: var(--texto-suave);
+  border-radius: 1px;
+}
+.barra-marca small {
+  font-size: 10px;
+  color: var(--texto-suave);
+  margin-top: 1px;
+}
+.barra-marca.eu small { color: var(--destaque); font-weight: 700; }
+@keyframes marca-entra {
+  from { opacity: 0; transform: translate(-50%, -4px); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
 .status-respostas {
   margin: 12px 0 0;
   font-size: 13.5px;

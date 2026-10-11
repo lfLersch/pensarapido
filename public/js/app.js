@@ -2390,6 +2390,13 @@ socket.on('rodada:pergunta', (dados) => {
 
   estado.acertou = false;
 
+  // Qual e a musica: a barra das fotos de quem ja escolheu comeca vazia.
+  estado.duracaoOpcoes = dados.opcoes ? dados.duracaoMs : null;
+  const marcas = $('barra-marcas');
+  marcas.innerHTML = '';
+  marcas.style.height = '';
+  marcas.hidden = !dados.opcoes;
+
   $('jogo-codigo').textContent = estado.sala?.codigo || '----';
   $('jogo-rodada').textContent = dados.rodada;
   escreverMeta(dados.rodada);
@@ -2731,10 +2738,32 @@ function marcarMinhaOpcao(indice) {
   });
 }
 
-// Quantos ja clicaram — sem dizer em que, nem se acertaram.
-socket.on('qual:escolheu', ({ quantos, total } = {}) => {
+// Quantos ja clicaram — sem dizer em que, nem se acertaram. A foto de quem
+// clicou fica na barra do tempo, no ponto em que ela estava naquele instante.
+socket.on('qual:escolheu', ({ jogadorId, ms, quantos, total } = {}) => {
   $('status-respostas').textContent = `${quantos} de ${total} ja escolheram`;
+  marcarNaBarra(jogadorId, ms);
 });
+
+function marcarNaBarra(jogadorId, ms) {
+  const caixa = $('barra-marcas');
+  const duracao = estado.duracaoOpcoes;
+  if (caixa.hidden || !duracao || ms == null) return;
+  const jogador = (estado.sala?.jogadores || []).find((j) => j.id === jogadorId);
+
+  // A barra encolhe da direita para a esquerda: o ponto de quem clicou aos 2s
+  // de 30s e onde a ponta dela estava, a 93% da largura.
+  const onde = Math.min(98, Math.max(2, (1 - ms / duracao) * 100));
+  const marca = criar('span', 'barra-marca' + (jogadorId === estado.eu?.id ? ' eu' : ''));
+  marca.style.left = `${onde}%`;
+  // Duas fotos coladas: a segunda desce uma linha para nao cobrir a primeira.
+  const vizinhas = [...caixa.children].filter((m) => Math.abs(parseFloat(m.style.left) - onde) < 5).length;
+  marca.style.top = `${vizinhas * 12}px`;
+  caixa.style.height = `${Math.max(caixa.offsetHeight, 30 + vizinhas * 12)}px`;
+  marca.title = `${jogador ? jogador.nickname : 'Alguem'} escolheu em ${(ms / 1000).toFixed(1)}s`;
+  marca.innerHTML = `<span aria-hidden="true">${jogador ? jogador.avatar : '🎵'}</span><small>${(ms / 1000).toFixed(1)}s</small>`;
+  caixa.appendChild(marca);
+}
 
 /** No resultado: a certa em verde e, se a minha era outra, ela em vermelho. */
 function revelarOpcoes(opcoes) {

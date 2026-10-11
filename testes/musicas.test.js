@@ -179,6 +179,9 @@ function abrir(sala) {
   sala.inicioPergunta = Date.now() - 3000;
   conferir('clicar na certa vale', sala.escolherOpcao('a', certa).ok, true);
   conferir('  10 pontos nos primeiros 5s', sala.jogadores.get('a').pontos, 10);
+  const clique = ultimo('qual:escolheu').dados;
+  conferir('  a sala fica sabendo quem clicou e em que instante (para a barra)',
+    [clique.jogadorId, clique.ms >= 3000 && clique.ms < 3500, 'indice' in clique], ['a', true, false]);
   conferir('  e nao da para trocar', Boolean(sala.escolherOpcao('a', errada).erro), true);
   conferir('  nem fica sabendo na hora se acertou', 'certo' in sala.escolherOpcao('b', errada), false);
   conferir('errar vale zero', sala.jogadores.get('b').pontos, 0);

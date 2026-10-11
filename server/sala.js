@@ -3332,8 +3332,11 @@ class Sala {
       if (this.primeiroAcertoEm === null) this.primeiroAcertoEm = Date.now();
     }
 
+    // Vai o instante do clique (nao em que clicou): a barra do tempo marca
+    // a foto de cada um no ponto em que escolheu.
     this.emitir('qual:escolheu', {
       jogadorId: socketId,
+      ms,
       quantos: this.opcoesEscolhidas.size,
       total: this.jogadores.size
     });

@@ -709,6 +709,10 @@ clique, e o chat vira só conversa.
   aparece no resultado, em verde, com a errada de cada um em vermelho e o que
   cada pessoa marcou na lista.
 - A rodada fecha quando **todo mundo clicou** ou no **limite da música**.
+- **A barra do tempo marca quem já escolheu**: a foto de cada um aparece no
+  ponto em que a barra estava quando a pessoa clicou, com o segundo embaixo
+  (*2.0s*). Vai só o instante, nunca em que opção — a mesa vê quem foi rápido
+  sem descobrir a resposta.
 - **As opções erradas são do mesmo estilo** (rap nacional com rap nacional,
   sertanejo com sertanejo — o estilo de cada música fica em
   [`server/musicas.js`](server/musicas.js)): "Negro Drama" ao lado de "Shape of
