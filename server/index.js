@@ -9,6 +9,7 @@ const {
   Sala, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, gerarCodigo, indicePerguntas,
   categoriasEmJogo, perguntasEscolhidas, LIMITE_MUSICA_PADRAO, TOTAL_MUSICAS_PADRAO,
   MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
+  SEGUNDOS_SORTEIO, SEGUNDOS_SORTEIO_PADRAO,
   configDaBagunca, FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
   faixaDe, naFaixa, tituloDaFaixa
 } = require('./sala');
@@ -59,6 +60,9 @@ app.get('/api/config', (_req, res) => {
       modos: MODOS_SORTEAVEIS,
       perguntas: PERGUNTAS_ATE_SORTEIO,
       perguntasPadrao: PERGUNTAS_ATE_SORTEIO_PADRAO,
+      // Quanto tempo a regra do modo sorteado fica na tela.
+      segundos: SEGUNDOS_SORTEIO,
+      segundosPadrao: SEGUNDOS_SORTEIO_PADRAO,
       minEquipes: MIN_JOGADORES_EQUIPES
     },
     // Modo Tempo: a faixa de dificuldade das perguntas e o titulo de cada uma.

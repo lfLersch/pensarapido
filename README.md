@@ -109,7 +109,7 @@ e que a versão do topo seja a do jogo.
 | Categorias | Bandeiras, Geografia, Matemática, Esportes (com a parte **Fórmula 1**), **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
 | Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical**, **Qual é a música** ou **Bagunça**, todos num só (Equipes aparece como *em breve*) |
 | Dificuldade das perguntas | só no Modo Tempo: uma faixa de **0 a 100** (padrão, *Normal*), que dá o título da sala — ver [Faixa de dificuldade](#faixa-de-dificuldade-modo-tempo) |
-| Bagunça | só nela: quantas perguntas do Modo Tempo até cada sorteio (0 a 6, **3** de padrão) e quais modos entram no sorteio (**todos** de padrão) |
+| Bagunça | só nela: quantas perguntas do Modo Tempo até cada sorteio (0 a 6, **3** de padrão) , quais modos entram no sorteio (**todos** de padrão) e quanto tempo a regra do modo sorteado fica na tela (6 / 10 / 15 / 20 / 30 s, **6 s** de padrão) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
 | Limite da música | 15s / 20s / **30s (padrão)** / 45s / 60s — por quanto tempo a música toca, no máximo |
@@ -707,12 +707,15 @@ essa rodada, volta o Modo Tempo e a conta recomeça:
 Tempo, Tempo, Tempo, 🎲 Escalada, Tempo, Tempo, Tempo, 🎲 Presente Grego, …
 ```
 
-O líder ajusta as duas coisas na configuração:
+O líder ajusta três coisas na configuração:
 
 - **quantas perguntas até cada sorteio**, de 0 a 6. Com **0** não há Modo
   Tempo no meio: toda rodada sai do sorteio;
 - **quais modos entram no sorteio**, um chip para cada. Precisa sobrar pelo
-  menos um. O Modo Tempo não aparece na lista — ele já é o recheio.
+  menos um. O Modo Tempo não aparece na lista — ele já é o recheio;
+- **quanto tempo a regra do modo sorteado fica na tela**: 6 s (padrão), 10,
+  15, 20 ou 30 s. Mesa que ainda não conhece os modos pede mais tempo para ler
+  antes de a rodada começar.
 
 **Quem cabe no sorteio é decidido na hora dele**, pela sala daquele momento:
 
@@ -725,7 +728,7 @@ O líder ajusta as duas coisas na configuração:
 - se nada do que foi marcado cabe na sala, a rodada segue no Modo Tempo e o
   chat explica por quê.
 
-**A roleta.** O sorteio tem tela própria (`bagunca:sorteio`, 5,5 s): a roleta
+**A roleta.** O sorteio tem tela própria (`bagunca:sorteio`, 6 s ou o que o líder escolheu): a roleta
 gira pelos modos que podiam sair, para no sorteado e mostra a regra dele.
 Quem sorteia é o servidor; a roleta é só o espetáculo. Durante a partida a
 etiqueta de cima diz o modo da rodada, e a tela da categoria diz em que

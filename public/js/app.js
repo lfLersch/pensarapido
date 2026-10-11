@@ -23,6 +23,7 @@ const estado = {
     fimPor: 'pontos',     // modos musicais: 'pontos' ou 'musicas'
     totalMusicas: 15,
     perguntasAteSorteio: 3,    // Bagunca: perguntas do Modo Tempo entre um sorteio e outro
+    segundosSorteio: 6,        // Bagunca: quanto tempo a regra do modo sorteado fica na tela
     modosBagunca: new Set()    // Bagunca: os modos que entram na roleta
   },
   musica: null,     // a musica da rodada: { inicio, limite, abriuEm, parada }
@@ -1145,6 +1146,14 @@ function montarBagunca() {
       sincronizarBagunca();
     });
 
+  // Quem ainda nao conhece os modos precisa de mais tempo na tela da roleta.
+  estado.escolhas.segundosSorteio = cfg.segundosPadrao;
+  montarPilulas($('bagunca-segundos'), cfg.segundos, (s) => `${s}s`,
+    estado.escolhas.segundosSorteio, (s) => {
+      estado.escolhas.segundosSorteio = s;
+      sincronizarBagunca();
+    });
+
   const caixa = $('bagunca-modos');
   caixa.innerHTML = '';
   for (const modo of modosSorteaveis()) {
@@ -1333,11 +1342,12 @@ function resumoDaFaixa(faixa) {
 }
 
 /** "7 modos · sorteio a cada 3 perguntas", para os dois resumos. */
-function resumoDaBagunca(perguntas, quantosModos) {
+function resumoDaBagunca(perguntas, quantosModos, segundos) {
   const ritmo = perguntas === 0
     ? 'toda rodada sorteada'
     : `sorteio a cada <b>${perguntas}</b> ${perguntas === 1 ? 'pergunta' : 'perguntas'}`;
-  return `<span><b>${quantosModos}</b> ${quantosModos === 1 ? 'modo' : 'modos'} · ${ritmo}</span>`;
+  const regra = segundos ? ` · <b>${segundos}s</b> para ler a regra` : '';
+  return `<span><b>${quantosModos}</b> ${quantosModos === 1 ? 'modo' : 'modos'} · ${ritmo}${regra}</span>`;
 }
 
 /** Pilulas de escolha unica: marca a do valor atual e chama `escolher` no clique. */
@@ -1588,7 +1598,7 @@ function atualizarResumo() {
     : `
     <span>${plural(total, 'categoria', 'categorias')}</span>
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
-    ${bagunca ? resumoDaBagunca(estado.escolhas.perguntasAteSorteio, estado.escolhas.modosBagunca.size) : ''}
+    ${bagunca ? resumoDaBagunca(estado.escolhas.perguntasAteSorteio, estado.escolhas.modosBagunca.size, estado.escolhas.segundosSorteio) : ''}
     ${modo && modo.id === 'tempo' ? resumoDaFaixa(estado.escolhas.faixa) : ''}
     <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
@@ -1635,6 +1645,7 @@ $('btn-criar').addEventListener('click', () => {
     ...(estado.escolhas.modo === 'tempo' ? { faixa: { ...estado.escolhas.faixa } } : {}),
     ...(bagunca ? {
       perguntasAteSorteio: estado.escolhas.perguntasAteSorteio,
+      segundosSorteio: estado.escolhas.segundosSorteio,
       modosBagunca: [...estado.escolhas.modosBagunca]
     } : {})
   };
@@ -1675,7 +1686,7 @@ function renderizarSala() {
     <span>Musica de ate <b>${sala.config.limiteMusica}s</b></span>`
     : `
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
-    ${modo && modo.bagunca ? resumoDaBagunca(sala.config.perguntasAteSorteio, (sala.config.modosBagunca || []).length) : ''}
+    ${modo && modo.bagunca ? resumoDaBagunca(sala.config.perguntasAteSorteio, (sala.config.modosBagunca || []).length, sala.config.segundosSorteio) : ''}
     ${resumoDaFaixa(sala.config.faixa)}
     <span>Meta <b>${sala.config.metaPontos} pts</b></span>
     <span><b>${sala.config.segundosPorPergunta}s</b> por pergunta</span>

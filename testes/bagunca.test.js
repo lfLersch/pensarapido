@@ -74,8 +74,12 @@ function ritmo(sala, n) {
 
 /* ---------------- 2. A configuracao conferida ---------------- */
 {
-  conferir('sem dizer nada: 3 perguntas e todos os modos',
-    configDaBagunca({}), { perguntasAteSorteio: 3, modosBagunca: MODOS_SORTEAVEIS });
+  conferir('sem dizer nada: 3 perguntas, todos os modos e 6s para ler a regra',
+    configDaBagunca({}), { perguntasAteSorteio: 3, modosBagunca: MODOS_SORTEAVEIS, segundosSorteio: 6 });
+  conferir('o tempo da regra vale o que o lider escolheu',
+    configDaBagunca({ segundosSorteio: 20 }).segundosSorteio, 20);
+  conferir('  e fora da lista volta para 6',
+    configDaBagunca({ segundosSorteio: 3 }).segundosSorteio, 6);
   conferir('quantas perguntas ate o sorteio vale o que o lider escolheu',
     configDaBagunca({ perguntasAteSorteio: 5 }).perguntasAteSorteio, 5);
   conferir('  zero tambem vale: toda rodada e sorteada',
@@ -115,6 +119,17 @@ function ritmo(sala, n) {
   conferir('  com o modo que saiu', sorteio.dados.modo.id, sala.modo);
   conferir('  a roleta com o que podia sair', sorteio.dados.roleta.map((m) => m.id).sort(), ['escalada', 'veni']);
   conferir('  e a rodada seguinte', sorteio.dados.rodada, 2);
+  conferir('  a tela fica 6s sem o lider mexer', sorteio.dados.duracaoMs, 6000);
+
+  // Com mais tempo para ler a regra, a tela e a espera da rodada crescem juntas.
+  const lenta = montar(3, { perguntasAteSorteio: 1, modosBagunca: ['veni'], segundosSorteio: 20 });
+  lenta.sala.pularRodada();
+  lenta.sala.agendado.fn();
+  const sorteioLento = lenta.eventos.find((e) => e.evento === 'bagunca:sorteio');
+  conferir('com 20s escolhidos, a tela do sorteio diz 20s', sorteioLento.dados.duracaoMs, 20000);
+  conferir('  e a rodada so comeca depois deles',
+    [lenta.sala.estado, lenta.sala.agendado.ms], ['sorteio', 20000]);
+  lenta.sala.destruir();
 
   const categorias = eventos.filter((e) => e.evento === 'rodada:categoria');
   conferir('a tela da categoria diz de que modo e a rodada',

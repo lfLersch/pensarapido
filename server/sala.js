@@ -152,7 +152,10 @@ const TOTAL_MUSICAS_PADRAO = 15;   // partida que acaba pelo numero de musicas
    de que modo e a rodada seguinte. */
 const PERGUNTAS_ATE_SORTEIO = [0, 1, 2, 3, 4, 5, 6];  // 0: toda rodada e sorteada
 const PERGUNTAS_ATE_SORTEIO_PADRAO = 3;
-const MS_SORTEIO = 5500;           // a roleta gira, para e da tempo de ler a regra
+// A roleta gira uns dois segundos, para, e a regra do modo sorteado fica na
+// tela pelo resto do tempo. Quem ainda nao conhece os modos pede mais.
+const SEGUNDOS_SORTEIO = [6, 10, 15, 20, 30];
+const SEGUNDOS_SORTEIO_PADRAO = 6;
 // Duas equipes de dois: abaixo disso os modos em equipe nem entram na roleta.
 const MIN_JOGADORES_EQUIPES = 4;
 
@@ -298,7 +301,7 @@ const MODOS = [
     id: 'bagunca',
     nome: 'Bagunca',
     icone: '🎲',
-    descricao: 'Todos os modos numa partida so. Depois de algumas perguntas do Modo Tempo (3, se ninguem mexer), um sorteio escolhe o modo da rodada seguinte — e volta o Modo Tempo. Os modos em equipe so entram no sorteio com 4 ou mais na sala. Quantas perguntas ate o sorteio e quais modos entram nele, voce escolhe.',
+    descricao: 'Todos os modos numa partida so. Depois de algumas perguntas do Modo Tempo (3, se ninguem mexer), um sorteio escolhe o modo da rodada seguinte — e volta o Modo Tempo. Os modos em equipe so entram no sorteio com 4 ou mais na sala. Quantas perguntas ate o sorteio, quais modos entram nele e quanto tempo a regra do modo sorteado fica na tela, voce escolhe.',
     disponivel: true,
     bagunca: true
   },
@@ -331,7 +334,9 @@ function configDaBagunca(bruta) {
   // Na ordem da tela, sem repetir e sem o que nao existe.
   const modosBagunca = MODOS_SORTEAVEIS.filter((id) => pedidos.includes(id));
   if (!modosBagunca.length) return { erro: 'Deixe pelo menos um modo no sorteio da Bagunca.' };
-  return { perguntasAteSorteio, modosBagunca };
+  const seg = Number(bruta && bruta.segundosSorteio);
+  const segundosSorteio = SEGUNDOS_SORTEIO.includes(seg) ? seg : SEGUNDOS_SORTEIO_PADRAO;
+  return { perguntasAteSorteio, modosBagunca, segundosSorteio };
 }
 
 /** Modo Tempo: a faixa de dificuldade conferida. Torta ou estreita demais vira 0 a 100. */
@@ -1888,6 +1893,12 @@ class Sala {
     return PERGUNTAS_ATE_SORTEIO.includes(n) ? n : PERGUNTAS_ATE_SORTEIO_PADRAO;
   }
 
+  /** Quanto tempo a tela do sorteio fica no ar: a roleta e a regra do modo. */
+  msSorteio() {
+    const s = this.config.segundosSorteio;
+    return (SEGUNDOS_SORTEIO.includes(s) ? s : SEGUNDOS_SORTEIO_PADRAO) * 1000;
+  }
+
   /**
    * Os modos marcados que cabem na sala agora. Modo de equipe precisa de
    * duas equipes de dois; o Leilao Geral, de alguem para cobrir o lance.
@@ -1960,11 +1971,11 @@ class Sala {
             jogadores: e.jogadores.map((j) => (this.jogadores.get(j) || {}).nickname).filter(Boolean)
           }))
         : null,
-      duracaoMs: MS_SORTEIO,
+      duracaoMs: this.msSorteio(),
       placar: this.placar()
     });
     this.avisar(`Sorteio da Bagunca: ${modo.icone} ${modo.nome}!`, true);
-    this.agendar(() => this.comecarRodada(), MS_SORTEIO);
+    this.agendar(() => this.comecarRodada(), this.msSorteio());
   }
 
   /** Na Bagunca, o que a tela da categoria conta: o modo, ou quanto falta para o sorteio. */
@@ -4260,6 +4271,7 @@ module.exports = {
   Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, CHANCES_POR_PERGUNTA,
   LIMITE_MUSICA_PADRAO, TOTAL_MUSICAS_PADRAO,
   MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
+  SEGUNDOS_SORTEIO, SEGUNDOS_SORTEIO_PADRAO,
   FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
   gerarCodigo, calcularPontos, indicePerguntas, categoriasEmJogo, perguntasEscolhidas,
   sortearInicio, montarOpcoes, tipoMusical, idDaPergunta, configDaBagunca,
