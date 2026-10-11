@@ -9,7 +9,7 @@ const {
   Sala, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, gerarCodigo, indicePerguntas,
   categoriasEmJogo, perguntasEscolhidas, LIMITE_MUSICA_PADRAO, TOTAL_MUSICAS_PADRAO,
   MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
-  SEGUNDOS_SORTEIO, SEGUNDOS_SORTEIO_PADRAO,
+  SEGUNDOS_SORTEIO, SEGUNDOS_SORTEIO_PADRAO, PROPORCOES_IMAGEM, PROPORCAO_IMAGEM_PADRAO,
   configDaBagunca, FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
   faixaDe, naFaixa, tituloDaFaixa
 } = require('./sala');
@@ -51,6 +51,9 @@ app.get('/api/config', (_req, res) => {
     maxJogadores: MAX_JOGADORES,
     maxTexto: MAX_TEXTO,
     segundosPermitidos: SEGUNDOS_PERMITIDOS,
+    // Quanto das perguntas e de imagem e quanto e de texto.
+    proporcoesImagem: PROPORCOES_IMAGEM.map(({ id, nome }) => ({ id, nome })),
+    proporcaoImagemPadrao: PROPORCAO_IMAGEM_PADRAO,
     limitesMusica: LIMITES_MUSICA,
     limiteMusicaPadrao: LIMITE_MUSICA_PADRAO,
     totaisMusicas: TOTAIS_MUSICAS,
@@ -272,6 +275,9 @@ function validarConfig(bruta) {
   const segundos = Number(bruta.segundosPorPergunta);
   const segundosPorPergunta = SEGUNDOS_PERMITIDOS.includes(segundos) ? segundos : 20;
 
+  const proporcaoImagem = PROPORCOES_IMAGEM.some((p) => p.id === bruta.proporcaoImagem)
+    ? bruta.proporcaoImagem : PROPORCAO_IMAGEM_PADRAO;
+
   const limite = Number(bruta.limiteMusica);
   const limiteMusica = LIMITES_MUSICA.includes(limite) ? limite : LIMITE_MUSICA_PADRAO;
 
@@ -283,7 +289,7 @@ function validarConfig(bruta) {
     config: {
       categorias, subs, fora, modo: modo.id,
       metaPontos: Number.isInteger(metaPontos) ? metaPontos : 120,
-      segundosPorPergunta, limiteMusica, fimPor, totalMusicas,
+      segundosPorPergunta, limiteMusica, fimPor, totalMusicas, proporcaoImagem,
       ...(faixa ? { faixa } : {}),
       ...bagunca
     }

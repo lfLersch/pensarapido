@@ -167,6 +167,23 @@ const MS_ROLETA = 2500;
 // Duas equipes de dois: abaixo disso os modos em equipe nem entram na roleta.
 const MIN_JOGADORES_EQUIPES = 4;
 
+/* Quanto das perguntas e de imagem e quanto e de texto (pergunta com audio
+   conta como texto). [imagens, textos] por ciclo: 5:1 sao cinco de imagem
+   para cada uma de texto. 'livre' e o sorteio de sempre, sem olhar o tipo. */
+const PROPORCOES_IMAGEM = [
+  { id: 'livre', nome: 'Normal', partes: null },
+  { id: 'so-imagem', nome: 'So imagens', partes: [1, 0] },
+  { id: '5-1', nome: '5:1', partes: [5, 1] },
+  { id: '2-1', nome: '2:1', partes: [2, 1] },
+  { id: '1-1', nome: '1:1', partes: [1, 1] },
+  { id: '1-2', nome: '1:2', partes: [1, 2] },
+  { id: '1-5', nome: '1:5', partes: [1, 5] },
+  { id: 'so-texto', nome: 'So texto', partes: [0, 1] }
+];
+const PROPORCAO_IMAGEM_PADRAO = 'livre';
+const proporcaoDe = (id) => PROPORCOES_IMAGEM.find((p) => p.id === id) || PROPORCOES_IMAGEM[0];
+const temImagem = (q) => Boolean(q && q.imagem);
+
 /* Modo Tempo: de que faixa de dificuldade saem as perguntas. A escala e a da
    dificuldade crescente — 0 a 100 DENTRO da categoria, 0 a mais facil de la e
    100 a mais dificil. Na escala da propria pergunta (o `dif`) quase nada passa
@@ -589,6 +606,7 @@ class Sala {
 
     this.filas = new Map();     // categoria -> perguntas embaralhadas ainda não usadas
     this.ultimasCategorias = []; // de onde vieram as últimas perguntas, para variar
+    this.tiposSaidos = { imagens: 0, textos: 0 }; // para a proporcao imagem/texto
     // Respostas e listas que já caíram nesta partida. Duas cenas diferentes de
     // Star Wars são duas perguntas no banco, mas para quem joga são a mesma:
     // na segunda todo mundo digita na hora. "Star Wars" é resposta de 5
@@ -915,6 +933,7 @@ class Sala {
     this.rodada = 0;
     this.filas = new Map();
     this.ultimasCategorias = [];
+    this.tiposSaidos = { imagens: 0, textos: 0 };
     this.respostasUsadas.clear();
     this.listasUsadas.clear();
     this.audiosUsados.clear();
@@ -1382,7 +1401,15 @@ class Sala {
    */
   sacarDaFila() {
     if (!this.filas || this.filas.size === 0) this.montarFila();
-    const categorias = [...this.filas.keys()];
+    // Imagem ou texto: a proporcao da sala diz qual tipo esta devendo. So
+    // entram no sorteio as categorias que tem desse tipo; se nenhuma tem
+    // (so Matematica marcada e "so imagens"), vale qualquer uma.
+    const tipo = this.tipoDaVez();
+    const temDoTipo = (c) => tipo === null || this.perguntasDaCategoria(c).some((q) => temImagem(q) === tipo);
+    const todas = [...this.filas.keys()];
+    const doTipo = todas.filter(temDoTipo);
+    const categorias = doTipo.length ? doTipo : todas;
+    const filtro = doTipo.length ? tipo : null;
 
     const janela = Math.max(1, Math.ceil(categorias.length * VARIACAO_CATEGORIAS));
     // Quem apareceu nas últimas (janela - 1) perguntas espera a vez.
@@ -1392,9 +1419,28 @@ class Sala {
     const categoria = opcoes[Math.floor(Math.random() * opcoes.length)];
 
     this.ultimasCategorias.push(categoria);
-    if (this.ultimasCategorias.length > categorias.length) this.ultimasCategorias.shift();
+    if (this.ultimasCategorias.length > todas.length) this.ultimasCategorias.shift();
 
-    return this.sacarDaCategoria(categoria);
+    const pergunta = this.sacarDaCategoria(categoria, this.filas, filtro);
+    if (temImagem(pergunta)) this.tiposSaidos.imagens += 1;
+    else this.tiposSaidos.textos += 1;
+    return pergunta;
+  }
+
+  /**
+   * Imagem (true), texto (false) ou tanto faz (null) para a proxima pergunta.
+   * Sai o tipo que esta mais atras da proporcao: com 2:1 a sequencia fica
+   * imagem, imagem, texto, imagem, imagem, texto — espalhado, sem bloco.
+   */
+  tipoDaVez() {
+    const partes = proporcaoDe(this.config.proporcaoImagem).partes;
+    if (!partes) return null;
+    const [img, txt] = partes;
+    if (!txt) return true;
+    if (!img) return false;
+    const { imagens, textos } = this.tiposSaidos;
+    // Quem, saindo agora, fica menos adiantado em relacao a sua parte.
+    return (imagens + 1) / img <= (textos + 1) / txt;
   }
 
   /**
@@ -1404,14 +1450,17 @@ class Sala {
    * Resposta puramente numérica escapa da regra: "quanto e 6x5" e "quanto e
    * 27+3" dão 30, e ninguém sente isso como repetição — são contas diferentes.
    */
-  sacarDaCategoria(categoria, filas = this.filas) {
+  sacarDaCategoria(categoria, filas = this.filas, tipo = null) {
+    const doTipo = (q) => tipo === null || temImagem(q) === tipo;
     let fila = filas.get(categoria);
-    if (!fila || fila.length === 0) {
+    // A fila acabou, ou nao sobrou nela pergunta do tipo pedido: recomeca.
+    if (!fila || fila.length === 0 || !fila.some(doTipo)) {
       fila = this.novaFila(categoria);
       filas.set(categoria, fila);
     }
 
     const livre = (bruta) => {
+      if (!doTipo(bruta)) return false;
       if (bruta.audio && this.audiosUsados.has(bruta.audio)) return false;
       const chave = normalizar(bruta.resposta || '');
       return /^[0-9]+$/.test(chave) || !this.respostasUsadas.has(chave);
@@ -1438,7 +1487,8 @@ class Sala {
     // Só sobrou repetição nesta categoria — a partida é mais longa que o
     // baralho dela. Recomeça a categoria em vez de ficar sem pergunta.
     const nova = this.novaFila(categoria);
-    const bruta = nova.shift();
+    const i = Math.max(0, nova.findIndex(doTipo));
+    const [bruta] = nova.splice(i, 1);
     filas.set(categoria, nova);
     return usar(bruta);
   }
@@ -4351,7 +4401,7 @@ module.exports = {
   Sala, AVATARES, CATEGORIAS, MODOS, MAX_JOGADORES, MAX_TEXTO, CHANCES_POR_PERGUNTA,
   LIMITE_MUSICA_PADRAO, TOTAL_MUSICAS_PADRAO,
   MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
-  SEGUNDOS_SORTEIO, SEGUNDOS_SORTEIO_PADRAO,
+  SEGUNDOS_SORTEIO, SEGUNDOS_SORTEIO_PADRAO, PROPORCOES_IMAGEM, PROPORCAO_IMAGEM_PADRAO,
   FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
   gerarCodigo, calcularPontos, indicePerguntas, categoriasEmJogo, perguntasEscolhidas,
   sortearInicio, montarOpcoes, tipoMusical, idDaPergunta, configDaBagunca,

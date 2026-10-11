@@ -112,6 +112,7 @@ e que a versão do topo seja a do jogo.
 | Bagunça | só nela: quantas perguntas do Modo Tempo até cada sorteio (0 a 6, **3** de padrão) , quais modos entram no sorteio (**todos** de padrão) e quanto tempo a regra do modo sorteado fica na tela (6 / 10 / 15 / 20 / 30 s, **6 s** de padrão) e se o jogo pausa na primeira vez de cada modo (**não** de padrão) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
 | Tempo por pergunta | 15s / **20s (padrão)** / 30s / 45s |
+| Imagem ou texto | **Normal** (padrão, o sorteio de sempre), **Só imagens**, **5:1**, **2:1**, **1:1**, **1:2**, **1:5** ou **Só texto** — sempre imagem:texto. Sai o tipo que está mais atrás da proporção, então 2:1 fica imagem, imagem, texto, imagem, imagem, texto. Só entram no sorteio as categorias que têm do tipo da vez; se nenhuma tem, vale qualquer uma |
 | Limite da música | 15s / 20s / **30s (padrão)** / 45s / 60s — por quanto tempo a música toca, no máximo |
 | Fim da partida | só nos modos musicais: **por pontos** (a meta acima) ou **por número de músicas** (10 / **15** / 20 / 30) |
 

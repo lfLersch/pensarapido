@@ -18,6 +18,7 @@ const estado = {
     modo: 'tempo',
     metaPontos: 120,
     segundosPorPergunta: 20,
+    proporcaoImagem: 'livre', // imagem:texto das perguntas ('livre', 'so-imagem', '5-1'...)
     faixa: { min: 0, max: 100 },  // Modo Tempo: a faixa de dificuldade das perguntas
     limiteMusica: 30,     // por quanto tempo a musica toca, no maximo
     fimPor: 'pontos',     // modos musicais: 'pontos' ou 'musicas'
@@ -1081,6 +1082,7 @@ async function carregarConfig() {
   montarModos();
   montarMetas();
   montarTempos();
+  montarProporcao();
   montarLimites();
   montarFim();
   montarBagunca();
@@ -1106,6 +1108,7 @@ function sincronizarModo() {
   const bagunca = estado.escolhas.modo === 'bagunca';
   $('bloco-categorias').hidden = musical;
   $('bloco-tempo').hidden = musical;
+  $('bloco-proporcao').hidden = musical;
   $('bloco-fim').hidden = !musical;
   $('bloco-bagunca').hidden = !bagunca;
   $('bloco-faixa').hidden = estado.escolhas.modo !== 'tempo';
@@ -1595,6 +1598,37 @@ function montarTempos() {
   }
 }
 
+/* Imagem ou texto: quanto das perguntas e de imagem, na proporcao imagem:texto. */
+const DICAS_PROPORCAO = {
+  livre: 'Do jeito que o sorteio tirar, com e sem imagem.',
+  'so-imagem': 'So perguntas com imagem: fotos, logos, bandeiras, cenas.',
+  'so-texto': 'So perguntas escritas, sem imagem.'
+};
+function dicaDaProporcao(id) {
+  if (DICAS_PROPORCAO[id]) return DICAS_PROPORCAO[id];
+  const [img, txt] = id.split('-').map(Number);
+  return `${plural(img, 'pergunta', 'perguntas')} com imagem para cada ${txt === 1 ? 'uma' : txt} de texto.`;
+}
+
+function montarProporcao() {
+  const opcoes = estado.config.proporcoesImagem || [];
+  estado.escolhas.proporcaoImagem = estado.config.proporcaoImagemPadrao || 'livre';
+  montarPilulas($('proporcao-opcoes'), opcoes.map((o) => o.id),
+    (id) => opcoes.find((o) => o.id === id).nome, estado.escolhas.proporcaoImagem, (id) => {
+      estado.escolhas.proporcaoImagem = id;
+      $('proporcao-dica').textContent = dicaDaProporcao(id);
+      atualizarResumo();
+    });
+  $('proporcao-dica').textContent = dicaDaProporcao(estado.escolhas.proporcaoImagem);
+}
+
+/** "🖼 2:1 imagem:texto" no resumo, ou nada quando e o sorteio de sempre. */
+function resumoDaProporcao(id) {
+  if (!id || id === 'livre') return '';
+  const nome = (estado.config.proporcoesImagem || []).find((o) => o.id === id)?.nome || id;
+  return `<span>🖼 <b>${nome}</b>${/^d/.test(nome) ? ' imagem:texto' : ''}</span>`;
+}
+
 function atualizarResumo() {
   const musical = modoMusical();
   const total = musical ? 1 : categoriasEscolhidas().length;
@@ -1612,6 +1646,7 @@ function atualizarResumo() {
     ${modo && modo.id === 'tempo' ? resumoDaFaixa(estado.escolhas.faixa) : ''}
     <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
+    ${resumoDaProporcao(estado.escolhas.proporcaoImagem)}
     ${modo && modo.equipes ? '<span>👥 <b>4+</b> jogadores, em equipes</span>' : ''}`;
 
   $('btn-criar').disabled = total === 0 || (bagunca && estado.escolhas.modosBagunca.size === 0);
@@ -1649,6 +1684,7 @@ $('btn-criar').addEventListener('click', () => {
     modo: estado.escolhas.modo,
     metaPontos: estado.escolhas.metaPontos,
     segundosPorPergunta: estado.escolhas.segundosPorPergunta,
+    proporcaoImagem: estado.escolhas.proporcaoImagem,
     limiteMusica: estado.escolhas.limiteMusica,
     fimPor: estado.escolhas.fimPor,
     totalMusicas: estado.escolhas.totalMusicas,
@@ -1701,6 +1737,7 @@ function renderizarSala() {
     ${resumoDaFaixa(sala.config.faixa)}
     <span>Meta <b>${sala.config.metaPontos} pts</b></span>
     <span><b>${sala.config.segundosPorPergunta}s</b> por pergunta</span>
+    ${resumoDaProporcao(sala.config.proporcaoImagem)}
     <span>${plural(emJogo.length, 'categoria', 'categorias')}</span>`;
   $('resumo-sala').title = emJogo.map(nomeCategoria).join(', ');
 
