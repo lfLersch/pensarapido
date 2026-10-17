@@ -1680,6 +1680,8 @@ function sincronizarPresencial() {
   document.body.classList.toggle('presencial', Boolean(estado.sala?.config?.presencial));
   document.body.classList.toggle('presencial--tela', souTela());
   document.body.classList.toggle('presencial--controle', souControle());
+  // Na tela nao tem chat: o lado e da classificacao.
+  $('placar-titulo').textContent = souTela() ? 'Classificacao' : 'Placar';
 }
 
 function atualizarResumo() {
@@ -3972,11 +3974,20 @@ function renderizarPlacar(placar) {
   // Guardado porque o Carrossel precisa de nome e avatar para montar a fila.
   estado.placar = placar;
   const lista = $('placar-lista');
+  // Na tela do presencial a classificacao mexe: guarda onde cada um estava
+  // e quantos pontos tinha, para animar a subida e o "+N" de quem pontuou.
+  const antes = new Map();
+  if (souTela()) {
+    for (const li of lista.children) {
+      antes.set(li.dataset.id, { topo: li.getBoundingClientRect().top, pontos: Number(li.dataset.pontos) });
+    }
+  }
   lista.innerHTML = '';
 
   placar.forEach((jogador, posicao) => {
     const item = criar('li', 'placar__item');
     item.dataset.id = jogador.id;
+    item.dataset.pontos = jogador.pontos;
     if (jogador.id === estado.eu?.id) item.classList.add('eu');
     if (posicao === 0 && jogador.pontos > 0) item.classList.add('lider-placar');
 
@@ -3990,6 +4001,49 @@ function renderizarPlacar(placar) {
       <span class="placar__pontos">${jogador.pontos}</span>`;
     lista.appendChild(item);
   });
+
+  if (antes.size) animarClassificacao(lista, antes);
+}
+
+/**
+ * A classificacao da tela do presencial: quem passou alguem desliza para o
+ * lugar novo, e quem pontuou acende, ganha um "+N" e os pontos sobem contando.
+ */
+function animarClassificacao(lista, antes) {
+  for (const item of lista.children) {
+    const velho = antes.get(item.dataset.id);
+    if (!velho) {
+      item.animate([{ opacity: 0, transform: 'translateX(24px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 400, easing: 'ease-out' });
+      continue;
+    }
+    const desce = velho.topo - item.getBoundingClientRect().top;
+    if (Math.abs(desce) > 1) {
+      item.animate([{ transform: `translateY(${desce}px)` }, { transform: 'none' }],
+        { duration: 700, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+    }
+    const ganhou = Number(item.dataset.pontos) - velho.pontos;
+    if (!(ganhou > 0)) continue;
+
+    item.classList.add('pontuou');
+    setTimeout(() => item.classList.remove('pontuou'), 1400);
+    const selo = criar('span', 'placar__ganho');
+    selo.textContent = `+${ganhou}`;
+    item.appendChild(selo);
+    setTimeout(() => selo.remove(), 1600);
+
+    const numero = item.querySelector('.placar__pontos');
+    const fim = Number(item.dataset.pontos);
+    const comeco = Date.now();
+    const contar = () => {
+      if (!numero.isConnected) return;
+      const fracao = Math.min(1, (Date.now() - comeco) / 800);
+      numero.textContent = Math.round(velho.pontos + ganhou * (1 - (1 - fracao) ** 3));
+      if (fracao < 1) requestAnimationFrame(contar);
+      else numero.textContent = fim;
+    };
+    requestAnimationFrame(contar);
+  }
 }
 
 /* =====================================================================

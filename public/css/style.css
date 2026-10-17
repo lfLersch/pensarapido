@@ -3264,3 +3264,49 @@ select.est-campo option { color: var(--texto); background: var(--fundo-2); }
 }
 .presencial--controle .opcoes { grid-template-columns: 1fr; }
 .presencial--controle .opcao { min-height: 64px; font-size: 18px; }
+
+/* A tela do presencial nao tem chat: o lado inteiro e da classificacao, grande
+   para ler do sofa, e ela mexe quando alguem pontua. */
+.presencial--tela .chat { display: none !important; }
+@media (min-width: 861px) {
+  .presencial--tela .jogo__corpo {
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 28vw, 440px);
+    grid-template-areas: 'pergunta placar' 'pergunta placar';
+  }
+}
+.presencial--tela .placar { align-self: stretch; }
+.presencial--tela .placar__titulo { font-size: clamp(14px, 1.2vw, 18px); }
+.presencial--tela .placar__lista { gap: 10px; }
+.presencial--tela .placar__item {
+  position: relative;
+  gap: 14px;
+  padding: clamp(10px, 1.2vw, 16px) clamp(12px, 1.3vw, 18px);
+  font-size: clamp(16px, 1.5vw, 22px);
+}
+.presencial--tela .placar__pos { width: 34px; font-size: clamp(14px, 1.2vw, 18px); }
+.presencial--tela .placar__avatar { font-size: clamp(26px, 2.4vw, 36px); }
+.presencial--tela .placar__pontos { font-size: clamp(20px, 2vw, 30px); font-variant-numeric: tabular-nums; }
+.presencial--tela .placar__item.lider-placar .placar__pos::before { content: '👑 '; }
+.presencial--tela .placar__item.lider-placar .placar__pos { width: auto; min-width: 34px; }
+
+.placar__item.pontuou {
+  border-color: var(--certo);
+  background: rgba(34, 197, 94, 0.18);
+}
+.placar__item.pontuou .placar__avatar { animation: quicarPeq 520ms ease 2; }
+.placar__ganho {
+  position: absolute;
+  right: 14px;
+  top: -6px;
+  font-weight: 800;
+  font-size: clamp(16px, 1.4vw, 22px);
+  color: var(--certo);
+  pointer-events: none;
+  animation: ganhoSobe 1.6s ease-out forwards;
+}
+@keyframes ganhoSobe {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.7); }
+  15%  { opacity: 1; transform: translateY(0) scale(1.15); }
+  70%  { opacity: 1; transform: translateY(-10px) scale(1); }
+  100% { opacity: 0; transform: translateY(-22px); }
+}
