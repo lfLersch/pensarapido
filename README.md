@@ -702,10 +702,16 @@ música?"*, como na categoria.
 Toca um pedaço sorteado de uma música e aparecem **4 opções**. A resposta é o
 clique, e o chat vira só conversa.
 
-- **Um clique por música**, sem troca. Certo vale o esquema do Modo Tempo: 10
-  nos primeiros 5 s, 1 a menos a cada 5 s, e **1 a menos para cada um que
-  acertou antes** — o segundo a acertar sempre leva menos que o primeiro,
-  mesmo clicando no mesmo segundo. Errado, zero.
+- **Um clique por música**, sem troca. Errado, zero.
+- **Na sala do modo, só o relógio conta**: o acerto vale **1000** no primeiro
+  instante e cai em linha reta até **100** no limite da música (aos 3 s de 30 s,
+  910; na metade, 550). Quem acertou antes não tira nada de ninguém: dois
+  cliques no mesmo instante valem o mesmo (`pontosQualMusica`, em
+  [`server/sala.js`](server/sala.js)). A meta de pontos vai na mesma escala,
+  **vezes 100**: escolher 120 na criação é jogar até 12.000.
+- **Sorteado na Bagunça**, vale o esquema do Modo Tempo, para não destoar das
+  outras rodadas: 10 nos primeiros 5 s, 1 a menos a cada 5 s, e 1 a menos para
+  cada um que acertou antes.
 - **Ninguém fica sabendo na hora se acertou**, nem quem clicou: a certa só
   aparece no resultado, em verde, com a errada de cada um em vermelho e o que
   cada pessoa marcou na lista.
@@ -1548,7 +1554,7 @@ transparente sumiria na tela escura do jogo.
 ### Categoria Ouvir músicas
 
 A categoria **Ouvir músicas** toca **um pedaço sorteado** de uma música — não
-é sempre o começo. São 364 músicas, do rock ao sertanejo, ao funk e ao rap
+é sempre o começo. São 394 músicas, do rock ao sertanejo, ao funk e ao rap
 nacional (Yellow, Waka Waka, Billie Jean, Racionais, Djonga, Comunidade
 Nin-Jitsu e outras), e cada uma tem **duas perguntas**: *"Qual é o nome desta
 música?"* e *"Quem canta esta música?"* — ou *"Qual banda canta…"*, para banda
@@ -1556,7 +1562,7 @@ não ganhar atalho de sobrenome ("Park" valendo por Linkin Park). Em dueto vale
 qualquer um dos nomes.
 
 - **O arquivo é a música inteira**, em `public/audio/musica-<nome>.mp3`: MP3 de
-  64 kbps mono, todas no mesmo volume (-14 LUFS), uns 1,7 MB por música e 620
+  64 kbps mono, todas no mesmo volume (-14 LUFS), uns 1,7 MB por música e 680
   MB no total. A **taxa é fixa** de propósito: com taxa variável o navegador
   pula para um ponto aproximado do meio da música, e cada um ouviria um pedaço
   diferente.
