@@ -1555,14 +1555,15 @@ transparente sumiria na tela escura do jogo.
 ### Categoria Ouvir músicas
 
 A categoria **Ouvir músicas** toca **um pedaço sorteado** de uma música — não
-é sempre o começo. São 456 músicas, do rock ao sertanejo, ao funk e ao rap
+é sempre o começo. São 463 músicas, do rock ao sertanejo, ao funk e ao rap
 nacional (Yellow, Waka Waka, Billie Jean, Racionais, Djonga, Comunidade
 Nin-Jitsu e outras), e cada uma tem **duas perguntas**: *"Qual é o nome desta
 música?"* e *"Quem canta esta música?"* — ou *"Qual banda canta…"*, para banda
 não ganhar atalho de sobrenome ("Park" valendo por Linkin Park). Em dueto vale
 qualquer um dos nomes.
 
-Duas regras na hora de escolher:
+Duas regras na hora de escolher, das levas novas em diante (as que já estavam
+no jogo, como Vai Malandra e País Tropical, ficam como estão):
 
 - **Música com mais de um feat não entra** (Poesia Acústica e parecidas):
   com cinco nomes, o "quem canta" vira loteria.
