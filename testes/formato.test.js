@@ -96,10 +96,10 @@ const tamanhos = (sala) => sala.equipes.map((e) => e.jogadores.length);
     Boolean(sala.trocarEquipe('duda', 'e1').ok), true);
   conferir('  e a sala fica 3 x 1', tamanhos(sala), [3, 1]);
 
-  for (let i = 0; i < 3; i++) sala.mudarFormato('ana', 'tamanho', 1);
-  conferir('o teto do tamanho e seis', sala.tamanhoEquipe, 6);
-  conferir('  e o setimo e recusado',
-    /maximo e 6 por equipe/.test(sala.mudarFormato('ana', 'tamanho', 1).erro || ''), true);
+  for (let i = 0; i < 7; i++) sala.mudarFormato('ana', 'tamanho', 1);
+  conferir('o teto do tamanho e dez (duas equipes enchem a sala)', sala.tamanhoEquipe, 10);
+  conferir('  e o decimo primeiro e recusado',
+    /maximo e 10 por equipe/.test(sala.mudarFormato('ana', 'tamanho', 1).erro || ''), true);
   sala.destruir();
 }
 

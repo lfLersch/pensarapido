@@ -613,7 +613,7 @@ fazer o parceiro acertar com **menos palavras**.
 
 A sala precisa de **4 jogadores, em número par**. Cada dupla tem exatamente
 dois — o terceiro não teria papel na rodada —, e dá para até **seis duplas**
-(o teto de 12 pessoas da sala). Na sala de espera aparecem as duplas que já
+(12 pessoas; com mais gente, as duplas viram trios). Na sala de espera aparecem as duplas que já
 têm gente mais uma vazia; com alguém sozinho num time, o botão de iniciar fica
 travado.
 
@@ -1848,7 +1848,7 @@ na hora em `imagens-para-avaliar/avaliacao.json`: as aprovadas vão para
 - As salas vivem **na memória do processo**: reiniciar apaga todas as partidas
   em andamento (as estatísticas de dificuldade sobrevivem).
 - Não há reconexão — se a conexão cair, o jogador volta ao saguão e entra de novo.
-- Máximo de 12 jogadores por sala; não dá para entrar com a partida em andamento.
+- Máximo de 20 jogadores por sala; não dá para entrar com a partida em andamento.
 - O chat tem limite de 120 caracteres por mensagem e uma pausa de 350ms entre
   mensagens, para conter spam.
 - Cada rede lidera uma sala por vez (ver [Saguão](#saguão)). Quem troca de IP

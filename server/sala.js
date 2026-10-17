@@ -93,7 +93,7 @@ const MS_BASE_LEILAO = 2000;       // relogio da entrega: 2s
 const MS_POR_ITEM_PRESENTE = 4000; //  + 4s por resposta prometida
 const MS_TETO_PRESENTE = 120000;
 
-// Uma cara para cada equipe: com o teto de 12 jogadores dao 6 equipes.
+// Uma cara para cada equipe: seis cores, entao no maximo seis equipes.
 const EQUIPES_VISUAL = [
   { icone: '🟣', cor: '#a78bfa' },
   { icone: '🟠', cor: '#fb923c' },
@@ -226,7 +226,7 @@ const MS_VOLTA_DA_SALA = 2500;
 // mundo ja palpitou" antes de as respostas abrirem de uma vez.
 const MS_TODOS_TRAVARAM = 700;
 
-const MAX_JOGADORES = 12;
+const MAX_JOGADORES = 20;
 
 const MIN_EQUIPES = 2;
 const MAX_EQUIPES = EQUIPES_VISUAL.length;

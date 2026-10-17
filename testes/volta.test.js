@@ -270,9 +270,9 @@ function salaCom(quantos, modo = 'tempo') {
 /* ---------------- Sala cheia nao aceita nem quem volta ---------------- */
 {
   const { sala } = salaCom(4);
-  for (let i = 0; i < 8; i++) sala.entrar(`extra${i}`, `Extra${i}`);
-  conferir('a sala encheu', sala.jogadores.size, 12);
-  conferir('  e o 13o e recusado',
+  for (let i = 0; i < 16; i++) sala.entrar(`extra${i}`, `Extra${i}`);
+  conferir('a sala encheu', sala.jogadores.size, 20);
+  conferir('  e o 21o e recusado',
     /ja esta cheia/.test(sala.entrar('tarde', 'Tarde').erro || ''), true);
   sala.destruir();
 }
