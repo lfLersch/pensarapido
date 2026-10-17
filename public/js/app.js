@@ -19,6 +19,7 @@ const estado = {
     metaPontos: 120,
     segundosPorPergunta: 20,
     proporcaoImagem: 'livre', // imagem:texto das perguntas ('livre', 'so-imagem', '5-1'...)
+    presencial: false,    // todos no mesmo lugar: o lider e a tela, os outros jogam pelo celular
     faixa: { min: 0, max: 100 },  // Modo Tempo: a faixa de dificuldade das perguntas
     limiteMusica: 30,     // por quanto tempo a musica toca, no maximo
     fimPor: 'pontos',     // modos musicais: 'pontos' ou 'musicas'
@@ -54,6 +55,7 @@ const criar = (tag, classe) => {
 
 function mostrarTela(id) {
   document.querySelectorAll('.tela').forEach((t) => t.classList.toggle('ativa', t.id === id));
+  sincronizarPresencial();
   // Voltou ao saguao: a lista de salas abertas atualiza na hora.
   if (id === 'tela-lobby') carregarSalasAbertas();
 }
@@ -1083,6 +1085,7 @@ async function carregarConfig() {
   montarMetas();
   montarTempos();
   montarProporcao();
+  montarPresencial();
   montarLimites();
   montarFim();
   montarBagunca();
@@ -1649,6 +1652,36 @@ function resumoDaProporcao(id) {
   return `<span>🖼 <b>${nome}</b>${/^d/.test(nome) ? ' imagem:texto' : ''}</span>`;
 }
 
+/* Onde vao jogar: cada um no seu aparelho, ou todos juntos olhando uma tela. */
+const DICAS_PRESENCIAL = {
+  false: 'Cada um no seu aparelho: todo mundo ve a pergunta e responde na propria tela.',
+  true: 'Todos no mesmo lugar: o seu aparelho (a TV, o computador) vira a tela e mostra a pergunta, a imagem e a musica. Voce nao joga. Os outros entram pelo celular, que fica so com o teclado e as opcoes.'
+};
+
+function montarPresencial() {
+  montarPilulas($('presencial-opcoes'), [false, true],
+    (sim) => (sim ? '📺 Presencial, numa tela' : '📱 Cada um no seu'), estado.escolhas.presencial, (sim) => {
+      estado.escolhas.presencial = sim;
+      $('presencial-dica').textContent = DICAS_PRESENCIAL[sim];
+    });
+  $('presencial-dica').textContent = DICAS_PRESENCIAL[estado.escolhas.presencial];
+}
+
+/** "📺 Presencial" no resumo, ou nada quando cada um joga no seu. */
+const resumoDoPresencial = (sim) => (sim ? '<span>📺 <b>Presencial</b>, lider na tela</span>' : '');
+
+/** Esta aba e a tela do jogo presencial (o lider, que nao joga)? */
+const souTela = () => Boolean(estado.sala?.config?.presencial && estado.eu?.lider);
+/** Esta aba e o celular de quem joga no presencial: so teclado e opcoes. */
+const souControle = () => Boolean(estado.sala?.config?.presencial && estado.eu && !estado.eu.lider);
+
+/** A cara da pagina acompanha o papel: tela, controle ou o jogo de sempre. */
+function sincronizarPresencial() {
+  document.body.classList.toggle('presencial', Boolean(estado.sala?.config?.presencial));
+  document.body.classList.toggle('presencial--tela', souTela());
+  document.body.classList.toggle('presencial--controle', souControle());
+}
+
 function atualizarResumo() {
   const musical = modoMusical();
   const total = musical ? 1 : categoriasEscolhidas().length;
@@ -1658,7 +1691,8 @@ function atualizarResumo() {
     ? `
     <span>${modo.icone} ${modo.nome}</span>
     <span>${resumoDoFim(estado.escolhas)}</span>
-    <span>Musica de ate <b>${estado.escolhas.limiteMusica}s</b></span>`
+    <span>Musica de ate <b>${estado.escolhas.limiteMusica}s</b></span>
+    ${resumoDoPresencial(estado.escolhas.presencial)}`
     : `
     <span>${plural(total, 'categoria', 'categorias')}</span>
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
@@ -1667,6 +1701,7 @@ function atualizarResumo() {
     <span>Meta <b>${textoMeta(estado.escolhas.metaPontos)}</b></span>
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
     ${resumoDaProporcao(estado.escolhas.proporcaoImagem)}
+    ${resumoDoPresencial(estado.escolhas.presencial)}
     ${modo && modo.equipes ? '<span>👥 <b>4+</b> jogadores, em equipes</span>' : ''}`;
 
   $('btn-criar').disabled = total === 0 || (bagunca && estado.escolhas.modosBagunca.size === 0);
@@ -1705,6 +1740,7 @@ $('btn-criar').addEventListener('click', () => {
     metaPontos: estado.escolhas.metaPontos,
     segundosPorPergunta: estado.escolhas.segundosPorPergunta,
     proporcaoImagem: estado.escolhas.proporcaoImagem,
+    presencial: estado.escolhas.presencial,
     limiteMusica: estado.escolhas.limiteMusica,
     fimPor: estado.escolhas.fimPor,
     totalMusicas: estado.escolhas.totalMusicas,
@@ -1750,7 +1786,8 @@ function renderizarSala() {
     ? `
     <span>${modo.icone} ${modo.nome}</span>
     <span>${resumoDoFim(sala.config, 1)}</span>
-    <span>Musica de ate <b>${sala.config.limiteMusica}s</b></span>`
+    <span>Musica de ate <b>${sala.config.limiteMusica}s</b></span>
+    ${resumoDoPresencial(sala.config.presencial)}`
     : `
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     ${modo && modo.bagunca ? resumoDaBagunca(sala.config.perguntasAteSorteio, (sala.config.modosBagunca || []).length, sala.config.segundosSorteio, sala.config.pausarModoNovo) : ''}
@@ -1758,6 +1795,7 @@ function renderizarSala() {
     <span>Meta <b>${sala.config.metaPontos} pts</b></span>
     <span><b>${sala.config.segundosPorPergunta}s</b> por pergunta</span>
     ${resumoDaProporcao(sala.config.proporcaoImagem)}
+    ${resumoDoPresencial(sala.config.presencial)}
     <span>${plural(emJogo.length, 'categoria', 'categorias')}</span>`;
   $('resumo-sala').title = emJogo.map(nomeCategoria).join(', ');
 
@@ -1815,7 +1853,7 @@ function crachaDeJogador(jogador) {
       ${jogador.avatar}
     </button>
     <span class="jogador__nome">${escapar(jogador.nickname)}${souEu ? '<span class="jogador__voce">(voce)</span>' : ''}</span>
-    ${jogador.lider ? '<span class="coroa">👑 Lider</span>' : ''}
+    ${jogador.lider ? `<span class="coroa">${jogador.tela ? '📺 Tela' : '👑 Lider'}</span>` : ''}
     ${souLiderAgora && !souEu ? '<button class="jogador__expulsar" type="button" title="Expulsar da sala">✕</button>' : ''}`;
 
   if (souEu) {
@@ -2241,7 +2279,9 @@ socket.on('rodada:categoria', (dados) => {
   $('revelacao-espera').hidden = true;
 
   estado.carregando = dados.imagem ? 'a imagem' : (dados.audio ? 'a musica' : null);
-  if (dados.imagem) preCarregarImagem(dados.imagem, dados.rodada);
+  // Presencial: a imagem e a musica sao da tela. O celular nao baixa nada.
+  if (souControle()) { /* so o teclado */ }
+  else if (dados.imagem) preCarregarImagem(dados.imagem, dados.rodada);
   else if (dados.audio) preCarregarAudio(dados.audio, dados.rodada);
 
   if (dados.placar) renderizarPlacar(dados.placar);
@@ -2465,7 +2505,7 @@ socket.on('rodada:pergunta', (dados) => {
   $('pergunta-categoria-nome').textContent = dados.categoria.nome;
 
   escreverPergunta(dados.pergunta);
-  $('pergunta-texto').classList.remove('pergunta__texto--segredo');
+  $('pergunta-texto').classList.remove('pergunta__texto--segredo', 'pergunta__texto--celular');
   $('mascara').textContent = dados.mascara || '';
 
   // Perguntas de música mostram o trecho da letra em destaque, uma linha
@@ -2512,11 +2552,12 @@ socket.on('rodada:pergunta', (dados) => {
     atualizarEscalada();
   }
 
-  montarAudio(dados.audio, dados.audioInicio, dados.audioLimiteMs);
+  // Presencial: a musica toca so na tela.
+  montarAudio(souControle() ? null : dados.audio, dados.audioInicio, dados.audioLimiteMs);
   desenharOpcoes(dados.opcoes);
 
   const figura = $('pergunta-figura');
-  if (dados.imagem) {
+  if (dados.imagem && !souControle()) {
     // Ja veio carregada na tela da categoria: trocar o src de novo faria
     // o navegador recomecar.
     if ($('pergunta-imagem').getAttribute('src') !== dados.imagem) $('pergunta-imagem').src = dados.imagem;
@@ -2530,12 +2571,12 @@ socket.on('rodada:pergunta', (dados) => {
   $('resultado').hidden = true;
   $('status-respostas').textContent = '';
 
-  inputChat.disabled = false;
+  inputChat.disabled = souTela();
   // Modo Tempo e Escalada: cada palpite errado gasta uma das chances.
   inputChat.placeholder = dados.chances
     ? `Escreva sua resposta… (${plural(dados.chances, 'chance', 'chances')})`
     : 'Escreva sua resposta…';
-  if (!('ontouchstart' in window)) inputChat.focus();
+  if (!('ontouchstart' in window) && !souTela()) inputChat.focus();
 
   // Modo Carrossel: a fila de jogadores e de quem é a vez.
   const carrossel = $('carrossel');
@@ -2764,7 +2805,9 @@ function desenharOpcoes(opcoes) {
     botao.type = 'button';
     botao.innerHTML = `<span class="opcao__letra">${'ABCD'[indice] || indice + 1}</span>`
       + `<span class="opcao__texto">${escapar(texto)}</span>`;
-    botao.addEventListener('click', () => escolherOpcao(indice));
+    // A tela do presencial mostra as opcoes, mas nao joga.
+    if (souTela()) botao.disabled = true;
+    else botao.addEventListener('click', () => escolherOpcao(indice));
     caixa.appendChild(botao);
   });
 }
@@ -2822,14 +2865,26 @@ function marcarNaBarra(jogadorId, ms) {
   caixa.appendChild(marca);
 }
 
-/** No resultado: a certa em verde e, se a minha era outra, ela em vermelho. */
-function revelarOpcoes(opcoes) {
+/**
+ * No resultado: a certa em verde e, se a minha era outra, ela em vermelho. E
+ * so agora, com todo mundo ja tendo escolhido (ou o tempo acabado), o bicho
+ * de cada um aparece na opcao que marcou.
+ */
+function revelarOpcoes(opcoes, detalhes = []) {
   const botoes = [...$('opcoes').children];
   if (!opcoes || !botoes.length) return;
   botoes.forEach((botao, i) => {
     botao.disabled = true;
     botao.classList.toggle('certa', i === opcoes.certa);
     botao.classList.toggle('errada', i === estado.minhaOpcao && i !== opcoes.certa);
+
+    const quem = detalhes.filter((d) => d.escolhaIndice === i);
+    botao.querySelector('.opcao__quem')?.remove();
+    if (!quem.length) return;
+    const bichos = criar('span', 'opcao__quem');
+    bichos.innerHTML = quem.map((d) => `<span class="opcao__bicho${d.jogadorId === estado.eu?.id ? ' eu' : ''}"
+      title="${escapar(d.nickname)}">${d.avatar}</span>`).join('');
+    botao.appendChild(bichos);
   });
 }
 
@@ -2968,10 +3023,15 @@ socket.on('leilao:comeco', (dados) => {
   const souLeiloeiro = dados.equipes.some((d) => d.leiloeiro && d.leiloeiro.id === socket.id);
   $('pergunta-texto').textContent = souLeiloeiro
     ? (dandoDicas() ? 'Vendo a palavra…' : 'Lendo a pergunta…')
+    : souTela()
+      ? (dandoDicas() ? 'Leilao rolando: a palavra e segredo de quem da as dicas.'
+        : 'Leilao rolando: a pergunta aparece aqui quando ele acabar.')
     : dandoDicas()
       ? 'Seu parceiro esta leiloando por voce. Voce so descobre a palavra pelas dicas dele.'
       : 'Seu parceiro esta leiloando por voce. Voce so ve a pergunta quando o leilao acabar.';
   $('pergunta-texto').classList.toggle('pergunta__texto--segredo', !souLeiloeiro);
+  // No leilao o enunciado e particular: o celular do presencial mostra.
+  $('pergunta-texto').classList.add('pergunta__texto--celular');
 
   $('presente').hidden = false;
   $('presente-entrega').hidden = true;
@@ -3814,7 +3874,7 @@ socket.on('rodada:resultado', (dados) => {
   pararAudio();
   // A rodada acabou: o botao do tocador deixa de seguir a sala e toca dali.
   estado.musica = null;
-  revelarOpcoes(dados.opcoes);
+  revelarOpcoes(dados.opcoes, dados.detalhes);
   $('escalada').hidden = true;
   // Fim da rodada do Carrossel: a fila some e o chat volta para todos.
   if (estado.carrossel) {
@@ -3907,6 +3967,8 @@ socket.on('rodada:resultado', (dados) => {
 /* ---------------------------- Placar lateral ---------------------------- */
 
 function renderizarPlacar(placar) {
+  // A tela do presencial nao joga, entao nao entra no placar.
+  placar = placar.filter((j) => !j.tela);
   // Guardado porque o Carrossel precisa de nome e avatar para montar a fila.
   estado.placar = placar;
   const lista = $('placar-lista');
@@ -3942,6 +4004,8 @@ socket.on('jogo:fim', (dados) => {
 });
 
 function renderizarFim(placar, meta, rodadas) {
+  // A tela do presencial nao joga: fora do podio.
+  placar = placar.filter((j) => !j.tela);
   const campeao = placar[0];
   // Partida dos modos musicais pode acabar pelo numero de musicas, sem meta.
   const config = estado.sala?.config;
@@ -4108,7 +4172,7 @@ function abrirTelaDaSala(sala) {
   $('pergunta-categoria-icone').textContent = '⏳';
   $('pergunta-categoria-nome').textContent = 'Entrando';
   $('pergunta-texto').textContent = 'Voce entra na proxima rodada.';
-  $('pergunta-texto').classList.add('pergunta__texto--segredo');
+  $('pergunta-texto').classList.add('pergunta__texto--segredo', 'pergunta__texto--celular');
   $('presente').hidden = true;
   renderizarPlacar(sala.jogadores);
   trancarChat('Esperando a proxima rodada…');
@@ -4122,6 +4186,7 @@ socket.on('sala:estado', (sala) => {
   // Mantém o "sou eu" em dia (o líder pode ter mudado).
   const eu = sala.jogadores.find((j) => j.id === estado.eu?.id);
   if (eu) estado.eu = { ...estado.eu, ...eu };
+  sincronizarPresencial();
 
   // Quem entra (ou volta) com o jogo pausado ja abre a tela de pausa; e a
   // partida que acaba ou volta ao saguao leva a pausa junto.

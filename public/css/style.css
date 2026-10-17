@@ -3191,3 +3191,76 @@ select.est-campo option { color: var(--texto); background: var(--fundo-2); }
   .est-acerto { display: flex; flex-direction: column-reverse; align-items: stretch; gap: 4px; }
   .est-barra { width: 100%; }
 }
+
+/* --------------- Qual e a musica: quem marcou cada opcao --------------- */
+
+/* So no resultado: o bicho de cada um em cima da opcao que escolheu. */
+.opcao { position: relative; }
+.opcao__quem {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-left: auto;
+  max-width: 50%;
+}
+.opcao__bicho {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  font-size: 19px;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 50%;
+  animation: bichoEntra 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.opcao__bicho.eu { box-shadow: 0 0 0 2px var(--primaria-2); }
+.opcao__bicho:nth-child(2) { animation-delay: 0.05s; }
+.opcao__bicho:nth-child(3) { animation-delay: 0.1s; }
+.opcao__bicho:nth-child(n+4) { animation-delay: 0.15s; }
+@keyframes bichoEntra { from { opacity: 0; transform: scale(0.3) translateY(8px); } }
+
+/* ------------------------------ Presencial ------------------------------ */
+
+/* Fora do celular do presencial o aviso "olhe a tela" nao aparece. */
+.presencial-aviso { display: none; }
+
+/* A tela (TV, computador): a pergunta grande, sem campo de resposta. */
+.presencial--tela .chat__form,
+.presencial--tela .chat__quase,
+.presencial--tela #escalada,
+.presencial--tela #presente-forma { display: none !important; }
+.presencial--tela .chat__dica { visibility: hidden; }
+.presencial--tela .opcao:disabled:not(.certa):not(.errada) { opacity: 1; }
+.presencial--tela .pergunta__texto { font-size: clamp(26px, 4.2vw, 52px); }
+.presencial--tela .opcao { min-height: 76px; font-size: clamp(18px, 1.9vw, 26px); }
+.presencial--tela .opcao__letra { width: 40px; height: 40px; font-size: 18px; }
+.presencial--tela .opcao__bicho { width: 42px; height: 42px; font-size: 27px; }
+.presencial--tela .pergunta__figura img { max-height: 58vh; }
+
+/* O celular de quem joga: so o teclado (ou as opcoes). A pergunta, a imagem
+   e a musica ficam na tela. O que e particular — o enunciado do leilao, a
+   palavra secreta, a vez no carrossel — continua aqui. */
+.presencial--controle .presencial-aviso {
+  display: block;
+  margin: 4px 0 18px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--texto-suave);
+}
+.presencial--controle .pergunta__texto:not(.pergunta__texto--celular),
+.presencial--controle #pergunta-figura,
+.presencial--controle #letra,
+.presencial--controle #tocador,
+.presencial--controle #dicas,
+.presencial--controle #ranking-aviso,
+.presencial--controle #mascara,
+.presencial--controle .placar { display: none !important; }
+.presencial--controle .pergunta__texto--celular ~ .presencial-aviso { display: none; }
+.presencial--controle .jogo__corpo {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto;
+  grid-template-areas: 'pergunta' 'chat';
+}
+.presencial--controle .opcoes { grid-template-columns: 1fr; }
+.presencial--controle .opcao { min-height: 64px; font-size: 18px; }

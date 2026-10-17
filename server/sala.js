@@ -826,6 +826,8 @@ class Sala {
     if (jogador.lider) {
       const proximo = this.jogadores.values().next().value;
       if (proximo) proximo.lider = true;
+      // No presencial quem vira lider vira a tela: para de jogar dali em diante.
+      if (proximo && this.config.presencial) this.virarTela(proximo.id);
     }
 
     // Carrossel: quem fecha a aba no meio da própria vez trava o carrossel,
@@ -875,6 +877,20 @@ class Sala {
     return jogador;
   }
 
+  /**
+   * Presencial: o lider saiu e o novo lider passa a ser a tela. Ele sai das
+   * equipes e da roda do carrossel; os pontos que ja fez ficam guardados.
+   */
+  virarTela(socketId) {
+    if (!this.rodadaNoAr()) this.tirarDasEquipes(socketId);
+    if (this.ehCarrossel() && this.vivos.has(socketId)) {
+      const eraAVez = this.ordem[this.vez] === socketId;
+      this.vivos.delete(socketId);
+      if (this.estado === 'pergunta' && eraAVez) this.avancarVez();
+    }
+    this.palpitesVeni.delete(socketId);
+  }
+
   /** O lider tira alguem da sala. Devolve o jogador removido. */
   expulsar(socketIdLider, socketIdAlvo) {
     if (!this.ehLider(socketIdLider)) return { erro: 'So o lider pode expulsar.' };
@@ -919,6 +935,24 @@ class Sala {
     return this.jogadores.size === 0;
   }
 
+  /**
+   * Jogo presencial: o lider e a tela (a TV, o computador da sala) e nao
+   * joga — so mostra a pergunta, a imagem e a musica. Os outros respondem
+   * pelo celular, que fica so com o teclado e as opcoes.
+   */
+  ehTela(socketId) {
+    return Boolean(this.config.presencial) && this.ehLider(socketId);
+  }
+
+  /**
+   * Quem joga a partida: todo mundo, menos a tela do jogo presencial. E por
+   * aqui que se conta quem falta responder, quem pontua e quem entra no placar.
+   */
+  get jogam() {
+    if (!this.config.presencial) return this.jogadores;
+    return new Map([...this.jogadores].filter(([, j]) => !j.lider));
+  }
+
   /* ----------------------------- Partida ---------------------------- */
 
   iniciar() {
@@ -931,11 +965,14 @@ class Sala {
     if (this.jogadores.size < 1) {
       return { erro: 'E preciso pelo menos um jogador.' };
     }
+    if (this.jogam.size < 1) {
+      return { erro: 'No jogo presencial o lider so mostra a tela: falta alguem entrar pelo celular para jogar.' };
+    }
     if (this.temEquipes()) {
       const falta = this.oQueFaltaNasEquipes();
       if (falta) return { erro: falta };
     }
-    if (this.ehLeilaoGeral() && this.jogadores.size < 2) {
+    if (this.ehLeilaoGeral() && this.jogam.size < 2) {
       return { erro: 'O Leilao Geral precisa de pelo menos dois jogadores: alguem tem que cobrir o lance.' };
     }
 
@@ -1028,7 +1065,7 @@ class Sala {
    */
   acabouAPartida() {
     if (this.fimPorMusicas()) return this.rodada >= (this.config.totalMusicas || TOTAL_MUSICAS_PADRAO);
-    return [...this.jogadores.values()].some((j) => j.pontos >= this.config.metaPontos);
+    return [...this.jogam.values()].some((j) => j.pontos >= this.config.metaPontos);
   }
 
   ehRanking() {
@@ -1180,7 +1217,7 @@ class Sala {
 
   /** Quem esta na sala mas nao coube em equipe nenhuma. */
   semEquipe() {
-    return [...this.jogadores.keys()].filter((id) => !this.equipeDoJogador(id));
+    return [...this.jogam.keys()].filter((id) => !this.equipeDoJogador(id));
   }
 
   /**
@@ -1216,6 +1253,8 @@ class Sala {
   encaixarNaEquipe(socketId) {
     // Fora dos modos em equipe a sala nao tem times para escolher.
     if (!this.temEquipes()) return;
+    // A tela do jogo presencial nao joga, entao nao entra em equipe.
+    if (this.ehTela(socketId)) return;
     if (this.equipeDoJogador(socketId)) return;
 
     const comVaga = () => this.equipes.filter((e) => e.jogadores.length < this.tamanhoEquipe);
@@ -1243,6 +1282,7 @@ class Sala {
   /** Trocar de equipe só vale antes de a partida começar. */
   trocarEquipe(socketId, idEquipe) {
     if (!this.jogadores.has(socketId)) return { erro: 'Voce nao esta nesta sala.' };
+    if (this.ehTela(socketId)) return { erro: 'No jogo presencial o lider e a tela: ele nao joga.' };
     if (this.estado !== 'lobby' && this.estado !== 'fim') {
       return { erro: 'So da para trocar de equipe antes de a partida comecar.' };
     }
@@ -1262,7 +1302,7 @@ class Sala {
   formarEquipes() {
     // Leilao Geral: cada pessoa e o proprio time — leiloa e responde sozinha.
     if (this.ehLeilaoGeral()) {
-      this.equipes = [...this.jogadores.values()].map((jogador, i) => ({
+      this.equipes = [...this.jogam.values()].map((jogador, i) => ({
         id: `j${i + 1}`,
         nome: jogador.nickname,
         ...EQUIPES_VISUAL[i % EQUIPES_VISUAL.length],
@@ -1292,7 +1332,7 @@ class Sala {
   sortearEquipes() {
     if (this.ehLeilaoGeral()) return this.formarEquipes();
 
-    const ids = embaralhar([...this.jogadores.keys()]);
+    const ids = embaralhar([...this.jogam.keys()]);
     const quantas = this.ehDandoDicas()
       ? Math.min(MAX_EQUIPES, Math.max(MIN_EQUIPES, Math.floor(ids.length / MIN_TAMANHO_EQUIPE)))
       : MIN_EQUIPES;
@@ -1538,7 +1578,7 @@ class Sala {
     const meta = this.config.metaPontos;
     if (!meta) return 0;
     let lider = 0;
-    for (const jogador of this.jogadores.values()) lider = Math.max(lider, jogador.pontos);
+    for (const jogador of this.jogam.values()) lider = Math.max(lider, jogador.pontos);
     return Math.min(1, Math.max(0, lider / meta));
   }
 
@@ -1702,8 +1742,8 @@ class Sala {
    */
   travarSeTodosResponderam() {
     if (!this.ehVeni() || this.estado !== 'pergunta') return false;
-    if (this.jogadores.size === 0) return false;
-    if (this.palpitesVeni.size < this.jogadores.size) return false;
+    if (this.jogam.size === 0) return false;
+    if (this.palpitesVeni.size < this.jogam.size) return false;
 
     this.agendar(() => this.fecharFaseVeni(), MS_TODOS_TRAVARAM);
     return true;
@@ -1874,7 +1914,7 @@ class Sala {
    * rodada so acaba antes de sobrar um se as respostas acabarem.
    */
   perguntaCarrossel() {
-    const precisa = Math.max(MIN_ITENS_CARROSSEL, this.jogadores.size * 4);
+    const precisa = Math.max(MIN_ITENS_CARROSSEL, this.jogam.size * 4);
 
     let candidatas = paraRodada(precisa, this.ultimoTema);
     let tamanho = precisa;
@@ -1953,7 +1993,7 @@ class Sala {
 
   /** Monta a fila de vezes do carrossel para a rodada que vai começar. */
   prepararCarrossel() {
-    const ids = [...this.jogadores.keys()];
+    const ids = [...this.jogam.keys()];
     // A cada rodada o começo anda um lugar, senão o primeiro joga sempre com
     // a lista inteira livre e o último sempre com as sobras.
     const giro = (this.rodada - 1) % Math.max(1, ids.length);
@@ -1996,7 +2036,7 @@ class Sala {
    * duas equipes de dois; o Leilao Geral, de alguem para cobrir o lance.
    */
   modosQueCabem() {
-    const gente = this.jogadores.size;
+    const gente = this.jogam.size;
     const marcados = this.config.modosBagunca || MODOS_SORTEAVEIS;
     // Sem Modo Tempo no meio (0 perguntas ate o sorteio), ele entra na roleta
     // como mais um modo — senao sumiria da partida.
@@ -2037,7 +2077,7 @@ class Sala {
   sortearModo() {
     const cabem = this.modosQueCabem();
     if (!cabem.length) {
-      this.avisar(`Nenhum modo do sorteio cabe numa sala de ${this.jogadores.size}. Segue o Modo Tempo.`, true);
+      this.avisar(`Nenhum modo do sorteio cabe numa sala de ${this.jogam.size}. Segue o Modo Tempo.`, true);
       this.modoAtual = 'tempo';
       return this.comecarRodada();
     }
@@ -2167,7 +2207,9 @@ class Sala {
     this.opcoesEscolhidas = new Map();
     this.primeiroAcertoEm = null;
     this.estado = 'categoria';
-    this.esperaImagemDe = new Set(this.jogadores.keys());
+    // No presencial so a tela mostra a imagem e toca a musica: e so ela que a sala espera.
+    this.esperaImagemDe = new Set([...this.jogadores.keys()]
+      .filter((id) => !this.config.presencial || this.ehTela(id)));
     this.imagemPronta = new Set();
     this.esperandoImagem = false;
 
@@ -2299,9 +2341,9 @@ class Sala {
 
     this.estado = 'pergunta';
     this.inicioPergunta = Date.now();
-    this.jogadoresNaRodada = this.jogadores.size;
+    this.jogadoresNaRodada = this.jogam.size;
     // Quem viu a pergunta abrir: so essas pessoas contam no desempenho da categoria.
-    this.naRodada = new Set(this.jogadores.keys());
+    this.naRodada = new Set(this.jogam.keys());
 
     const duracaoMs = this.duracaoDaRodada();
     this.duracaoPerguntaMs = duracaoMs;
@@ -2865,7 +2907,8 @@ class Sala {
 
     // Fora de rodada (saguão, resultado, fim) é chat puro.
     const rodadaViva = this.perguntaAtual && (this.estado === 'pergunta' || this.estado === 'categoria');
-    if (!rodadaViva) {
+    // A tela do presencial nao joga: o que ela escreve e so conversa.
+    if (!rodadaViva || this.ehTela(socketId)) {
       this.publicarChat(jogador, limpo);
       return { veredito: 'chat' };
     }
@@ -2905,7 +2948,7 @@ class Sala {
       this.emitir('veni:palpitou', {
         jogadorId: socketId,
         quantos: this.palpitesVeni.size,
-        total: this.jogadores.size
+        total: this.jogam.size
       });
       // Travar a resposta e simplesmente responder. Com a mesa inteira
       // travada nao ha o que esperar do relogio: as respostas abrem na hora.
@@ -3114,7 +3157,7 @@ class Sala {
     this.emitir('rodada:acertou', {
       jogadorId: socketId,
       totalAcertos: this.acertos.size,
-      totalJogadores: this.jogadores.size,
+      totalJogadores: this.jogam.size,
       placar: this.placar()
     });
 
@@ -3155,7 +3198,7 @@ class Sala {
     this.emitir('rodada:acertou', {
       jogadorId: socketId,
       totalAcertos: this.itensUsados.size,
-      totalJogadores: this.jogadores.size,
+      totalJogadores: this.jogam.size,
       placar: this.placar()
     });
 
@@ -3325,13 +3368,13 @@ class Sala {
   }
 
   todosAcertaram() {
-    if (this.jogadores.size === 0) return false;
+    if (this.jogam.size === 0) return false;
     // Mais ou Menos Pontos: quem chutou fora da lista tambem ja jogou a vez
     // dele, entao nao ha mais o que esperar dele nesta rodada.
     const gastaram = this.ehRanking()
       ? this.acertos.size + this.errouRanking.size
       : this.acertos.size;
-    return gastaram >= this.jogadores.size;
+    return gastaram >= this.jogam.size;
   }
 
   /**
@@ -3341,14 +3384,14 @@ class Sala {
    * da resposta fica o tempo cheio para essa pessoa.
    */
   ninguemMaisPontua() {
-    if (this.jogadores.size === 0) return false;
+    if (this.jogam.size === 0) return false;
     // Corrida musical: o primeiro acerto leva a rodada inteira.
     if (this.ehCorrida() && this.acertos.size > 0) return true;
     // Qual e a musica: cada um clica uma vez, certo ou errado.
     if (this.ehQualMusica()) {
-      return [...this.jogadores.keys()].every((id) => this.opcoesEscolhidas.has(id));
+      return [...this.jogam.keys()].every((id) => this.opcoesEscolhidas.has(id));
     }
-    return [...this.jogadores.values()].every((j) => this.acertos.has(j.id)
+    return [...this.jogam.values()].every((j) => this.acertos.has(j.id)
       || this.errouRanking.has(j.id) || this.chancesRestantes(j) === 0);
   }
 
@@ -3378,6 +3421,7 @@ class Sala {
     const jogador = this.jogadores.get(socketId);
     if (!jogador) return { erro: 'Voce nao esta nesta sala.' };
     if (!this.ehQualMusica()) return { erro: 'Esta sala nao joga com opcoes.' };
+    if (this.ehTela(socketId)) return { erro: 'No jogo presencial o lider e a tela: ele nao joga.' };
     if (this.pausa) return { erro: 'O jogo esta pausado.' };
     if (this.estado !== 'pergunta' || !this.perguntaAtual || !this.perguntaAtual.opcoes) {
       return { erro: 'Nao ha musica tocando agora.' };
@@ -3411,7 +3455,7 @@ class Sala {
       jogadorId: socketId,
       ms,
       quantos: this.opcoesEscolhidas.size,
-      total: this.jogadores.size
+      total: this.jogam.size
     });
 
     if (this.ninguemMaisPontua()) this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
@@ -3510,7 +3554,7 @@ class Sala {
     }
 
     if (leilao.consolo <= 0) return;
-    const outros = [...this.jogadores.keys()].filter((id) => id !== leilao.respondedor);
+    const outros = [...this.jogam.keys()].filter((id) => id !== leilao.respondedor);
     this.pagarLeilao(outros, leilao.consolo);
   }
 
@@ -3552,7 +3596,7 @@ class Sala {
     this.emitir('rodada:acertou', {
       jogadorId: socketId,
       totalAcertos: this.acertos.size,
-      totalJogadores: this.jogadores.size,
+      totalJogadores: this.jogam.size,
       placar: this.placar()
     });
 
@@ -3846,7 +3890,7 @@ class Sala {
 
     const pergunta = this.perguntaAtual;
 
-    const detalhes = [...this.jogadores.values()].map((jogador) => {
+    const detalhes = [...this.jogam.values()].map((jogador) => {
       const acerto = this.acertos.get(jogador.id) || null;
       const meus = this.progresso.get(jogador.id) || new Set();
       return {
@@ -3872,6 +3916,10 @@ class Sala {
         // Qual e a musica: a opcao que a pessoa clicou (null se nao clicou).
         escolha: this.ehQualMusica() && this.opcoesEscolhidas.has(jogador.id)
           ? pergunta.opcoes[this.opcoesEscolhidas.get(jogador.id).indice]
+          : null,
+        // ... e qual delas, para o bicho da pessoa aparecer em cima da opcao.
+        escolhaIndice: this.ehQualMusica() && this.opcoesEscolhidas.has(jogador.id)
+          ? this.opcoesEscolhidas.get(jogador.id).indice
           : null
       };
     });
@@ -4004,10 +4052,10 @@ class Sala {
     const categoria = this.categoriaMedida(pergunta);
     const medeCategoria = Boolean(categoria) && this.rodadaMedeTodos();
 
-    const quantosAcertaram = [...this.jogadores.values()]
+    const quantosAcertaram = [...this.jogam.values()]
       .filter((j) => j.acertos > (j.acertosAnotados || 0)).length;
 
-    for (const jogador of this.jogadores.values()) {
+    for (const jogador of this.jogam.values()) {
       const acertou = jogador.acertos > (jogador.acertosAnotados || 0);
       jogador.acertosAnotados = jogador.acertos;
       jogador.sequencia = acertou ? (jogador.sequencia || 0) + 1 : 0;
@@ -4037,11 +4085,11 @@ class Sala {
     }
 
     // Quem estava em ultimo quando a partida chegou na metade: se vencer, foi virada.
-    if (!this.ultimosNaMetade && this.jogadores.size >= 2 && this.andamento() >= 0.5) {
-      const menor = Math.min(...[...this.jogadores.values()].map((j) => j.pontos));
-      const maior = Math.max(...[...this.jogadores.values()].map((j) => j.pontos));
+    if (!this.ultimosNaMetade && this.jogam.size >= 2 && this.andamento() >= 0.5) {
+      const menor = Math.min(...[...this.jogam.values()].map((j) => j.pontos));
+      const maior = Math.max(...[...this.jogam.values()].map((j) => j.pontos));
       this.ultimosNaMetade = new Set(menor < maior
-        ? [...this.jogadores.values()].filter((j) => j.pontos === menor).map((j) => j.id)
+        ? [...this.jogam.values()].filter((j) => j.pontos === menor).map((j) => j.id)
         : []);
     }
   }
@@ -4053,7 +4101,7 @@ class Sala {
   pontosDoSegundo(jogador) {
     const minhaEquipe = this.temEquipes() && !this.ehBagunca() ? this.equipeDe(jogador.id) : null;
     let segundo = null;
-    for (const outro of this.jogadores.values()) {
+    for (const outro of this.jogam.values()) {
       if (outro.id === jogador.id) continue;
       if (minhaEquipe && this.equipeDe(outro.id) === minhaEquipe) continue;
       segundo = segundo === null ? outro.pontos : Math.max(segundo, outro.pontos);
@@ -4116,18 +4164,18 @@ class Sala {
   terminar() {
     this.esquecerPausa();
     // Partida pelo numero de musicas nao tem meta: vence quem fez mais pontos.
-    const maior = Math.max(0, ...[...this.jogadores.values()].map((j) => j.pontos));
+    const maior = Math.max(0, ...[...this.jogam.values()].map((j) => j.pontos));
     const meta = this.fimPorMusicas() ? maior : this.config.metaPontos;
     // Chamado duas vezes, a partida contaria dobrado no perfil.
     const jaTerminou = this.estado === 'fim';
-    for (const jogador of jaTerminou ? [] : this.jogadores.values()) {
+    for (const jogador of jaTerminou ? [] : this.jogam.values()) {
       const venceu = Boolean(meta) && jogador.pontos >= meta;
       const segundo = this.pontosDoSegundo(jogador);
       const novas = perfis.fimDePartida(jogador.cliente, jogador.nickname, {
         venceu,
         pontos: jogador.pontos,
         rodadas: this.rodada,
-        jogadores: this.jogadores.size,
+        jogadores: this.jogam.size,
         // Sem errar: pelo menos 5 rodadas medidas e nenhuma errada.
         perfeita: (jogador.rodadasMedidas || 0) >= 5 && (jogador.errosPartida || 0) === 0,
         lavada: venceu && segundo !== null && jogador.pontos >= 2 * segundo,
@@ -4179,8 +4227,9 @@ class Sala {
 
   /* ------------------------------ Auxiliares ------------------------------ */
 
-  placar() {
-    return [...this.jogadores.values()]
+  /** Quem joga, do mais ao menos pontos. Com `comTela` vem junto a tela do presencial, que o saguao lista. */
+  placar(comTela = false) {
+    return [...(comTela ? this.jogadores : this.jogam).values()]
       .map((j) => {
         const equipe = this.temEquipes() ? this.equipeDe(j.id) : null;
         return {
@@ -4190,6 +4239,7 @@ class Sala {
           pontos: j.pontos,
           acertos: j.acertos,
           lider: j.lider,
+          tela: this.ehTela(j.id),
           // Nos modos em equipe todo mundo do time pontua junto, então o
           // placar precisa dizer quem é de quem.
           equipe: equipe ? equipe.id : null,
@@ -4208,7 +4258,7 @@ class Sala {
       rodada: this.rodada,
       // Na Bagunca, o modo da rodada que esta no ar (quem entra no meio precisa dele).
       modoDaRodada: this.modo,
-      jogadores: this.placar(),
+      jogadores: this.placar(true),
       equipes: this.equipes.map((e) => ({
         id: e.id, nome: e.nome, icone: e.icone, cor: e.cor, jogadores: e.jogadores
       })),

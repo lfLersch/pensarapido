@@ -279,6 +279,9 @@ function validarConfig(bruta) {
   const proporcaoImagem = PROPORCOES_IMAGEM.some((p) => p.id === bruta.proporcaoImagem)
     ? bruta.proporcaoImagem : PROPORCAO_IMAGEM_PADRAO;
 
+  // Jogo presencial: o lider vira a tela da sala e os outros jogam pelo celular.
+  const presencial = bruta.presencial === true;
+
   const limite = Number(bruta.limiteMusica);
   const limiteMusica = LIMITES_MUSICA.includes(limite) ? limite : LIMITE_MUSICA_PADRAO;
 
@@ -294,7 +297,7 @@ function validarConfig(bruta) {
     config: {
       categorias, subs, fora, modo: modo.id,
       metaPontos: (Number.isInteger(metaPontos) ? metaPontos : 120) * escala,
-      segundosPorPergunta, limiteMusica, fimPor, totalMusicas, proporcaoImagem,
+      segundosPorPergunta, limiteMusica, fimPor, totalMusicas, proporcaoImagem, presencial,
       ...(faixa ? { faixa } : {}),
       ...bagunca
     }
