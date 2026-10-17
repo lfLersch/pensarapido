@@ -11,7 +11,7 @@ const {
   MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
   SEGUNDOS_SORTEIO, SEGUNDOS_SORTEIO_PADRAO, PROPORCOES_IMAGEM, PROPORCAO_IMAGEM_PADRAO,
   configDaBagunca, FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
-  faixaDe, naFaixa, tituloDaFaixa
+  faixaDe, naFaixa, tituloDaFaixa, QUAL_ESCALA_META
 } = require('./sala');
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
@@ -75,7 +75,8 @@ app.get('/api/config', (_req, res) => {
       niveis: NIVEIS_FAIXA,
       titulos: TITULOS_FAIXA
     },
-    meta: { min: META_MIN, max: META_MAX },
+    // Na sala de Qual e a musica cada acerto vale ate 1000: a meta vai vezes `escalaQual`.
+    meta: { min: META_MIN, max: META_MAX, escalaQual: QUAL_ESCALA_META },
     niveis: dificuldade.NIVEIS,
     versao: VERSAO,
     notas: NOTAS,
@@ -285,10 +286,14 @@ function validarConfig(bruta) {
   const bagunca = modo.bagunca ? configDaBagunca(bruta) : {};
   if (bagunca.erro) return { erro: bagunca.erro };
 
+  // Na sala de Qual e a musica cada acerto vale ate 1000, e nao 10: a meta
+  // escolhida (60, 120...) vai na mesma escala.
+  const escala = modo.id === 'qual-musica' ? QUAL_ESCALA_META : 1;
+
   return {
     config: {
       categorias, subs, fora, modo: modo.id,
-      metaPontos: Number.isInteger(metaPontos) ? metaPontos : 120,
+      metaPontos: (Number.isInteger(metaPontos) ? metaPontos : 120) * escala,
       segundosPorPergunta, limiteMusica, fimPor, totalMusicas, proporcaoImagem,
       ...(faixa ? { faixa } : {}),
       ...bagunca

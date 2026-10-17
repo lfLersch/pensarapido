@@ -13,7 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  Sala, calcularPontos, sortearInicio, montarOpcoes, tipoMusical, idDaPergunta
+  Sala, calcularPontos, pontosQualMusica, QUAL_ESCALA_META, sortearInicio, montarOpcoes, tipoMusical, idDaPergunta
 } = require('../server/sala.js');
 const { QUESTOES } = require('../server/questions.js');
 const { MUSICAS, ESTILOS, musicaDe } = require('../server/musicas.js');
@@ -178,7 +178,7 @@ function abrir(sala) {
   const errada = (certa + 1) % 4;
   sala.inicioPergunta = Date.now() - 3000;
   conferir('clicar na certa vale', sala.escolherOpcao('a', certa).ok, true);
-  conferir('  10 pontos nos primeiros 5s', sala.jogadores.get('a').pontos, 10);
+  conferir('  aos 3s de 30s: 1000 menos 10% do caminho ate 100', sala.jogadores.get('a').pontos, 910);
   const clique = ultimo('qual:escolheu').dados;
   conferir('  a sala fica sabendo quem clicou e em que instante (para a barra)',
     [clique.jogadorId, clique.ms >= 3000 && clique.ms < 3500, 'indice' in clique], ['a', true, false]);
@@ -194,7 +194,8 @@ function abrir(sala) {
   conferir('  que nao pontua', sala.jogadores.get('c').pontos, 0);
 
   sala.escolherOpcao('c', certa);
-  conferir('  o segundo a acertar, no mesmo tempo, leva 1 a menos', sala.jogadores.get('c').pontos, 9);
+  conferir('  o segundo a acertar, no mesmo tempo, leva o mesmo (so o relogio conta)',
+    sala.jogadores.get('c').pontos, sala.jogadores.get('a').pontos);
   conferir('todo mundo clicou: a rodada fecha', sala.agendado && sala.agendado.ms, 0);
   sala.agendado.fn();
   const resultado = ultimo('rodada:resultado').dados;
@@ -224,7 +225,8 @@ function abrir(sala) {
 
 /* ---------------- 9. Pela meta de pontos, como sempre ---------------- */
 {
-  const { sala, eventos } = montar({ modo: 'qual-musica', fimPor: 'pontos', metaPontos: 25 });
+  // A meta chega do servidor ja na escala do modo (25 escolhido vira 2500).
+  const { sala, eventos } = montar({ modo: 'qual-musica', fimPor: 'pontos', metaPontos: 25 * QUAL_ESCALA_META });
   let rodadas = 0;
   while (sala.estado !== 'fim' && rodadas < 20) {
     abrir(sala);
@@ -235,8 +237,33 @@ function abrir(sala) {
     sala.agendado.fn();
     rodadas++;
   }
-  conferir('pela meta: acaba em 3 musicas de 10 pontos', rodadas, 3);
+  conferir('pela meta: acaba em 3 musicas de 1000 pontos', rodadas, 3);
   conferir('  e o fim nao fala em numero de musicas', eventos.find((e) => e.evento === 'jogo:fim').dados.totalMusicas, null);
+}
+
+/* ---------------- 10. Pontos da sala de Qual e a musica ---------------- */
+{
+  conferir('Qual e a musica: 1000 no primeiro instante', pontosQualMusica(0, 30000), 1000);
+  conferir('  em linha reta: metade do tempo, metade do caminho', pontosQualMusica(15000, 30000), 550);
+  conferir('  100 no fim do tempo', pontosQualMusica(30000, 30000), 100);
+  conferir('  e nao passa disso', pontosQualMusica(45000, 30000), 100);
+  conferir('  o limite da sala muda a reta', pontosQualMusica(10000, 20000), 550);
+}
+
+/* ---------------- 11. Sorteado na Bagunca, a regra de sempre ---------------- */
+{
+  // So Qual e a musica na roleta: pula rodadas ate o sorteio cair nele.
+  const { sala } = montar({ modo: 'bagunca', categorias: ['ouvir'], subs: [], fora: [],
+    modosBagunca: ['qual-musica'], perguntasAteSorteio: 0 });
+  for (let i = 0; i < 30 && !(sala.ehQualMusica() && sala.estado !== 'sorteio'); i++) {
+    if (sala.estado !== 'sorteio') { sala.pularRodada(); sala.agendado.fn(); }
+    if (sala.estado === 'sorteio') sala.agendado.fn();
+  }
+  conferir('Bagunca: o sorteio caiu em Qual e a musica', sala.modo, 'qual-musica');
+  abrir(sala);
+  sala.inicioPergunta = Date.now() - 3000;
+  sala.escolherOpcao('a', sala.perguntaAtual.opcaoCerta);
+  conferir('  e vale os 10 do Modo Tempo, nao os 1000 da sala do modo', sala.jogadores.get('a').pontos, 10);
 }
 
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO CERTO');

@@ -17,6 +17,18 @@
 
 const NOTAS = [
   {
+    versao: '1.34',
+    data: '2026-10-16',
+    titulo: 'Qual e a musica vale ate 1000, e 136 musicas novas',
+    itens: [
+      'Na sala de Qual e a musica o acerto vale 1000 pontos no primeiro instante e cai em linha reta ate 100 no fim do tempo.',
+      'So o relogio conta: acertar depois de alguem nao tira mais nada, e quem clica no mesmo instante leva o mesmo.',
+      'A meta de pontos dessa sala vai na mesma escala: escolher 120 e jogar ate 12.000.',
+      'Sorteado na Bagunca, o Qual e a musica continua valendo os 10 pontos do Modo Tempo.',
+      'Ouvir musicas ganhou 136 musicas, de Asa Branca a Stairway to Heaven, com mais rap internacional, pagode e forro.'
+    ]
+  },
+  {
     versao: '1.33',
     data: '2026-10-08',
     titulo: 'Volume da musica e Formula 1',

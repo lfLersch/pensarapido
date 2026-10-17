@@ -15,6 +15,11 @@ const { musicaDe } = require('./musicas');
 const PONTOS_MAX = 10;        // base de quem responde na primeira faixa
 const MS_POR_FAIXA = 5000;    // a cada 5s de rodada, a base cai 1 ponto
 const PONTOS_MIN = 1;         // acertar sempre vale pelo menos 1
+// Sala de Qual e a musica: de 1000 a 100 em linha reta, so pelo relogio. A
+// meta de pontos da sala vai multiplicada pela escala (120 vira 12000).
+const QUAL_PONTOS_MAX = 1000;
+const QUAL_PONTOS_MIN = 100;
+const QUAL_ESCALA_META = 100;
 
 // Modo Tempo e Escalada: cada um erra no maximo isto por pergunta. Sem teto,
 // quem nao sabia metralhava palpites ate um colar. O "quase" tambem gasta.
@@ -318,7 +323,7 @@ const MODOS = [
     id: 'qual-musica',
     nome: 'Qual e a musica',
     icone: '🎵',
-    descricao: 'Toca um pedaco sorteado de uma musica e aparecem 4 opcoes. Clique na certa: quanto mais rapido, mais pontos (10 nos primeiros 5s, 1 a menos a cada 5s), e cada um que acertou antes de voce tira mais 1 — o segundo sempre leva menos que o primeiro. Um clique por musica, e errou e zero. Pode cair o nome da musica ou quem canta.',
+    descricao: 'Toca um pedaco sorteado de uma musica e aparecem 4 opcoes. Clique na certa: vale 1000 pontos no primeiro instante e cai em linha reta ate 100 no fim do tempo. So o relogio conta — acertar depois de alguem nao tira nada. Um clique por musica, e errou e zero. Pode cair o nome da musica ou quem canta.',
     disponivel: true,
     musical: true
   },
@@ -425,6 +430,20 @@ function calcularPontos(msNaRodada, posicao) {
   const faixa = Math.floor(Math.max(0, msNaRodada) / MS_POR_FAIXA);
   const base = PONTOS_MAX - faixa;
   return Math.max(PONTOS_MIN, base - (posicao - 1));
+}
+
+/**
+ * Pontuação da sala de Qual é a música (o modo sozinho, não sorteado na
+ * Bagunça): só o relógio conta. 1000 no primeiro instante, caindo em linha
+ * reta até 100 quando a música chega ao limite; quem acertou antes não tira
+ * nada de ninguém.
+ *
+ * @param {number} msNaRodada  tempo desde que a música começou
+ * @param {number} limiteMs    até quando a música toca
+ */
+function pontosQualMusica(msNaRodada, limiteMs) {
+  const fracao = Math.min(1, Math.max(0, msNaRodada) / limiteMs);
+  return Math.round(QUAL_PONTOS_MAX - (QUAL_PONTOS_MAX - QUAL_PONTOS_MIN) * fracao);
 }
 
 /**
@@ -3346,9 +3365,10 @@ class Sala {
 
   /**
    * Qual e a musica: o clique numa das quatro opcoes. Vale um por pessoa, e
-   * nao da para trocar. Certo, leva os pontos do Modo Tempo: 10 nos primeiros
-   * 5s, 1 a menos a cada 5s, e 1 a menos para cada um que acertou antes;
-   * errado, zero.
+   * nao da para trocar. Certo, na sala do modo vale de 1000 a 100 so pelo
+   * relogio (`pontosQualMusica`); sorteado na Bagunca, leva os pontos do Modo
+   * Tempo: 10 nos primeiros 5s, 1 a menos a cada 5s, e 1 a menos para cada um
+   * que acertou antes. Errado, zero.
    *
    * Ninguem fica sabendo na hora se acertou — nem quem clicou. A certa so
    * aparece no resultado, senao a mesa descobriria pelo placar ou pela cara
@@ -3371,10 +3391,13 @@ class Sala {
     this.opcoesEscolhidas.set(socketId, { indice, ms });
 
     if (indice === this.perguntaAtual.opcaoCerta) {
-      // Como no Modo Tempo: o relogio tira 1 a cada 5s, e cada um que acertou
-      // antes tira mais 1 — o segundo a acertar sempre leva menos que o primeiro.
+      // Na sala do modo, so o relogio: 1000 caindo ate 100. Sorteado na
+      // Bagunca, como no Modo Tempo: o relogio tira 1 a cada 5s, e cada um que
+      // acertou antes tira mais 1.
       const posicao = this.acertos.size + 1;
-      const pontos = calcularPontos(ms, posicao);
+      const pontos = this.config.modo === 'qual-musica'
+        ? pontosQualMusica(ms, this.limiteMusicaMs())
+        : calcularPontos(ms, posicao);
       jogador.pontos += pontos;
       jogador.acertos += 1;
       this.pontosRodada.set(socketId, pontos);
@@ -4403,7 +4426,7 @@ module.exports = {
   MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
   SEGUNDOS_SORTEIO, SEGUNDOS_SORTEIO_PADRAO, PROPORCOES_IMAGEM, PROPORCAO_IMAGEM_PADRAO,
   FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
-  gerarCodigo, calcularPontos, indicePerguntas, categoriasEmJogo, perguntasEscolhidas,
+  gerarCodigo, calcularPontos, pontosQualMusica, QUAL_ESCALA_META, indicePerguntas, categoriasEmJogo, perguntasEscolhidas,
   sortearInicio, montarOpcoes, tipoMusical, idDaPergunta, configDaBagunca,
   faixaDe, naFaixa, tituloDaFaixa
 };

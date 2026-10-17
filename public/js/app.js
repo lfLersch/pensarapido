@@ -1114,6 +1114,7 @@ function sincronizarModo() {
   $('bloco-faixa').hidden = estado.escolhas.modo !== 'tempo';
   const porMusicas = musical && estado.escolhas.fimPor === 'musicas';
   $('bloco-meta').hidden = porMusicas;
+  sincronizarMetas();
   $('total-opcoes').hidden = !porMusicas;
   document.querySelectorAll('#fim-opcoes .pilula').forEach((p) => {
     p.classList.toggle('escolhida', p.dataset.fim === estado.escolhas.fimPor);
@@ -1541,6 +1542,22 @@ function montarModos() {
   }
 }
 
+/**
+ * Na sala de Qual e a musica cada acerto vale ate 1000, e nao 10: a meta
+ * escolhida vale vezes a escala (120 vira 12000). O servidor faz a mesma conta.
+ */
+function escalaMeta(modo = estado.escolhas.modo) {
+  return modo === 'qual-musica' ? (estado.config.meta?.escalaQual || 1) : 1;
+}
+
+/**
+ * "12.000 pts": a meta como ela vale no modo escolhido. Na configuracao da
+ * sala que ja existe a meta chega do servidor na escala certa: `escala` 1.
+ */
+function textoMeta(valor, modo, escala = escalaMeta(modo)) {
+  return `${(valor * escala).toLocaleString('pt-BR')} pts`;
+}
+
 function montarMetas() {
   const caixa = $('meta-opcoes');
   const inputMeta = $('input-meta');
@@ -1550,7 +1567,7 @@ function montarMetas() {
     const pilula = criar('button', 'pilula');
     pilula.type = 'button';
     pilula.dataset.valor = String(valor);
-    pilula.textContent = `${valor} pts`;
+    pilula.textContent = textoMeta(valor);
     pilula.addEventListener('click', () => {
       estado.escolhas.metaPontos = valor;
       inputMeta.value = valor;
@@ -1573,7 +1590,10 @@ function montarMetas() {
 function sincronizarMetas() {
   document.querySelectorAll('#meta-opcoes .pilula').forEach((p) => {
     p.classList.toggle('escolhida', Number(p.dataset.valor) === estado.escolhas.metaPontos);
+    p.textContent = textoMeta(Number(p.dataset.valor));
   });
+  const escala = escalaMeta();
+  $('meta-sufixo').textContent = escala > 1 ? `x ${escala.toLocaleString('pt-BR')} pts` : 'pts';
   atualizarResumo();
 }
 
@@ -1644,7 +1664,7 @@ function atualizarResumo() {
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
     ${bagunca ? resumoDaBagunca(estado.escolhas.perguntasAteSorteio, estado.escolhas.modosBagunca.size, estado.escolhas.segundosSorteio, estado.escolhas.pausarModoNovo) : ''}
     ${modo && modo.id === 'tempo' ? resumoDaFaixa(estado.escolhas.faixa) : ''}
-    <span>Meta <b>${estado.escolhas.metaPontos} pts</b></span>
+    <span>Meta <b>${textoMeta(estado.escolhas.metaPontos)}</b></span>
     <span><b>${estado.escolhas.segundosPorPergunta}s</b> por pergunta</span>
     ${resumoDaProporcao(estado.escolhas.proporcaoImagem)}
     ${modo && modo.equipes ? '<span>👥 <b>4+</b> jogadores, em equipes</span>' : ''}`;
@@ -1653,10 +1673,10 @@ function atualizarResumo() {
 }
 
 /** "Meta 120 pts" ou "15 musicas", conforme a partida acaba. */
-function resumoDoFim(config) {
+function resumoDoFim(config, escala) {
   return config.fimPor === 'musicas' && modoMusical(config.modo)
     ? `<b>${config.totalMusicas}</b> musicas`
-    : `Meta <b>${config.metaPontos} pts</b>`;
+    : `Meta <b>${textoMeta(config.metaPontos, config.modo, escala)}</b>`;
 }
 
 $('btn-criar').addEventListener('click', () => {
@@ -1729,7 +1749,7 @@ function renderizarSala() {
   $('resumo-sala').innerHTML = modo && modo.musical
     ? `
     <span>${modo.icone} ${modo.nome}</span>
-    <span>${resumoDoFim(sala.config)}</span>
+    <span>${resumoDoFim(sala.config, 1)}</span>
     <span>Musica de ate <b>${sala.config.limiteMusica}s</b></span>`
     : `
     <span>${modo ? modo.icone + ' ' + modo.nome : '—'}</span>
@@ -2726,7 +2746,7 @@ function escreverMeta(rodada) {
   $('jogo-meta-rotulo').textContent = porMusicas ? 'Musica' : 'Meta';
   $('jogo-meta').textContent = porMusicas
     ? `${rodada ?? estado.sala?.rodada ?? 0} de ${config.totalMusicas}`
-    : `${config?.metaPontos ?? '—'} pts`;
+    : config ? textoMeta(config.metaPontos, config.modo, 1) : '— pts';
 }
 
 /* --------------------------- Qual e a musica --------------------------- */
@@ -3926,7 +3946,7 @@ function renderizarFim(placar, meta, rodadas) {
   // Partida dos modos musicais pode acabar pelo numero de musicas, sem meta.
   const config = estado.sala?.config;
   const porMusicas = Boolean(config && config.fimPor === 'musicas' && modoMusical(config.modo));
-  const regra = porMusicas ? `${config.totalMusicas} musicas` : `meta de ${meta} pts`;
+  const regra = porMusicas ? `${config.totalMusicas} musicas` : `meta de ${textoMeta(meta, null, 1)}`;
   $('fim-titulo').textContent = campeao ? `${campeao.nickname} venceu!` : 'Fim de jogo!';
   $('fim-sub').textContent = campeao
     ? `${campeao.pontos} pontos · ${regra} · ${plural(rodadas ?? 0, 'rodada', 'rodadas')}`
