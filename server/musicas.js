@@ -28,7 +28,8 @@ const ESTILOS = {
   rap: 'Rap nacional',
   nacional: 'Pop e rock nacional',
   pagode: 'Pagode e samba',
-  forro: 'Forro e brega'
+  forro: 'Forro e brega',
+  gaucha: 'Gaucha'
 };
 
 const MUSICAS = {
@@ -495,7 +496,16 @@ const MUSICAS = {
   'voando-pro-para': { duracao: 201.0, estilo: 'forro' },
   'voce-nao-vale-nada': { duracao: 241.0, estilo: 'forro' },
   'xote-da-alegria': { duracao: 232.1, estilo: 'forro' },
-  'xote-dos-milagres': { duracao: 260.1, estilo: 'forro' }
+  'xote-dos-milagres': { duracao: 260.1, estilo: 'forro' },
+  // gaucha
+  'batendo-agua': { duracao: 221.0, estilo: 'gaucha' },
+  'canto-alegretense': { duracao: 224.0, estilo: 'gaucha' },
+  'ceu-sol-sul-terra-e-cor': { duracao: 201.0, estilo: 'gaucha' },
+  'do-fundo-da-grota': { duracao: 296.5, estilo: 'gaucha' },
+  'eu-sou-do-sul': { duracao: 248.0, estilo: 'gaucha' },
+  'guri': { duracao: 242.0, estilo: 'gaucha' },
+  'querencia-amada': { duracao: 225.0, estilo: 'gaucha' },
+  'tche-garotos-na-veia': { duracao: 212.0, estilo: 'gaucha' }
 };
 
 /** A musica de um endereco de audio ('/audio/musica-yellow.mp3'), ou null. */

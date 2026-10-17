@@ -1555,12 +1555,24 @@ transparente sumiria na tela escura do jogo.
 ### Categoria Ouvir músicas
 
 A categoria **Ouvir músicas** toca **um pedaço sorteado** de uma música — não
-é sempre o começo. São 455 músicas, do rock ao sertanejo, ao funk e ao rap
+é sempre o começo. São 463 músicas, do rock ao sertanejo, ao funk e ao rap
 nacional (Yellow, Waka Waka, Billie Jean, Racionais, Djonga, Comunidade
 Nin-Jitsu e outras), e cada uma tem **duas perguntas**: *"Qual é o nome desta
 música?"* e *"Quem canta esta música?"* — ou *"Qual banda canta…"*, para banda
 não ganhar atalho de sobrenome ("Park" valendo por Linkin Park). Em dueto vale
 qualquer um dos nomes.
+
+Duas regras na hora de escolher:
+
+- **Música com mais de um feat não entra** (Poesia Acústica e parecidas):
+  com cinco nomes, o "quem canta" vira loteria.
+- **Versão de outro intérprete só pergunta o nome.** Quando quem canta no
+  arquivo não é quem lançou a música (Canto Alegretense na voz do Neto
+  Fagundes, e não dos Fagundes), ou quando não dá para ter certeza de quem é a
+  gravação, a pergunta "quem canta" fica de fora.
+
+O estilo **Gaúcha** (Teixeirinha, Baitaca, César Passarinho, Elton Saldanha,
+Tchê Garotos) tem as suas próprias opções no Qual é a música.
 
 - **O arquivo é a música inteira**, em `public/audio/musica-<nome>.mp3`: MP3 de
   64 kbps mono, todas no mesmo volume (-14 LUFS), uns 1,7 MB por música e 790

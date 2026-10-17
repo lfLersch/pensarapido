@@ -2646,7 +2646,21 @@ const QUESTOES = {
     { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-o-sol.mp3', resposta: 'O Sol', dif: 30 },
     { pergunta: 'Quem canta esta musica?', audio: '/audio/musica-o-sol.mp3', resposta: 'Vitor Kley', dif: 30 },
     { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-status-que-eu-nao-queria.mp3', resposta: 'Status Que Eu Nao Queria', dif: 35 },
-    { pergunta: 'Qual dupla canta esta musica?', audio: '/audio/musica-status-que-eu-nao-queria.mp3', resposta: 'Ze Neto e Cristiano', aceita: ['Ze Neto & Cristiano'], dif: 30 }
+    { pergunta: 'Qual dupla canta esta musica?', audio: '/audio/musica-status-que-eu-nao-queria.mp3', resposta: 'Ze Neto e Cristiano', aceita: ['Ze Neto & Cristiano'], dif: 30 },
+    // Setima leva: musica gaucha. Versao de outro interprete so pergunta o nome.
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-querencia-amada.mp3', resposta: 'Querencia Amada', dif: 40 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/musica-querencia-amada.mp3', resposta: 'Teixeirinha', dif: 40 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-do-fundo-da-grota.mp3', resposta: 'Do Fundo da Grota', aceita: ['Fundo da Grota'], dif: 45 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/musica-do-fundo-da-grota.mp3', resposta: 'Baitaca', dif: 45 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-guri.mp3', resposta: 'Guri', dif: 50 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/musica-guri.mp3', resposta: 'Cesar Passarinho', dif: 55 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-eu-sou-do-sul.mp3', resposta: 'Eu Sou do Sul', dif: 45 },
+    { pergunta: 'Quem canta esta musica?', audio: '/audio/musica-eu-sou-do-sul.mp3', resposta: 'Elton Saldanha', dif: 55 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-tche-garotos-na-veia.mp3', resposta: 'Tche Garotos na Veia', aceita: ['Na Veia'], dif: 45 },
+    { pergunta: 'Qual banda canta esta musica?', audio: '/audio/musica-tche-garotos-na-veia.mp3', resposta: 'Tche Garotos', dif: 40 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-canto-alegretense.mp3', resposta: 'Canto Alegretense', dif: 45 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-batendo-agua.mp3', resposta: 'Batendo Agua', dif: 50 },
+    { pergunta: 'Qual e o nome desta musica?', audio: '/audio/musica-ceu-sol-sul-terra-e-cor.mp3', resposta: 'Ceu, Sol, Sul, Terra e Cor', dif: 45 }
   ],
 
   rap: [

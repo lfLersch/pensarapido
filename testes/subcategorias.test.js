@@ -62,10 +62,14 @@ const contar = (filtro) => cinema.filter(filtro).length;
 {
   const ouvir = perguntasEscolhidas({ categorias: ['ouvir'] }, 'ouvir');
   conferir('Ouvir musicas: todas as perguntas tem audio', ouvir.every((p) => p.audio), true);
-  // Cada trecho tem duas perguntas: o nome da musica e quem canta.
+  // Cada trecho pergunta o nome da musica e, quase sempre, quem canta. Versao
+  // de outro interprete (nao de quem lancou a musica) so pergunta o nome.
   const porTrecho = {};
-  for (const p of ouvir) porTrecho[p.audio] = (porTrecho[p.audio] || 0) + 1;
-  conferir('cada trecho tem 2 perguntas', Object.values(porTrecho).every((n) => n === 2), true);
+  for (const p of ouvir) (porTrecho[p.audio] = porTrecho[p.audio] || []).push(p.pergunta);
+  const trechos = Object.values(porTrecho);
+  conferir('cada trecho tem 1 ou 2 perguntas', trechos.every((ps) => ps.length === 1 || ps.length === 2), true);
+  conferir('  e sempre a do nome da musica',
+    trechos.every((ps) => ps.some((p) => !/canta/.test(p))), true);
   conferir('Musica nao tem mais audio', QUESTOES.musica.some((p) => p.audio), false);
 }
 
