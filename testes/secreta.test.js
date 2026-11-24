@@ -84,9 +84,46 @@ function palpite(sala, id, texto) {
     SECRETAS.find((q) => q.pergunta === sala.perguntaAtual.pergunta).categoria, 'futebol');
 
   const vez = ultimo(eventos, 'secreta:vez').dados;
-  conferir('a primeira vez abre 1 palavra', vez.palavras, sala.perguntaAtual.palavras.slice(0, 1));
+  const abertas = vez.palavras.map((p, i) => (p === null ? null : i)).filter((i) => i !== null);
+  conferir('a primeira vez abre 1 palavra', abertas.length, 1);
+  conferir('  no lugar dela na frase', vez.palavras[vez.nova], sala.perguntaAtual.palavras[vez.nova]);
+  conferir('  e avisa qual abriu', abertas, [vez.nova]);
   conferir('  e vale o resto', vez.valendo, sala.perguntaAtual.palavras.length - 1);
   conferir('  e do primeiro da roda', vez.jogadorId, sala.secreta.ordem[0]);
+  sala.destruir();
+}
+
+/* ---------------- As palavras abrem em ordem sorteada ---------------- */
+{
+  let foraDeOrdem = 0;
+  let tortos = 0;
+  const primeiras = new Set();
+  for (let i = 0; i < 40; i++) {
+    const { sala } = novaSala(2);
+    const sorteio = sala.secreta.sorteio;
+    const todas = sala.perguntaAtual.palavras.map((_, k) => k);
+    if (JSON.stringify([...sorteio].sort((x, y) => x - y)) !== JSON.stringify(todas)) tortos++;
+    if (sorteio.some((v, k) => v !== k)) foraDeOrdem++;
+    primeiras.add(sorteio[0]);
+    sala.destruir();
+  }
+  conferir('o sorteio tem cada palavra uma vez', tortos, 0);
+  conferir('a ordem nao e da esquerda para a direita', foraDeOrdem, 40);
+  conferir('  e a primeira palavra varia', primeiras.size > 5, true);
+}
+
+/* ---------------- Cada vez abre a proxima do sorteio ---------------- */
+{
+  const { sala, eventos } = novaSala(2);
+  const sorteio = sala.secreta.sorteio;
+  palpite(sala, daVez(sala), 'zzzzzz');
+  proximaVez(sala);
+  palpite(sala, daVez(sala), 'zzzzzz');
+  proximaVez(sala);
+  const vez = ultimo(eventos, 'secreta:vez').dados;
+  const abertas = vez.palavras.map((p, i) => (p === null ? null : i)).filter((i) => i !== null);
+  conferir('3a vez: abertas as 3 primeiras do sorteio', abertas, sorteio.slice(0, 3).sort((x, y) => x - y));
+  conferir('  e a nova e a 3a do sorteio', vez.nova, sorteio[2]);
   sala.destruir();
 }
 

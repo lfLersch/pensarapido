@@ -2,13 +2,12 @@
 
 /**
  * Pergunta secreta: o enunciado comeca todo escondido e abre uma palavra por
- * vez, da esquerda para a direita, uma a cada vez de jogador. Quem acerta
- * leva o numero de palavras que ainda estavam escondidas.
+ * vez, em ordem sorteada, uma a cada vez de jogador. Quem acerta leva o
+ * numero de palavras que ainda estavam escondidas.
  *
- * Por isso cada pergunta e escrita de tras para frente do jeito de sempre: a
- * pista forte (e estranha) vem primeiro e o assunto ("qual jogador de
- * futebol brasileiro?") fica para o fim. Quem sabe responde com tres
- * palavras na tela e leva muito; quem precisa do assunto espera e leva pouco.
+ * Como a palavra que abre e sorteada, cada pergunta precisa de mais de uma
+ * pista forte espalhada pela frase ("anjo", "pernas tortas", "futebol"): se
+ * tudo dependesse de uma palavra so, a rodada seria pura sorte.
  *
  * Toda pergunta tem pelo menos 13 palavras (testes/secreta.test.js cobra),
  * sem acentos, como o resto do texto do jogo. `categoria` e o id de

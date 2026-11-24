@@ -81,7 +81,7 @@ const MIN_ITENS_CARROSSEL = 20;
 const MS_ENTRE_VEZES = 900;  // respiro para a tela mostrar quem saiu
 
 // Pergunta secreta: o enunciado comeca todo escondido e abre uma palavra por
-// vez, da esquerda para a direita, uma a cada vez de jogador. Quem acerta na
+// vez, em ordem sorteada, uma a cada vez de jogador. Quem acerta na
 // sua vez leva o numero de palavras que ainda estavam escondidas — por isso a
 // pergunta tem no minimo 13 palavras. A ultima palavra nao chega a abrir: com
 // a pergunta inteira na tela a resposta valeria zero.
@@ -327,7 +327,7 @@ const MODOS = [
     id: 'pergunta-secreta',
     nome: 'Pergunta secreta',
     icone: '🤫',
-    descricao: 'A pergunta comeca toda escondida e a vez passa de um em um, 8s para cada. A cada vez abre mais uma palavra, da esquerda para a direita. Na sua vez, um palpite: acertou, leva um ponto para cada palavra que ainda estava escondida; errou ou deixou o tempo passar, a vez vai para o proximo e abre mais uma palavra.',
+    descricao: 'A pergunta comeca toda escondida e a vez passa de um em um, 8s para cada. A cada vez abre mais uma palavra, sorteada em qualquer ponto da frase. Na sua vez, um palpite: acertou, leva um ponto para cada palavra que ainda estava escondida; errou ou deixou o tempo passar, a vez vai para o proximo e abre mais uma palavra.',
     disponivel: true
   },
   {
@@ -3972,20 +3972,28 @@ class Sala {
     this.secreta = {
       ordem: ids.slice(giro).concat(ids.slice(0, giro)),
       vez: -1,          // indice em `ordem` de quem joga agora
-      reveladas: 0,     // quantas palavras ja abriram
+      // Em que ordem as palavras abrem: sorteada, e nao da esquerda para a
+      // direita — ninguem sabe se a proxima e a pista ou um "de".
+      sorteio: embaralhar(this.perguntaAtual.palavras.map((_, i) => i)),
+      reveladas: 0,     // quantas palavras ja abriram (as primeiras do sorteio)
       daVez: null       // socketId de quem pode responder agora (null entre uma vez e outra)
     };
   }
 
-  /** O que a mesa ve de uma vez: as palavras abertas, quem joga e quanto vale. */
+  /**
+   * O que a mesa ve de uma vez: a pergunta com `null` no lugar de cada
+   * palavra fechada, qual acabou de abrir, quem joga e quanto vale.
+   */
   publicoSecreta() {
     const s = this.secreta;
     const palavras = this.perguntaAtual.palavras;
+    const abertas = new Set(s.sorteio.slice(0, s.reveladas));
     return {
       jogadorId: s.daVez,
       ordem: s.ordem,
       total: palavras.length,
-      palavras: palavras.slice(0, s.reveladas),
+      palavras: palavras.map((p, i) => (abertas.has(i) ? p : null)),
+      nova: s.reveladas ? s.sorteio[s.reveladas - 1] : null,
       valendo: palavras.length - s.reveladas,
       msPorVez: MS_VEZ_SECRETA
     };

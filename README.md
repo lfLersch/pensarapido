@@ -1001,8 +1001,12 @@ rodada](#teto-de-10-pontos-por-rodada)).
 
 A pergunta começa **toda escondida**: a tela mostra só uma ficha fechada para
 cada palavra. A vez passa de um em um, **8 segundos** para cada, e a cada vez
-**abre mais uma palavra**, da esquerda para a direita. O primeiro da roda joga
-com uma palavra à vista, o segundo com duas, e assim por diante.
+**abre mais uma palavra** — **sorteada**, em qualquer ponto da frase, no lugar
+dela. O primeiro da roda joga com uma palavra à vista, o segundo com duas, e
+assim por diante; ninguém sabe se a próxima vai ser a pista ou um "de". A
+ordem é sorteada pelo servidor no começo da rodada (`sorteio`, em
+`prepararSecreta`), igual para a sala inteira, e a palavra que acabou de abrir
+aparece em destaque.
 
 - **Um palpite por vez.** Acertou, leva **um ponto para cada palavra que ainda
   estava escondida** e a rodada acaba. Errou (ou deixou o tempo passar), a vez
@@ -1021,12 +1025,13 @@ com uma palavra à vista, o segundo com duas, e assim por diante.
   líder marcou (se nenhuma delas tem pergunta secreta, vale o banco inteiro).
 
 As perguntas ficam em [`server/secretas.js`](server/secretas.js) — 130, todas
-com **pelo menos 13 palavras** — e são escritas ao contrário do normal: a
-pista forte vem primeiro e o assunto fica para o fim (*"Anjo das pernas tortas
-é o apelido de qual jogador de futebol brasileiro…"*). Quem sabe responde com
-duas palavras na tela e leva muito; quem precisa do assunto espera e leva
-pouco. `testes/secreta.test.js` cobra o mínimo de palavras, a falta de
-acentos e que a pergunta não traga a resposta escrita.
+com **pelo menos 13 palavras**. Como a palavra que abre é sorteada, uma boa
+pergunta espalha mais de uma pista forte pela frase (*"Anjo das pernas tortas
+é o apelido de qual jogador de futebol brasileiro…"*: *anjo*, *pernas*,
+*tortas* e *futebol* ajudam, cada uma de um jeito) — se tudo dependesse de uma
+palavra só, a rodada seria pura sorte. `testes/secreta.test.js` cobra o
+mínimo de palavras, a falta de acentos, que a pergunta não traga a resposta
+escrita e que a ordem de abertura seja sorteada.
 
 ### Sobrenome basta
 

@@ -2776,20 +2776,19 @@ socket.on('carrossel:vez', (dados) => {
 });
 
 /**
- * Pergunta secreta: as palavras abertas e uma ficha fechada para cada uma que
- * falta. No fim da rodada `inteira` traz a pergunta toda, e as que nao
- * chegaram a abrir aparecem apagadas.
+ * Pergunta secreta: a frase no lugar, com uma ficha fechada onde a palavra
+ * ainda nao abriu. As palavras abrem em ordem sorteada, entao `abertas` tem
+ * o tamanho da frase, com `null` nas fechadas. `nova` e o indice da que
+ * acabou de abrir (so ela anima e ganha destaque). No fim da rodada `inteira`
+ * traz a pergunta toda, e as que nao chegaram a abrir aparecem apagadas.
  */
-function desenharSecreta(abertas, total, inteira = null) {
+function desenharSecreta(abertas, total, { nova = null, inteira = null } = {}) {
   const alvo = $('pergunta-texto');
-  // So a palavra que acabou de abrir anima; as outras ja estavam na tela.
-  const jaNaTela = alvo.classList.contains('pergunta__texto--secreta')
-    ? alvo.querySelectorAll('.secreta__palavra').length
-    : 0;
   alvo.classList.add('pergunta__texto--secreta');
   alvo.innerHTML = '';
   for (let i = 0; i < total; i++) {
-    const texto = i < abertas.length ? abertas[i] : (inteira ? inteira[i] : null);
+    const aberta = abertas[i] != null;
+    const texto = aberta ? abertas[i] : (inteira ? inteira[i] : null);
     if (texto == null) {
       const ficha = criar('span', 'secreta__oculta');
       ficha.setAttribute('aria-label', 'palavra escondida');
@@ -2798,9 +2797,9 @@ function desenharSecreta(abertas, total, inteira = null) {
     }
     const palavra = criar('span', 'secreta__palavra');
     palavra.textContent = texto;
-    if (i >= abertas.length) palavra.classList.add('secreta__palavra--fechada');
-    else if (!inteira && i === abertas.length - 1) palavra.classList.add('secreta__palavra--nova');
-    if (i < jaNaTela && !palavra.classList.contains('secreta__palavra--fechada')) palavra.classList.add('secreta__palavra--parada');
+    if (!aberta) palavra.classList.add('secreta__palavra--fechada');
+    else if (i === nova) palavra.classList.add('secreta__palavra--nova');
+    else palavra.classList.add('secreta__palavra--parada');
     alvo.appendChild(palavra);
   }
 }
@@ -2808,7 +2807,7 @@ function desenharSecreta(abertas, total, inteira = null) {
 socket.on('secreta:vez', (dados) => {
   if (!estado.secreta) return;
   estado.secreta.abertas = dados.palavras;
-  desenharSecreta(dados.palavras, dados.total);
+  desenharSecreta(dados.palavras, dados.total, { nova: dados.nova });
 
   estado.vivos = new Set(dados.ordem);
   montarFilaCarrossel(dados.ordem, dados.jogadorId);
@@ -4589,7 +4588,7 @@ socket.on('rodada:resultado', (dados) => {
   // Fim da Pergunta secreta: a pergunta abre inteira e o chat volta.
   if (estado.secreta) {
     if (dados.secreta) {
-      desenharSecreta(estado.secreta.abertas || [], dados.secreta.palavras.length, dados.secreta.palavras);
+      desenharSecreta(estado.secreta.abertas || [], dados.secreta.palavras.length, { inteira: dados.secreta.palavras });
     }
     $('carrossel').hidden = true;
     $('carrossel').classList.remove('carrossel--secreta');
