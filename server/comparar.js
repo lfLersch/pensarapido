@@ -235,7 +235,52 @@ function mascaraDeAcerto(palpite, resposta) {
   return saida;
 }
 
+/* ----------------- Maria vai com as outras: a mesma coisa? ----------------- */
+
+// Aqui nao ha resposta oficial: sao duas pessoas escrevendo do jeito delas, e
+// a regua e 80% de precisao — ate 20% de letras diferentes ainda e a mesma
+// coisa. O erro e medido sobre a mais comprida das duas, para valer igual
+// para os dois lados.
+const LIMITE_MESMA_COISA = 0.20;
+// Palavra que nao muda a coisa: "The Beatles" e "Beatles", "o Pele" e "Pele".
+const PALAVRAS_VAZIAS = new Set(['the', 'o', 'a', 'os', 'as', 'el', 'la', 'le', 'les']);
+// Encurtar so vale de 4 letras para cima: "Ana" nao e "Ana Maria Braga".
+const MIN_ATALHO = 4;
+
+/** As palavras de um texto, sem acento, sem pontuacao e sem artigo. */
+function palavrasDe(texto) {
+  const palavras = String(texto || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .split(/[^a-z0-9%]+/)
+    .filter(Boolean);
+  const sem = palavras.filter((p) => !PALAVRAS_VAZIAS.has(p));
+  return sem.length ? sem : palavras;
+}
+
+const pertoDe = (a, b) => a === b
+  || distancia(a, b) / Math.max(a.length, b.length) <= LIMITE_MESMA_COISA;
+
+/**
+ * Duas pessoas escreveram a mesma coisa? Vale com 80% de precisao na escrita
+ * ("Beatles" e "Beatls", "Japão" e "japao") e vale o atalho que todo mundo
+ * usa: o nome curto que e o comeco ou o fim do comprido ("Messi" e "Lionel
+ * Messi", "Neymar" e "Neymar Jr", "Einstein" e "Albert Einstein").
+ */
+function mesmaCoisa(a, b) {
+  const pa = palavrasDe(a);
+  const pb = palavrasDe(b);
+  if (!pa.length || !pb.length) return false;
+  if (pertoDe(pa.join(''), pb.join(''))) return true;
+
+  const [curta, longa] = pa.length <= pb.length ? [pa, pb] : [pb, pa];
+  if (curta.length === longa.length || curta.join('').length < MIN_ATALHO) return false;
+  const bate = (pedaco) => pertoDe(curta.join(''), pedaco.join(''));
+  return bate(longa.slice(0, curta.length)) || bate(longa.slice(longa.length - curta.length));
+}
+
 module.exports = {
-  avaliar, normalizar, distancia, casarLetras, mascaraDeAcerto, sobrenomesDe,
-  LIMITE_CERTO, LIMITE_QUASE
+  avaliar, normalizar, distancia, casarLetras, mascaraDeAcerto, sobrenomesDe, mesmaCoisa,
+  LIMITE_CERTO, LIMITE_QUASE, LIMITE_MESMA_COISA
 };

@@ -2570,7 +2570,7 @@ socket.on('rodada:pergunta', (dados) => {
   // nao cabe: ali cada acerto e publico, senao a pessoa seguinte repete o que
   // ja saiu (e no leilao a mesa inteira acompanha a entrega).
   painel.hidden = estado.necessarias < 2 || Boolean(dados.carrossel) || Boolean(dados.presente)
-    || Boolean(dados.eu);
+    || Boolean(dados.eu) || Boolean(dados.maria);
   if (!painel.hidden) {
     $('escalada-itens').innerHTML = '';
     atualizarEscalada();
@@ -2652,6 +2652,9 @@ socket.on('rodada:pergunta', (dados) => {
     inputChat.placeholder = 'A resposta e o arrasto das cartas. Aqui e so conversa…';
     $('status-respostas').textContent = '';
   }
+
+  // Maria vai com as outras: as cinco linhas do top. O chat fecha ate o resultado.
+  mostrarMaria(dados.maria);
 
   // Qual e a musica: a resposta e o clique, o chat e so conversa.
   if (dados.opcoes) {
@@ -3392,6 +3395,149 @@ function miniaturaEu(ordem, certa) {
   if (!ordem) return '';
   return `<span class="eu-mini">${ordem.map((item, k) => `<i style="--cor-carta:${CORES_EU[item % CORES_EU.length]}"${
     certa && item === certa[k] ? ' class="certa"' : ''}></i>`).join('')}</span>`;
+}
+
+/* ------------------------ Maria vai com as outras ------------------------ */
+
+/*
+ * Cinco linhas, do 1o ao 5o, e um minuto para escrever. Cada letra vai para o
+ * servidor (com um respiro): se o tempo acabar sem confirmar, vale o que
+ * estava escrito. Enter pula para a linha seguinte e, na ultima, confirma.
+ */
+// A rodada no ar: { escrevo, travado, envio }.
+estado.maria = null;
+
+const camposMaria = () => [...$('maria-lista').querySelectorAll('.maria__campo')];
+const listaMaria = () => camposMaria().map((c) => c.value.trim());
+const possoEscreverMaria = () => Boolean(estado.maria && estado.maria.escrevo && !estado.maria.travado);
+
+function mandarRascunhoMaria() {
+  const m = estado.maria;
+  if (!m) return;
+  clearTimeout(m.envio);
+  m.envio = setTimeout(() => {
+    if (possoEscreverMaria()) socket.emit('maria:lista', { lista: listaMaria(), final: false });
+  }, 300);
+}
+
+function confirmarMaria() {
+  const m = estado.maria;
+  if (!possoEscreverMaria()) return;
+  clearTimeout(m.envio);
+  const lista = listaMaria();
+  m.travado = true;
+  $('maria-confirmar').disabled = true;
+  socket.emit('maria:lista', { lista, final: true }, (resposta) => {
+    if (resposta?.erro) {
+      m.travado = false;
+      $('maria-confirmar').disabled = false;
+      return avisoParticular(resposta.erro);
+    }
+    for (const campo of camposMaria()) campo.disabled = true;
+    $('maria-lista').classList.add('maria__lista--travada');
+    $('maria-confirmar').hidden = true;
+    $('maria-vez').innerHTML = '<b>Confirmado!</b> Agora e esperar o resto da mesa.';
+  });
+}
+$('maria-confirmar').addEventListener('click', confirmarMaria);
+
+/** Monta as cinco linhas para quem escreve; quem nao escreve so acompanha. */
+function mostrarMaria(dados) {
+  const painel = $('maria');
+  painel.hidden = !dados;
+  $('maria-mesa').hidden = true;
+  $('maria-lista').classList.remove('maria__lista--travada', 'maria__lista--resultado');
+  const vinha = estado.maria;
+  if (vinha) clearTimeout(vinha.envio);
+  if (!dados) {
+    estado.maria = null;
+    $('maria-confirmar').hidden = true;
+    // Rodada pulada ou cancelada no meio da escrita: o chat volta.
+    if (vinha) destrancarChat('Digite uma mensagem…');
+    return;
+  }
+
+  const escrevo = !souTela() && (!dados.quem || dados.quem.includes(socket.id));
+  estado.maria = { escrevo, travado: false, envio: null };
+
+  const lista = $('maria-lista');
+  lista.innerHTML = '';
+  if (escrevo) {
+    for (let k = 0; k < dados.itens; k++) {
+      const linha = criar('li', 'maria__linha');
+      linha.innerHTML = `<span class="maria__lugar">${k + 1}º</span>
+        <input class="maria__campo" type="text" maxlength="${dados.maxLetras}" autocomplete="off"
+          autocapitalize="sentences" spellcheck="false" enterkeyhint="${k < dados.itens - 1 ? 'next' : 'done'}"
+          aria-label="${k + 1}º lugar" />`;
+      lista.appendChild(linha);
+    }
+    camposMaria().forEach((campo, k, todos) => {
+      campo.addEventListener('input', mandarRascunhoMaria);
+      campo.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        if (k < todos.length - 1) todos[k + 1].focus();
+        else confirmarMaria();
+      });
+    });
+  }
+
+  const vale = `+${dados.pontosIgual} por coisa igual a de alguem · +${dados.pontosLugar} no mesmo lugar`;
+  $('maria-vez').innerHTML = escrevo
+    ? `<b>Escreva o seu top 5!</b> <span class="eu__vale">${vale}</span>`
+    : `A mesa esta escrevendo o top 5… <span class="eu__vale">${vale}</span>`;
+  $('maria-confirmar').hidden = !escrevo;
+  $('maria-confirmar').disabled = false;
+  $('status-respostas').textContent = `Ninguem confirmou ainda (0 de ${dados.escrevem}).`;
+  // O chat fecha: o top de um viraria cola para os outros.
+  trancarChat('Escreva o seu top 5 acima. O chat volta no resultado…');
+  if (escrevo && !('ontouchstart' in window)) setTimeout(() => camposMaria()[0]?.focus(), 50);
+}
+
+socket.on('maria:travou', ({ quantos, total } = {}) => {
+  $('status-respostas').textContent = `${quantos} de ${total} ja confirmaram.`;
+});
+
+/** Uma coisa do top no resultado: com quantos ela bateu e se foi no mesmo lugar. */
+function fichaMaria(texto, iguais, noLugar) {
+  if (!texto) return '<span class="maria__ficha maria__ficha--vazia">—</span>';
+  const classe = noLugar ? ' maria__ficha--lugar' : iguais ? ' maria__ficha--igual' : '';
+  const marca = iguais ? `<b>×${iguais}</b>` : '';
+  return `<span class="maria__ficha${classe}"${noLugar ? ` title="${noLugar} no mesmo lugar"` : ''}>${
+    escapar(texto)}${marca}</span>`;
+}
+
+/** Resultado: o top da mesa e, para quem escreveu, o seu com o que bateu. */
+function revelarMaria(maria, detalhes = []) {
+  if (!maria) return mostrarMaria(null);
+  if (estado.maria) {
+    clearTimeout(estado.maria.envio);
+    estado.maria.escrevo = false;
+  }
+  $('maria').hidden = false;
+  $('maria-confirmar').hidden = true;
+  $('maria-vez').innerHTML = '<b>O top 5 da mesa</b>';
+
+  const lista = $('maria-lista');
+  lista.classList.remove('maria__lista--travada');
+  lista.classList.add('maria__lista--resultado');
+  lista.innerHTML = maria.daMesa.length
+    ? maria.daMesa.map((c, k) => `<li class="maria__linha"><span class="maria__lugar">${k + 1}º</span>
+        <span class="maria__texto">${escapar(c.texto)}</span>
+        <span class="maria__votos">${c.votos} ${c.votos === 1 ? 'voto' : 'votos'}</span></li>`).join('')
+    : '<li class="maria__linha"><span class="maria__texto">Ninguem escreveu nada.</span></li>';
+
+  const meu = detalhes.find((d) => d.jogadorId === socket.id);
+  const mesa = $('maria-mesa');
+  mesa.hidden = !(meu && meu.maria && meu.maria.lista);
+  if (!mesa.hidden) {
+    const { lista: minha, iguais, noLugar } = meu.maria;
+    mesa.innerHTML = `<p class="maria__vez">Seu top: <b>+${meu.ganhou}</b>
+      <span class="maria__legenda"><i class="maria__ficha--igual"></i>alguem escreveu igual
+      <i class="maria__ficha--lugar"></i>no mesmo lugar · ×N: com quantos</span></p>
+      <div class="maria__fichas">${minha.map((t, k) => fichaMaria(t, iguais[k], noLugar[k])).join('')}</div>`;
+  }
+  destrancarChat('Digite uma mensagem…');
 }
 
 /** No Leilao Geral cada um leiloa por si: nao ha parceiro, nem duvido. */
@@ -4288,6 +4434,7 @@ socket.on('rodada:resultado', (dados) => {
   estado.musica = null;
   revelarOpcoes(dados.opcoes, dados.detalhes);
   revelarEu(dados.eu, dados.detalhes);
+  revelarMaria(dados.maria, dados.detalhes);
   $('escalada').hidden = true;
   // Fim da rodada do Carrossel: a fila some e o chat volta para todos.
   if (estado.carrossel) {
@@ -4321,7 +4468,7 @@ socket.on('rodada:resultado', (dados) => {
   selo.style.setProperty('--cor-dif', dados.dificuldade.cor);
   selo.textContent = `${dados.dificuldade.nivel} · ${dados.dificuldade.valor}`;
   // Eu te conheço nao tem pergunta para medir.
-  selo.hidden = Boolean(dados.eu);
+  selo.hidden = Boolean(dados.eu) || Boolean(dados.maria);
   selo.title = 'Dificuldade da pergunta: sobe quando pouca gente acerta ou quando demoram muito. '
              + 'Nao altera a pontuacao.';
 
@@ -4361,7 +4508,13 @@ socket.on('rodada:resultado', (dados) => {
       parado: 'nao mexeu',
       fora: 'entrou depois'
     }[detalhe.eu.papel];
-    const tempo = papelEu || (dados.presente
+    // Maria vai com as outras: com quantas coisas a pessoa pensou igual a mesa.
+    const papelMaria = detalhe.maria && {
+      escreveu: `${(detalhe.maria.iguais || []).filter(Boolean).length} em comum`,
+      parado: 'nao escreveu',
+      fora: 'entrou depois'
+    }[detalhe.maria.papel];
+    const tempo = papelEu || papelMaria || (dados.presente
       ? (PAPEIS[detalhe.papel] || '—')
       : (detalhe.ms === null ? naoAcertou : `${(detalhe.ms / 1000).toFixed(1)}s`));
 
@@ -4385,7 +4538,10 @@ socket.on('rodada:resultado', (dados) => {
         ? `<p class="resultado__itens">${escapar(conseguiu.join(', '))}</p>`
         : ''}
       ${dados.eu && detalhe.eu && detalhe.eu.papel === 'adivinhou'
-        ? miniaturaEu(detalhe.eu.ordem, dados.eu.ordem) : ''}`;
+        ? miniaturaEu(detalhe.eu.ordem, dados.eu.ordem) : ''}
+      ${detalhe.maria && detalhe.maria.lista
+        ? `<div class="maria__fichas maria__fichas--mini">${detalhe.maria.lista
+          .map((t, k) => fichaMaria(t, detalhe.maria.iguais[k], detalhe.maria.noLugar[k])).join('')}</div>` : ''}`;
     lista.appendChild(item);
   }
 

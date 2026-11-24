@@ -419,6 +419,13 @@ io.on('connection', (socket) => {
     responder(callback, sala.ordenarEu(socket.id, ordem, final === true));
   });
 
+  // Maria vai com as outras: o top 5 escrito. `final` confirma; sem ele e o rascunho.
+  socket.on('maria:lista', ({ lista, final } = {}, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+    responder(callback, sala.escreverMaria(socket.id, lista, final === true));
+  });
+
   // A imagem (ou a musica) da proxima pergunta terminou de carregar neste navegador. Nao
   // precisa de resposta: o servidor so junta os avisos e abre a pergunta
   // quando todo mundo ja esta com ela.

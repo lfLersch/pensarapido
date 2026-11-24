@@ -263,9 +263,10 @@ pergunta foi enviada — o cronômetro da tela é só visual.
 
 ### Teto de 10 pontos por rodada
 
-**Nenhuma rodada paga mais que 10 pontos a uma pessoa**, em modo nenhum — a
-única exceção é a [Pergunta secreta](#pergunta-secreta), onde acertar cedo
-vale mais de 10 de propósito. Os
+**Nenhuma rodada paga mais que 10 pontos a uma pessoa**, em modo nenhum — as
+exceções são a [Pergunta secreta](#pergunta-secreta), onde acertar cedo
+vale mais de 10 de propósito, e o [Maria vai com as outras](#maria-vai-com-as-outras),
+que soma o que a pessoa fez com cada um da sala. Os
 modos com relógio (Modo Tempo, Corrida, Qual é a música, 1 é bom 2 ok 3 é
 demais) já cabiam nisso. Os outros pagam assim:
 
@@ -770,6 +771,41 @@ apagadas. Quando ele confirma, é a vez dos outros: **rankear igual a ele**.
   imagens, a rodada **não alimenta a dificuldade nem o perfil**, e o modo
   **fica fora da roleta da Bagunça** (uma rodada solta não dá tempo de ninguém
   conhecer ninguém). `testes/eu-te-conheco.test.js` cobre o modo.
+
+### Maria vai com as outras
+
+Sai uma pergunta de **top 5** — *Top 5 bandas*, *Top 5 animais mais fofos*,
+*Top 5 países para viajar*, *Top 5 cientistas da história* — e cada um tem
+**1 minuto** para escrever o seu, do 1º ao 5º, em cinco linhas. Ponto é para
+quem pensa igual à mesa:
+
+- **Cada coisa que outra pessoa também escreveu vale 1**; se estiver **no
+  mesmo lugar**, vale **2**. Cada coisa de um casa com no máximo uma do outro,
+  e o mesmo lugar tem a preferência.
+- **A conta é feita com cada pessoa da sala, e soma.** Dois tops iguais dão 10
+  ao par; numa sala de 4, quem escreveu o mesmo top dos outros três leva 30.
+  Por isso o modo, como a Pergunta secreta, passa do teto de 10.
+- **A escrita não precisa ser perfeita: 80% de precisão vale** (até 20% de
+  letras diferentes, medido sobre a mais comprida das duas — *Cachoro* é
+  *Cachorro*, *Japao* é *Japão*). Artigo não conta (*The Beatles* é
+  *Beatles*), e o **nome curto vale pelo comprido** quando é o começo ou o fim
+  dele (*Messi* é *Lionel Messi*, *Neymar* é *Neymar Jr*), de 4 letras para
+  cima. Isso fica em `mesmaCoisa` ([`server/comparar.js`](server/comparar.js)).
+- **Enter pula para a linha seguinte**, e na última confirma. Cada letra já
+  vai para o servidor: quem não confirma a tempo vale **o que deixou escrito**.
+  A mesma coisa duas vezes no próprio top não confirma (e, no rascunho, só a
+  primeira conta). Todo mundo confirmou, a rodada fecha.
+- **O chat fecha enquanto a mesa escreve** — senão o top de um vira cola para
+  os outros — e volta no resultado.
+- **O resultado** mostra o **top 5 da mesa** (o que mais gente escreveu,
+  desempatado pela posição, na grafia mais usada) e o top de cada um, com cada
+  coisa pintada: verde se alguém escreveu igual, dourada se foi no mesmo lugar,
+  e o *×N* diz com quantos.
+- Precisa de **2 jogadores** ou mais. Quem entra no meio da rodada escreve na
+  próxima. As perguntas (117, em [`server/tops.js`](server/tops.js)) não se
+  repetem na partida. Não usa categorias, **não alimenta a dificuldade nem o
+  perfil**, e **fica fora da roleta da Bagunça** (os pontos somados passariam
+  por cima do teto dos outros modos). `testes/maria.test.js` cobre o modo.
 
 ### Bagunça
 
@@ -1385,6 +1421,7 @@ server/
   questions.js   banco de perguntas por categoria
   musicas.js     duração e estilo de cada música de Ouvir músicas
   coisas.js      as coisas que o Eu te conheço sorteia para rankear
+  tops.js        as perguntas de top 5 do Maria vai com as outras
   dados/         estatísticas acumuladas (criado sozinho)
 public/
   index.html     as cinco telas do jogo

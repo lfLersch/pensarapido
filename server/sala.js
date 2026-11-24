@@ -1,7 +1,7 @@
 'use strict';
 
 const { CATEGORIAS, QUESTOES } = require('./questions');
-const { avaliar, normalizar, mascaraDeAcerto } = require('./comparar');
+const { avaliar, normalizar, mascaraDeAcerto, mesmaCoisa } = require('./comparar');
 const { paraRodada, itemDe } = require('./escalada');
 const { PALAVRAS } = require('./dicas');
 const { RANKINGS } = require('./rankings');
@@ -11,6 +11,7 @@ const perfis = require('./perfis');
 const { musicaDe } = require('./musicas');
 const { COISAS } = require('./coisas');
 const { SECRETAS } = require('./secretas');
+const { TOPS } = require('./tops');
 
 /* ---------------------------- Regras do jogo ---------------------------- */
 
@@ -169,6 +170,18 @@ const MS_ESCOLHA_EU = 60000;     // quem rankeia tem 60s
 const MS_PALPITE_EU = 45000;     // ... e os outros, 45s para rankear igual
 const MS_RESULTADO_EU = 9000;    // da para comparar os rankings com calma
 const CATEGORIA_EU = { id: 'eu-te-conheco', nome: 'Eu te conheço', icone: '🫶', cor: '#ec4899' };
+
+/* Maria vai com as outras: uma pergunta de top 5 e cada um escreve o seu.
+   Ponto e para quem pensa igual: cada coisa que outra pessoa tambem pos vale
+   1, e no mesmo lugar vale 2. A conta e feita com cada pessoa da mesa e soma
+   — por isso e o unico modo, com a Pergunta secreta, que paga mais de 10. */
+const ITENS_MARIA = 5;
+const PONTOS_IGUAL_MARIA = 1;
+const PONTOS_LUGAR_MARIA = 2;
+const MS_MARIA = 60000;           // um minuto para pensar e escrever
+const MS_RESULTADO_MARIA = 12000; // da tempo de ler o top de todo mundo
+const MAX_ITEM_MARIA = 40;        // caracteres de cada linha do top
+const CATEGORIA_MARIA = { id: 'maria', nome: 'Maria vai com as outras', icone: '🐑', cor: '#f59e0b' };
 /* Musica: o arquivo e a musica inteira, e a sala sorteia de que ponto ela
    toca. O sorteio fica longe do comeco (silencio, plateia do ao vivo) e do
    fim (o fade-out), e a musica para no limite que a sala escolheu. */
@@ -367,6 +380,18 @@ const MODOS = [
     foraDaBagunca: true
   },
   {
+    id: 'maria',
+    nome: 'Maria vai com as outras',
+    icone: '🐑',
+    descricao: 'Sai uma pergunta de top 5 — bandas, animais mais fofos, paises para viajar — e cada um tem 1 minuto para escrever o seu, do 1o ao 5o. Ponto e para quem pensa igual a mesa: cada coisa que outra pessoa tambem escreveu vale 1, e se estiver no mesmo lugar vale 2. A conta e feita com cada pessoa da sala e soma. A escrita nao precisa ser perfeita: 80% de precisao ja vale.',
+    disponivel: true,
+    // As perguntas vem de tops.js, nao do banco.
+    semCategorias: true,
+    // Os pontos somam com cada pessoa da sala: numa rodada solta da Bagunca,
+    // passariam por cima do teto de 10 dos outros modos.
+    foraDaBagunca: true
+  },
+  {
     id: 'bagunca',
     nome: 'Bagunca',
     icone: '🎲',
@@ -408,6 +433,79 @@ function configDaBagunca(bruta) {
   // Pausar quando sai um modo que ainda nao tinha aparecido na partida.
   const pausarModoNovo = Boolean(bruta && bruta.pausarModoNovo === true);
   return { perguntasAteSorteio, modosBagunca, segundosSorteio, pausarModoNovo };
+}
+
+/**
+ * Maria vai com as outras: a conta da rodada.
+ *
+ * Cada par de pessoas e comparado uma vez, e os pontos do par vao para os
+ * dois: a mesma coisa no mesmo lugar vale PONTOS_LUGAR_MARIA, em outro lugar
+ * vale PONTOS_IGUAL_MARIA. Cada coisa de um casa com no maximo uma do outro,
+ * e o mesmo lugar tem preferencia. Somando todos os pares, quem pensa como
+ * a mesa inteira leva mais.
+ *
+ * Tambem sai o top 5 da mesa: as coisas que mais gente escreveu, desempatadas
+ * pela posicao (1o lugar pesa 5, 5o pesa 1).
+ *
+ * @param {Map<string, string[]>} listas o top de cada um (linha vazia: nada)
+ */
+function pontuarMaria(listas) {
+  const por = new Map();
+  for (const [id, bruta] of listas) {
+    // A mesma coisa duas vezes na lista so conta a primeira.
+    const lista = bruta.map((t, k) => (t && !bruta.slice(0, k).some((o) => o && mesmaCoisa(o, t)) ? t : ''));
+    por.set(id, { lista, pontos: 0, iguais: lista.map(() => 0), noLugar: lista.map(() => 0) });
+  }
+
+  const ids = [...por.keys()];
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const a = por.get(ids[i]);
+      const b = por.get(ids[j]);
+      const pares = new Map();   // lugar em a -> lugar em b
+      const usados = new Set();  // lugares de b ja casados
+      a.lista.forEach((t, k) => {
+        if (t && b.lista[k] && mesmaCoisa(t, b.lista[k])) { pares.set(k, k); usados.add(k); }
+      });
+      a.lista.forEach((t, k) => {
+        if (!t || pares.has(k)) return;
+        const outro = b.lista.findIndex((o, m) => o && !usados.has(m) && mesmaCoisa(t, o));
+        if (outro >= 0) { pares.set(k, outro); usados.add(outro); }
+      });
+      for (const [k, m] of pares) {
+        const vale = k === m ? PONTOS_LUGAR_MARIA : PONTOS_IGUAL_MARIA;
+        a.pontos += vale;
+        b.pontos += vale;
+        a.iguais[k] += 1;
+        b.iguais[m] += 1;
+        if (k === m) { a.noLugar[k] += 1; b.noLugar[m] += 1; }
+      }
+    }
+  }
+
+  // O top da mesa: cada grupo e uma coisa, com todas as grafias dela. A
+  // chave e a primeira grafia (comparar com a que muda faria o grupo andar);
+  // na tela vai a mais escrita, e no empate a mais completa.
+  const grupos = [];
+  for (const [id, { lista }] of por) {
+    lista.forEach((t, k) => {
+      if (!t) return;
+      let grupo = grupos.find((g) => mesmaCoisa(g.chave, t));
+      if (!grupo) grupos.push(grupo = { chave: t, quem: new Set(), peso: 0, formas: new Map() });
+      grupo.quem.add(id);
+      grupo.peso += lista.length - k;
+      const forma = normalizar(t);
+      const ja = grupo.formas.get(forma);
+      grupo.formas.set(forma, { texto: ja ? ja.texto : t, vezes: (ja ? ja.vezes : 0) + 1 });
+    });
+  }
+  grupos.sort((x, y) => y.quem.size - x.quem.size || y.peso - x.peso);
+  const daMesa = grupos.slice(0, ITENS_MARIA).map((g) => {
+    const [forma] = [...g.formas.values()].sort((x, y) => y.vezes - x.vezes || y.texto.length - x.texto.length);
+    return { texto: forma.texto, votos: g.quem.size };
+  });
+
+  return { porJogador: por, daMesa };
 }
 
 /** Modo Tempo: a faixa de dificuldade conferida. Torta ou estreita demais vira 0 a 100. */
@@ -740,6 +838,11 @@ class Sala {
     this.secreta = null;
     this.secretasUsadas = new Set();
 
+    // Maria vai com as outras: o top 5 de cada um nesta rodada e as
+    // perguntas que ja sairam na partida.
+    this.maria = null;
+    this.topsUsados = new Set();
+
     this.temporizador = null;
     this.temporizadorVez = null; // o relógio dos 7s corre à parte do da rodada
     // O que cada relogio vai fazer e quando: a pausa precisa saber quanto faltava.
@@ -956,6 +1059,12 @@ class Sala {
       }
     }
 
+    // Maria vai com as outras: quem saiu nao segura mais a rodada, e os que
+    // ficaram podem ja ter confirmado todos.
+    if (this.ehMaria() && this.maria && this.estado === 'pergunta' && !this.vazia) {
+      this.fecharSeTodosTravaramMaria();
+    }
+
     // Saiu o ultimo: a sala para de rodar e fica esperando alguem voltar.
     if (this.vazia) this.congelar();
 
@@ -1066,6 +1175,9 @@ class Sala {
     if (this.ehEuTeConheco() && this.jogam.size < 2) {
       return { erro: 'O Eu te conheço precisa de pelo menos dois jogadores: um rankeia e o outro adivinha.' };
     }
+    if (this.ehMaria() && this.jogam.size < 2) {
+      return { erro: 'O Maria vai com as outras precisa de pelo menos dois jogadores: o ponto e pensar igual a alguem.' };
+    }
 
     for (const jogador of this.jogadores.values()) {
       jogador.pontos = 0;
@@ -1090,6 +1202,8 @@ class Sala {
     this.coisasUsadas.clear();
     this.secreta = null;
     this.secretasUsadas.clear();
+    this.maria = null;
+    this.topsUsados.clear();
     // desdeSorteio: perguntas do Modo Tempo desde o ultimo sorteio. vezes:
     // quantas vezes cada modo ja saiu (a Escalada e o Carrossel crescem com
     // isso). ultimo: o modo do sorteio anterior, que espera a vez.
@@ -1128,6 +1242,11 @@ class Sala {
   /** Eu te conheço: um rankeia 5 coisas, os outros tentam rankear igual. */
   ehEuTeConheco() {
     return this.modo === 'eu-te-conheco';
+  }
+
+  /** Maria vai com as outras: cada um escreve o seu top 5 e ganha por pensar igual. */
+  ehMaria() {
+    return this.modo === 'maria';
   }
 
   /** Corrida musical: o primeiro que acerta leva, e a musica para ali. */
@@ -2203,6 +2322,203 @@ class Sala {
     this.seguirOuTerminar(MS_RESULTADO_EU);
   }
 
+  /* ---------------------- Maria vai com as outras ---------------------- */
+
+  /** Uma pergunta de top 5 que ainda nao saiu na partida (acabou, recomeca). */
+  perguntaMaria() {
+    let livres = TOPS.filter((t) => !this.topsUsados.has(t));
+    if (!livres.length) {
+      this.topsUsados.clear();
+      livres = TOPS;
+    }
+    const pergunta = livres[Math.floor(Math.random() * livres.length)];
+    this.topsUsados.add(pergunta);
+    this.maria = {
+      pergunta,
+      // Quem esta na sala quando a pergunta abre e quem escreve.
+      escrevem: new Set(),
+      // O que cada um ja escreveu: se o tempo acabar sem confirmar, vale.
+      rascunhos: new Map(),
+      travados: new Map()
+    };
+    return {
+      id: `maria:${pergunta}`,
+      pergunta,
+      imagem: null,
+      audio: null,
+      letra: null,
+      resposta: null,
+      aceita: [],
+      itens: [],
+      necessarias: ITENS_MARIA,
+      fixo: true,
+      categoria: CATEGORIA_MARIA,
+      difBase: 0,
+      dificuldade: 0
+    };
+  }
+
+  publicoMaria() {
+    return {
+      itens: ITENS_MARIA,
+      pontosIgual: PONTOS_IGUAL_MARIA,
+      pontosLugar: PONTOS_LUGAR_MARIA,
+      maxLetras: MAX_ITEM_MARIA,
+      duracaoMs: MS_MARIA,
+      // Quem esta na sala quando a pergunta abre e quem escreve.
+      escrevem: this.jogam.size,
+      quem: [...this.jogam.keys()]
+    };
+  }
+
+  /** A pergunta abriu: quem esta na sala agora escreve, e o relogio corre. */
+  abrirMaria(duracaoMs) {
+    this.maria.escrevem = new Set(this.jogam.keys());
+    this.agendar(() => this.encerrarRodada(), duracaoMs);
+  }
+
+  /** Quem ainda escreve nesta rodada (e continua na sala, jogando). */
+  escrevemMaria() {
+    if (!this.maria) return [];
+    return [...this.maria.escrevem].filter((id) => this.jogam.has(id));
+  }
+
+  /**
+   * Alguem escreveu no seu top 5. `final` e o "confirmar": trava a lista.
+   * Sem `final` e so o rascunho, que vale se o tempo acabar antes.
+   */
+  escreverMaria(socketId, bruta, final) {
+    const jogador = this.jogadores.get(socketId);
+    if (!jogador) return { erro: 'Voce nao esta nesta sala.' };
+    if (!this.ehMaria()) return { erro: 'Esta sala nao joga o Maria vai com as outras.' };
+    if (this.ehTela(socketId)) return { erro: 'No jogo presencial o lider e a tela: ele nao joga.' };
+    if (this.pausa) return { erro: 'O jogo esta pausado.' };
+    if (this.estado !== 'pergunta' || !this.maria) return { erro: 'Nao ha top 5 aberto agora.' };
+
+    const maria = this.maria;
+    if (!maria.escrevem.has(socketId)) return { erro: 'Voce entra na proxima rodada.' };
+    if (maria.travados.has(socketId)) return { erro: 'Voce ja confirmou o seu top 5.' };
+    if (!Array.isArray(bruta) || bruta.length !== ITENS_MARIA) {
+      return { erro: `O top tem ${ITENS_MARIA} lugares.` };
+    }
+    const lista = bruta.map((t) => (typeof t === 'string' ? t : '')
+      .replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_ITEM_MARIA));
+
+    maria.rascunhos.set(socketId, lista);
+    if (!final) return { ok: true, travou: false };
+
+    if (!lista.some(Boolean)) return { erro: 'Escreva pelo menos uma coisa antes de confirmar.' };
+    const repetida = lista.findIndex((t, k) => t && lista.slice(0, k).some((o) => o && mesmaCoisa(o, t)));
+    if (repetida >= 0) return { erro: `"${lista[repetida]}" ja esta no seu top.` };
+
+    maria.travados.set(socketId, lista);
+    this.emitir('maria:travou', {
+      jogadorId: socketId,
+      quantos: maria.travados.size,
+      total: this.escrevemMaria().length
+    });
+    this.fecharSeTodosTravaramMaria();
+    return { ok: true, travou: true };
+  }
+
+  /** Todo mundo ja confirmou: nao ha por que esperar o relogio. */
+  fecharSeTodosTravaramMaria() {
+    const maria = this.maria;
+    if (!maria || this.estado !== 'pergunta') return false;
+    const escrevem = this.escrevemMaria();
+    if (!escrevem.length || escrevem.some((id) => !maria.travados.has(id))) return false;
+    this.agendar(() => this.encerrarRodada(), MS_TODOS_TRAVARAM);
+    return true;
+  }
+
+  /**
+   * Fim da rodada: cada um e comparado com cada outro da mesa. Quem nao
+   * confirmou vale o que deixou escrito; quem nao escreveu nada, zero.
+   */
+  encerrarMaria() {
+    this.limparTemporizador();
+    const maria = this.maria;
+    const escrevem = this.escrevemMaria();
+    const listas = new Map();
+    for (const id of escrevem) {
+      const lista = maria.travados.get(id) || maria.rascunhos.get(id);
+      if (lista && lista.some(Boolean)) listas.set(id, lista);
+    }
+
+    const conta = pontuarMaria(listas);
+    for (const [id, { pontos }] of conta.porJogador) {
+      if (!pontos) continue;
+      const jogador = this.jogadores.get(id);
+      jogador.pontos += pontos;
+      jogador.acertos += 1;
+      this.pontosRodada.set(id, pontos);
+    }
+    // A rodada nao entra no perfil (nao e pergunta de categoria nenhuma),
+    // mas a conta de acertos anotados segue em dia.
+    for (const j of this.jogam.values()) j.acertosAnotados = j.acertos;
+
+    this.estado = 'resultado';
+    const detalhes = [...this.jogam.values()].map((jogador) => {
+      const dele = conta.porJogador.get(jogador.id) || null;
+      const ganhou = this.pontosRodada.get(jogador.id) || 0;
+      return {
+        jogadorId: jogador.id,
+        nickname: jogador.nickname,
+        avatar: jogador.avatar,
+        acertou: ganhou > 0,
+        posicao: null,
+        colocacao: false,
+        ganhou,
+        bonus: 0,
+        ms: null,
+        total: jogador.pontos,
+        itens: [],
+        necessarias: 1,
+        eliminado: false,
+        equipe: null,
+        papel: null,
+        maria: {
+          // fora: entrou depois; parado: escrevia, mas nao escreveu nada.
+          papel: !escrevem.includes(jogador.id) ? 'fora' : dele ? 'escreveu' : 'parado',
+          lista: dele ? dele.lista : null,
+          iguais: dele ? dele.iguais : null,
+          noLugar: dele ? dele.noLugar : null,
+          confirmou: maria.travados.has(jogador.id)
+        }
+      };
+    });
+    const peso = (d) => ({ parado: 50, fora: 99 }[d.maria.papel] ?? -d.ganhou);
+    detalhes.sort((a, b) => peso(a) - peso(b));
+
+    const texto = conta.daMesa.length
+      ? conta.daMesa.map((c, k) => `${k + 1}º ${c.texto}`).join(' · ')
+      : 'ninguem escreveu nada';
+    this.avisar(`O top 5 da mesa: ${texto}`, true);
+
+    this.emitir('rodada:resultado', {
+      rodada: this.rodada,
+      titulo: 'O top 5 da mesa',
+      resposta: texto,
+      maria: {
+        pergunta: maria.pergunta,
+        daMesa: conta.daMesa,
+        pontosIgual: PONTOS_IGUAL_MARIA,
+        pontosLugar: PONTOS_LUGAR_MARIA
+      },
+      listaCompleta: [],
+      listaParcial: false,
+      necessarias: 1,
+      aceita: [],
+      dificuldade: { valor: 0, nivel: 'sem conta', cor: '#6f6791' },
+      detalhes,
+      placar: this.placar(),
+      duracaoMs: MS_RESULTADO_MARIA,
+      acabou: this.acabouAPartida()
+    });
+
+    this.seguirOuTerminar(MS_RESULTADO_MARIA);
+  }
+
   /** Uma pergunta comum: uma resposta só. */
   perguntaSimples() {
     const bruta = this.ehBagunca() && this.ehMusical() ? this.sacarMusica() : this.sacarDaFila();
@@ -2557,6 +2873,11 @@ class Sala {
       this.avisar('Nao sobraram dois jogadores: alguem rankeia e alguem adivinha. Fim de jogo.', true);
       return this.terminar();
     }
+    // Maria vai com as outras sozinho nao tem com quem pensar igual.
+    if (this.ehMaria() && this.jogam.size < 2) {
+      this.avisar('Nao sobraram dois jogadores: o ponto e pensar igual a alguem. Fim de jogo.', true);
+      return this.terminar();
+    }
 
     // Quem chegou com a rodada no ar ficou de fora dela; entre uma rodada e
     // outra da para encaixar sem trocar papel de ninguem no meio do caminho.
@@ -2566,6 +2887,8 @@ class Sala {
 
     if (this.ehEuTeConheco()) {
       this.perguntaAtual = this.perguntaEu();
+    } else if (this.ehMaria()) {
+      this.perguntaAtual = this.perguntaMaria();
     } else if (this.ehLeilao()) {
       this.perguntaAtual = this.ehDandoDicas() ? this.perguntaDica() : this.perguntaPresente();
       this.prepararLeilao();
@@ -2734,6 +3057,8 @@ class Sala {
     if (this.ehVeni()) return MS_FASE_VENI;
     // Eu te conheço: o relogio da pergunta e o de quem rankeia primeiro.
     if (this.ehEuTeConheco()) return MS_ESCOLHA_EU;
+    // Maria vai com as outras: um minuto para pensar no top 5.
+    if (this.ehMaria()) return MS_MARIA;
     // Pergunta secreta: nao ha relogio de rodada, so o de cada vez.
     if (this.ehSecreta()) return MS_VEZ_SECRETA;
     // Escalada da Bagunca: o relogio e fixo, a lista e que nao tem fim.
@@ -2822,6 +3147,8 @@ class Sala {
         : null,
       // Eu te conheço: quem rankeia e as coisas. O ranking dele so sai no resultado.
       eu: this.ehEuTeConheco() && this.eu ? this.publicoEu() : null,
+      // Maria vai com as outras: quantas linhas e quanto vale cada coisa.
+      maria: this.ehMaria() && this.maria ? this.publicoMaria() : null,
       // Presente Grego: agora a pergunta é pública, mas só uma pessoa responde
       // — e a mesa inteira sabe quanto ela prometeu entregar.
       presente: this.ehLeilao() && this.leilao
@@ -2844,6 +3171,7 @@ class Sala {
     else if (this.ehSecreta()) this.iniciarVezSecreta();
     else if (this.ehVeni()) this.abrirFaseVeni(0);
     else if (this.ehEuTeConheco()) this.agendar(() => this.abrirPalpiteEu(), duracaoMs);
+    else if (this.ehMaria()) this.abrirMaria(duracaoMs);
     else this.agendar(() => this.encerrarRodada(), duracaoMs);
   }
 
@@ -3510,6 +3838,16 @@ class Sala {
       return { veredito: 'chat' };
     }
 
+    // Maria vai com as outras: enquanto a mesa escreve, o chat fecha — senao
+    // o top de um vira cola para todo mundo.
+    if (this.ehMaria()) {
+      if (this.estado === 'categoria') {
+        this.publicarChat(jogador, limpo);
+        return { veredito: 'chat' };
+      }
+      return { erro: 'Agora e escrever o seu top 5. O chat volta no resultado.' };
+    }
+
     // Dando dicas tem duas bocas na rodada, e elas dizem coisas diferentes:
     // uma manda palavras soltas, a outra chuta a palavra secreta. Resolve tudo
     // ali, antes da conta de itens que os outros modos fazem.
@@ -3989,7 +4327,7 @@ class Sala {
   ninguemMaisPontua() {
     if (this.jogam.size === 0) return false;
     // Eu te conheço: quem fecha a rodada sao as confirmacoes, nao os acertos.
-    if (this.ehEuTeConheco()) return false;
+    if (this.ehEuTeConheco() || this.ehMaria()) return false;
     // Pergunta secreta: quem fecha e a roda — um acerto, ou a palavras acabando.
     if (this.ehSecreta()) return false;
     // Corrida musical: o primeiro acerto leva a rodada inteira.
@@ -4010,7 +4348,7 @@ class Sala {
    */
   usaChances() {
     return !this.ehCarrossel() && !this.ehLeilao() && !this.ehRanking() && !this.ehVeni()
-      && !this.ehQualMusica() && !this.ehEuTeConheco() && !this.ehSecreta();
+      && !this.ehQualMusica() && !this.ehEuTeConheco() && !this.ehSecreta() && !this.ehMaria();
   }
 
   /**
@@ -4424,6 +4762,8 @@ class Sala {
         ? { texto: this.textoRankingEu(this.eu.ordemDele), lista: [], parcial: false }
         : { texto: `${this.eu.nickname} ainda nao tinha rankeado`, lista: [], parcial: false };
     }
+    // Maria vai com as outras nao tem resposta: era so a pergunta.
+    if (this.ehMaria()) return { texto: pergunta.pergunta, lista: [], parcial: false };
     if (pergunta.necessarias === 1 && pergunta.resposta) {
       return { texto: pergunta.resposta, lista: [], parcial: false };
     }
@@ -4469,6 +4809,7 @@ class Sala {
   encerrarRodada() {
     if (this.estado !== 'pergunta') return;
     if (this.ehEuTeConheco()) return this.encerrarEu();
+    if (this.ehMaria()) return this.encerrarMaria();
     this.limparTemporizador();
 
     if (this.ehDandoDicas()) this.pagarDicas();
@@ -5099,5 +5440,6 @@ module.exports = {
   FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
   gerarCodigo, calcularPontos, pontosQualMusica, QUAL_ESCALA_META, indicePerguntas, categoriasEmJogo, perguntasEscolhidas,
   sortearInicio, montarOpcoes, tipoMusical, idDaPergunta, configDaBagunca,
-  faixaDe, naFaixa, tituloDaFaixa, MS_VEZ_SECRETA, MIN_PALAVRAS_SECRETA
+  faixaDe, naFaixa, tituloDaFaixa, MS_VEZ_SECRETA, MIN_PALAVRAS_SECRETA,
+  pontuarMaria, ITENS_MARIA, MS_MARIA
 };

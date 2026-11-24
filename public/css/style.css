@@ -1608,6 +1608,138 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   .eu__carta { transition: none; }
 }
 
+/* ---------------------- Maria vai com as outras ---------------------- */
+
+/* Cinco linhas numeradas, o 1o lugar em dourado. No resultado as mesmas
+   linhas viram o top da mesa, com os votos de cada coisa. */
+.maria { margin: 0 0 20px; }
+.maria__vez {
+  margin: 0 0 12px;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--texto-suave);
+}
+.maria__vez b { color: var(--texto); }
+.maria__lista {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.maria__linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 4px 6px 4px 12px;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-peq);
+  transition: border-color var(--transicao), background var(--transicao);
+}
+.maria__linha:focus-within {
+  border-color: var(--primaria-2);
+  background: var(--superficie-2);
+}
+.maria__lugar {
+  flex: none;
+  width: 30px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--texto);
+}
+.maria__linha:first-child .maria__lugar { color: var(--destaque); }
+.maria__campo {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 6px;
+  font-size: 16px;   /* 16px: o iPhone nao da zoom ao focar */
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+.maria__campo::placeholder { color: var(--texto-fraco); }
+.maria__lista--travada .maria__linha { opacity: 0.7; }
+.maria__lista--travada .maria__campo { cursor: default; }
+.maria__texto {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.maria__votos {
+  flex: none;
+  padding: 2px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--destaque);
+  background: rgba(251, 191, 36, 0.12);
+  border-radius: 999px;
+}
+.maria__lista--resultado .maria__linha { min-height: 40px; padding-right: 10px; }
+.maria__confirmar { display: block; width: 100%; margin-top: 14px; }
+.maria__mesa {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--borda);
+}
+
+/* Uma coisa do top no resultado: apagada se ninguem mais escreveu, verde se
+   alguem escreveu igual, dourada se foi no mesmo lugar. O "×2" e com quantos. */
+.maria__fichas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.maria__ficha {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 14px;
+  color: var(--texto-suave);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+}
+.maria__ficha b { font-size: 12px; }
+.maria__ficha--vazia { color: var(--texto-fraco); }
+.maria__ficha--igual {
+  color: var(--texto);
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.5);
+}
+.maria__ficha--igual b { color: var(--certo); }
+.maria__ficha--lugar {
+  color: var(--texto);
+  background: rgba(251, 191, 36, 0.14);
+  border-color: rgba(251, 191, 36, 0.6);
+}
+.maria__ficha--lugar b { color: var(--destaque); }
+.maria__legenda {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--texto-fraco);
+}
+.maria__legenda i {
+  width: 10px;
+  height: 10px;
+  margin-left: 4px;
+  border: 1px solid;
+  border-radius: 50%;
+}
+.maria__fichas--mini {
+  flex-basis: 100%;
+  margin-top: 6px;
+  gap: 4px;
+}
+.maria__fichas--mini .maria__ficha { padding: 2px 8px; font-size: 12px; }
+
 /* Configuracao: o numero de musicas fica numa linha abaixo de "por pontos / por musicas". */
 .meta__opcoes--abaixo { margin-top: 10px; }
 
