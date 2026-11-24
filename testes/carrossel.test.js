@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * Modo Carrossel: a vez passa de um em um, 7s para cada, e quem nao souber sai
+ * Modo Carrossel: a vez passa de um em um, 9s para cada, e quem nao souber sai
  * da rodada. A roda gira ate sobrar um, e a colocacao paga a rodada.
  */
 
@@ -195,6 +195,18 @@ function responderCerto(sala) {
 
   conferir('quem saiu nao esta mais vivo', sala.vivos.has(quem), false);
   conferir('  e o carrossel seguiu para outra pessoa', daVez(sala) !== quem, true);
+  sala.destruir();
+}
+
+/* ---------- A primeira vez da rodada tem 3s a mais ---------- */
+{
+  const { sala, eventos } = novaSala(3);
+  const vezes = () => eventos.filter((e) => e.evento === 'carrossel:vez').map((e) => e.dados.msPorVez);
+  conferir('a primeira vez da rodada tem 12s', vezes(), [12000]);
+  responderCerto(sala);
+  sala.iniciarVez();
+  sala.limparTemporizador();
+  conferir('  e as seguintes, 9s', vezes(), [12000, 9000]);
   sala.destruir();
 }
 

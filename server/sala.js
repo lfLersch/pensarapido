@@ -69,10 +69,13 @@ const JANELA_DIFICULDADE = 0.25;
 const JANELA_DIFICULDADE_MIN = 8;
 
 // Carrossel: a vez passa de jogador em jogador e quem não souber sai da
-// rodada. Cada pessoa tem 7s, e as voltas não têm fim: a rodada só acaba
+// rodada. Cada pessoa tem 9s, e as voltas não têm fim: a rodada só acaba
 // quando sobra uma pessoa (ou quando a lista acaba). A colocação é a ordem
 // de saída ao contrário — quem sobra é o 1o.
-const MS_POR_VEZ = 7000;
+const MS_POR_VEZ = 9000;
+// A primeira vez da rodada ganha 3s a mais: essa pessoa ainda esta lendo a
+// pergunta, enquanto as seguintes ja leram durante as vezes dos outros.
+const MS_EXTRA_PRIMEIRA_VEZ = 3000;
 // Lista grande para a roda girar bastante antes de acabar as respostas.
 const MIN_ITENS_CARROSSEL = 20;
 const MS_ENTRE_VEZES = 900;  // respiro para a tela mostrar quem saiu
@@ -310,14 +313,14 @@ const MODOS = [
     id: 'carrossel',
     nome: 'Carrossel visivel',
     icone: '🎠',
-    descricao: 'A vez passa de um em um, 7s para cada. Quem nao souber sai da rodada, e a roda gira ate sobrar um. O que ja foi respondido fica na tela. Quem sobra leva 10, o ultimo a sair 9, e assim por diante.',
+    descricao: 'A vez passa de um em um, 9s para cada. Quem nao souber sai da rodada, e a roda gira ate sobrar um. O que ja foi respondido fica na tela. Quem sobra leva 10, o ultimo a sair 9, e assim por diante.',
     disponivel: true
   },
   {
     id: 'carrossel-cego',
     nome: 'Carrossel as cegas',
     icone: '🙈',
-    descricao: 'O mesmo carrossel, mas sem a lista do que ja foi dito. Errar nao elimina: da para tentar de novo dentro dos 7s. Quem repetir uma resposta que ja saiu esta fora. Gira ate sobrar um: quem sobra leva 10, o ultimo a sair 9, e assim por diante.',
+    descricao: 'O mesmo carrossel, mas sem a lista do que ja foi dito. Errar nao elimina: da para tentar de novo dentro dos 9s. Quem repetir uma resposta que ja saiu esta fora. Gira ate sobrar um: quem sobra leva 10, o ultimo a sair 9, e assim por diante.',
     disponivel: true
   },
   {
@@ -387,22 +390,19 @@ const MODOS = [
     icone: '🫶',
     descricao: 'Um de cada vez recebe 5 coisas — comidas, lugares, programas, manias — e arrasta para rankear do 1o (o que mais gosta) ao 5o, enquanto os outros esperam. Depois e a vez dos outros: rankear igual a ele. Cada coisa no lugar certo vale 2 pontos (ate 10), e quem rankeou leva a media do que a mesa fez. A vez gira ate todo mundo ter rankeado.',
     disponivel: true,
-    // Nao usa as perguntas do banco: as coisas vem de coisas.js.
-    semCategorias: true,
-    // Uma rodada solta no meio do sorteio nao da tempo de ninguem conhecer ninguem.
-    foraDaBagunca: true
+    // Nao usa as perguntas do banco: as coisas vem de coisas.js. Na Bagunca
+    // entra na roleta com 2 ou mais na sala.
+    semCategorias: true
   },
   {
     id: 'maria',
     nome: 'Maria vai com as outras',
     icone: '🐑',
-    descricao: 'Sai uma pergunta de top 5 — bandas, animais mais fofos, paises para viajar — e cada um tem 1 minuto para escrever o seu, do 1o ao 5o. Ponto e para quem pensa igual a mesa: cada coisa que outra pessoa tambem escreveu vale 1, e se estiver no mesmo lugar vale 2. A conta e feita com cada pessoa da sala e soma. A escrita nao precisa ser perfeita: 80% de precisao ja vale.',
+    descricao: 'Sai uma pergunta de top 5 — bandas, animais mais fofos, paises para viajar — e cada um tem 1 minuto para escrever o seu, do 1o ao 5o. Ponto e para quem pensa igual a mesa: cada coisa que outra pessoa tambem escreveu vale 1, e se estiver no mesmo lugar vale 2. A conta e feita com cada pessoa da sala e soma. A escrita nao precisa ser perfeita: 80% de precisao ja vale. Na Bagunca, a rodada paga no maximo 10.',
     disponivel: true,
-    // As perguntas vem de tops.js, nao do banco.
-    semCategorias: true,
-    // Os pontos somam com cada pessoa da sala: numa rodada solta da Bagunca,
-    // passariam por cima do teto de 10 dos outros modos.
-    foraDaBagunca: true
+    // As perguntas vem de tops.js, nao do banco. Na Bagunca entra na roleta
+    // com 2 ou mais na sala, e a rodada paga no maximo 10, como as outras.
+    semCategorias: true
   },
   {
     id: 'senso-comum',
@@ -873,7 +873,7 @@ class Sala {
     this.sensosUsados = new Set();
 
     this.temporizador = null;
-    this.temporizadorVez = null; // o relógio dos 7s corre à parte do da rodada
+    this.temporizadorVez = null; // o relógio dos 9s corre à parte do da rodada
     // O que cada relogio vai fazer e quando: a pausa precisa saber quanto faltava.
     this.agendado = null;
     this.agendadoVez = null;
@@ -1032,7 +1032,7 @@ class Sala {
     }
 
     // Carrossel: quem fecha a aba no meio da própria vez trava o carrossel,
-    // porque o relógio dos 7s espera uma resposta que não vem mais.
+    // porque o relógio dos 9s espera uma resposta que não vem mais.
     if (this.ehCarrossel() && this.vivos.has(socketId)) {
       const eraAVez = this.ordem[this.vez] === socketId;
       this.vivos.delete(socketId);
@@ -2499,7 +2499,10 @@ class Sala {
     const conta = pontuarMaria(listas);
     // O top 3 de cada um vira dado do Senso Comum (a lista ja sem repetidas).
     senso.registrar(maria.pergunta, [...conta.porJogador.values()].map((d) => d.lista.slice(0, 3)));
-    for (const [id, { pontos }] of conta.porJogador) {
+    for (const [id, dele] of conta.porJogador) {
+      // Na Bagunca a rodada solta segue o teto de 10 dos outros modos: sem
+      // ele, uma rodada do Maria numa sala cheia decidiria a partida sozinha.
+      const pontos = this.ehBagunca() ? Math.min(dele.pontos, PONTOS_MAX_RODADA) : dele.pontos;
       if (!pontos) continue;
       const jogador = this.jogadores.get(id);
       jogador.pontos += pontos;
@@ -2971,6 +2974,7 @@ class Sala {
     this.ordem = ids.slice(giro).concat(ids.slice(0, giro));
     this.vivos = new Set(this.ordem);
     this.vez = 0;
+    this.primeiraVez = true;
     // Sem numero de voltas: gira ate sobrar um.
     this.voltasAlvo = null;
     this.voltasFeitas = 0;
@@ -3016,7 +3020,9 @@ class Sala {
       const modo = MODOS.find((m) => m.id === id);
       if (!modo) return false;
       if (modo.equipes) return gente >= MIN_JOGADORES_EQUIPES;
-      if (id === 'leilao-geral') return gente >= 2;
+      // Sozinho nao tem leilao, nem quem adivinhe o ranking de ninguem, nem
+      // com quem pensar igual.
+      if (id === 'leilao-geral' || id === 'eu-te-conheco' || id === 'maria') return gente >= 2;
       return true;
     });
   }
@@ -3130,13 +3136,25 @@ class Sala {
 
     // Eu te conheço sem ninguem para adivinhar nao tem rodada.
     if (this.ehEuTeConheco() && this.jogam.size < 2) {
-      this.avisar('Nao sobraram dois jogadores: alguem rankeia e alguem adivinha. Fim de jogo.', true);
-      return this.terminar();
+      // Na Bagunca a sala encolheu entre o sorteio e a rodada: segue o Modo Tempo.
+      if (this.ehBagunca()) {
+        this.avisar('A sala encolheu e o Eu te conheço nao cabe mais. Segue o Modo Tempo.', true);
+        this.modoAtual = 'tempo';
+      } else {
+        this.avisar('Nao sobraram dois jogadores: alguem rankeia e alguem adivinha. Fim de jogo.', true);
+        return this.terminar();
+      }
     }
     // Maria vai com as outras sozinho nao tem com quem pensar igual.
     if (this.ehMaria() && this.jogam.size < 2) {
-      this.avisar('Nao sobraram dois jogadores: o ponto e pensar igual a alguem. Fim de jogo.', true);
-      return this.terminar();
+      // Na Bagunca a sala encolheu entre o sorteio e a rodada: segue o Modo Tempo.
+      if (this.ehBagunca()) {
+        this.avisar('A sala encolheu e o Maria vai com as outras nao cabe mais. Segue o Modo Tempo.', true);
+        this.modoAtual = 'tempo';
+      } else {
+        this.avisar('Nao sobraram dois jogadores: o ponto e pensar igual a alguem. Fim de jogo.', true);
+        return this.terminar();
+      }
     }
 
     // Quem chegou com a rodada no ar ficou de fora dela; entre uma rodada e
@@ -3811,18 +3829,20 @@ class Sala {
     return this.modo === 'carrossel';
   }
 
-  /** Abre a vez de quem está na posição atual e liga o relógio dos 7s. */
+  /** Abre a vez de quem está na posição atual e liga o relógio dos 9s. */
   iniciarVez() {
     if (this.estado !== 'pergunta') return;
 
     const jogadorId = this.ordem[this.vez];
     this.inicioVez = Date.now();
+    const msVez = MS_POR_VEZ + (this.primeiraVez ? MS_EXTRA_PRIMEIRA_VEZ : 0);
+    this.primeiraVez = false;
 
     this.emitir('carrossel:vez', {
       jogadorId,
       volta: this.voltasFeitas + 1,
       voltas: this.voltasAlvo,
-      msPorVez: MS_POR_VEZ,
+      msPorVez: msVez,
       vivos: [...this.vivos],
       ordem: this.ordem,
       // O que já foi dito vai junto: sem essa lista à vista ninguém sabe o
@@ -3835,7 +3855,7 @@ class Sala {
     this.agendarVez(() => {
       // O tempo dessa pessoa acabou sem resposta.
       this.eliminar(jogadorId, 'tempo');
-    }, MS_POR_VEZ);
+    }, msVez);
   }
 
   /**
@@ -4224,7 +4244,7 @@ class Sala {
     if (repetido >= 0) novoItem = -1;
 
     // Carrossel: a vez se resolve aqui. Acertou, passa adiante. "Quase" é só
-    // um aviso, e sobra tempo dos 7s para tentar de novo.
+    // um aviso, e sobra tempo dos 9s para tentar de novo.
     if (this.ehCarrossel() && this.estado === 'pergunta') {
       if (novoItem >= 0) return this.acertoNoCarrossel(socketId, jogador, novoItem);
       if (perto) return { veredito: 'quase', dica: mascaraDeAcerto(limpo, quaseAlvo) };

@@ -47,7 +47,7 @@ const ultimo = (eventos, nome) => [...eventos].reverse().find((e) => e.evento ==
   const modo = MODOS.find((m) => m.id === 'eu-te-conheco');
   conferir('o modo existe e esta disponivel', Boolean(modo && modo.disponivel), true);
   conferir('nao usa categorias', Boolean(modo.semCategorias), true);
-  conferir('fica fora da roleta da Bagunca', MODOS_SORTEAVEIS.includes('eu-te-conheco'), false);
+  conferir('entra na roleta da Bagunca', MODOS_SORTEAVEIS.includes('eu-te-conheco'), true);
   conferir('tem coisa para muitas rodadas', COISAS.length >= 100, true);
   const chaves = COISAS.map(normalizar);
   conferir('nenhuma coisa repetida', chaves.length - new Set(chaves).size, 0);
@@ -183,6 +183,59 @@ const ultimo = (eventos, nome) => [...eventos].reverse().find((e) => e.evento ==
   const itens = sala.eu.itens;
   conferir('rodada pulada mostra o ranking de quem rankeou',
     ultimo(eventos, 'rodada:resultado').dados.resposta.startsWith(`1º ${itens[3]}`), true);
+}
+
+/* ---------------- Na Bagunca ---------------- */
+
+/** Uma Bagunca que so sorteia o Eu te conheço, com o relogio na mao do teste. */
+function bagunca(quantos, perguntasAteSorteio = 0) {
+  const eventos = [];
+  const sala = new Sala('BAGU',
+    { modo: 'bagunca', categorias: ['geografia'], subs: [], fora: [], metaPontos: 9999,
+      segundosPorPergunta: 20, perguntasAteSorteio, modosBagunca: ['eu-te-conheco'] },
+    (evento, dados) => eventos.push({ evento, dados }));
+  sala.agendado = null;
+  sala.agendar = (fn, ms) => { sala.agendado = { fn, ms }; };
+  sala.limparTemporizador = () => { sala.agendado = null; };
+  ['ana', 'bia', 'caio'].slice(0, quantos).forEach((id) => sala.entrar(id, id));
+  sala.iniciar();
+  return { sala, eventos };
+}
+
+{
+  const { sala, eventos } = bagunca(3, 1);
+  conferir('a Bagunca abre com o Modo Tempo', sala.modo, 'tempo');
+  sala.pularRodada();
+  sala.agendado.fn();                      // fim do resultado: vem o sorteio
+  conferir('  e o sorteio tira o Eu te conheço', [sala.estado, sala.modo], ['sorteio', 'eu-te-conheco']);
+  sala.agendado.fn();                      // fim da roleta: a rodada abre
+  sala.agendado.fn();                      // fim da tela da categoria
+  const pergunta = ultimo(eventos, 'rodada:pergunta').dados;
+  conferir('  com as cartas na tela', Boolean(pergunta.eu && pergunta.eu.itens.length === 5), true);
+
+  sala.ordenarEu(pergunta.eu.escolhe, [0, 1, 2, 3, 4], true);
+  const outros = [...sala.jogam.keys()].filter((id) => id !== pergunta.eu.escolhe);
+  for (const id of outros) sala.ordenarEu(id, [0, 1, 2, 3, 4], true);
+  sala.agendado.fn();                      // todos confirmaram: fecha
+  const res = ultimo(eventos, 'rodada:resultado').dados;
+  conferir('  e paga como sempre: 5 no lugar, 10 pontos', res.detalhes.filter((d) => d.ganhou === 10).length, 3);
+  sala.agendado.fn();                      // fim do resultado: volta o Modo Tempo
+  conferir('  depois volta o Modo Tempo', sala.modo, 'tempo');
+}
+{
+  const { sala } = bagunca(1, 0);
+  conferir('sozinho na sala ele nao entra na roleta', sala.modosQueCabem().includes('eu-te-conheco'), false);
+  conferir('  e segue o Modo Tempo', sala.modo, 'tempo');
+}
+{
+  // A sala encolheu entre o sorteio e a rodada.
+  const { sala } = bagunca(2, 1);
+  sala.pularRodada();
+  sala.agendado.fn();
+  conferir('com dois, sai o Eu te conheço', [sala.estado, sala.modo], ['sorteio', 'eu-te-conheco']);
+  sala.sair('bia');
+  sala.agendado.fn();
+  conferir('  saiu alguem antes da rodada: segue o Modo Tempo, sem acabar o jogo', [sala.estado, sala.modo], ['categoria', 'tempo']);
 }
 
 console.log(falhas ? `\n${falhas} falha(s).` : '\nTudo certo.');

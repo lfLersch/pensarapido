@@ -266,7 +266,7 @@ pergunta foi enviada — o cronômetro da tela é só visual.
 **Nenhuma rodada paga mais que 10 pontos a uma pessoa**, em modo nenhum — as
 exceções são a [Pergunta secreta](#pergunta-secreta), onde acertar cedo
 vale mais de 10 de propósito, e o [Maria vai com as outras](#maria-vai-com-as-outras),
-que soma o que a pessoa fez com cada um da sala. Os
+que soma o que a pessoa fez com cada um da sala (na Bagunça ele volta ao teto). Os
 modos com relógio (Modo Tempo, Corrida, Qual é a música, 1 é bom 2 ok 3 é
 demais) já cabiam nisso. Os outros pagam assim:
 
@@ -768,9 +768,11 @@ apagadas. Quando ele confirma, é a vez dos outros: **rankear igual a ele**.
 - Precisa de **2 jogadores** ou mais. Quem rankeia e sai antes de confirmar
   derruba a rodada; quem adivinha e sai só deixa de ser esperado.
 - O chat é só conversa. Não usa categorias, tempo por pergunta nem proporção de
-  imagens, a rodada **não alimenta a dificuldade nem o perfil**, e o modo
-  **fica fora da roleta da Bagunça** (uma rodada solta não dá tempo de ninguém
-  conhecer ninguém). `testes/eu-te-conheco.test.js` cobre o modo.
+  imagens e a rodada **não alimenta a dificuldade nem o perfil**.
+- **Na Bagunça** entra na roleta quando a sala tem **2 ou mais**. A vez de
+  rankear continua girando entre um sorteio e outro: cada vez que ele sai, é a
+  vez do próximo. Se a sala encolher para 1 entre o sorteio e a rodada, segue o
+  Modo Tempo. `testes/eu-te-conheco.test.js` cobre o modo.
 
 ### Maria vai com as outras
 
@@ -804,8 +806,12 @@ quem pensa igual à mesa:
 - Precisa de **2 jogadores** ou mais. Quem entra no meio da rodada escreve na
   próxima. As perguntas (117, em [`server/tops.js`](server/tops.js)) não se
   repetem na partida. Não usa categorias, **não alimenta a dificuldade nem o
-  perfil**, e **fica fora da roleta da Bagunça** (os pontos somados passariam
-  por cima do teto dos outros modos). `testes/maria.test.js` cobre o modo.
+  perfil**. `testes/maria.test.js` cobre o modo.
+- **Entra na roleta da Bagunça** com 2 ou mais na sala. Lá a rodada solta
+  **paga no máximo 10**, como os outros modos: sem o teto, uma rodada numa sala
+  cheia (30 pontos para quem pensou igual a três pessoas) decidiria a partida
+  sozinha. Se a sala encolhe para uma pessoa entre o sorteio e a rodada, segue
+  o Modo Tempo.
 - **Cada rodada grava o top 3 de cada um** (já sem repetidas) para o
   [Senso Comum](#senso-comum).
 
@@ -871,7 +877,8 @@ O líder ajusta quatro coisas na configuração:
 - **os modos em equipe** (Presente Grego e Dando dicas) só entram **com 4 ou
   mais na sala** — duas equipes de dois. Com menos gente a sala de espera
   avisa quais ficam de fora, mas a partida começa assim mesmo;
-- o **Leilão Geral** precisa de duas pessoas, como sempre;
+- o **Leilão Geral** precisa de duas pessoas, como sempre, e o **Maria vai com
+  as outras** também: sozinho não há com quem pensar igual;
 - **o último modo sorteado espera a vez**: o mesmo modo não sai duas vezes
   seguidas, a não ser que seja o único marcado;
 - se nada do que foi marcado cabe na sala, a rodada segue no Modo Tempo e o
@@ -978,7 +985,7 @@ jeito de ver: o acerto vai para o chat sem o nome do item, e o palpite repetido
 não é publicado. Antes o nome aparecia no chat e a lista "já foi dito" piscava
 embaixo por um instante, o que acabava com o modo.
 
-As regras também mudaram: **errar não elimina**, só gasta os 7 segundos — dá
+As regras também mudaram: **errar não elimina**, só gasta os 9 segundos — dá
 para tentar de novo. O que tira da rodada é **repetir** uma resposta que já
 saiu, que é justamente o que o modo pede para lembrar. A dica do "quase" nunca
 aponta para um item já dito. O carrossel visível continua como era: errou,

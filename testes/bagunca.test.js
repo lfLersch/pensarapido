@@ -68,7 +68,7 @@ function ritmo(sala, n) {
   conferir('a roleta nao sorteia a propria Bagunca', MODOS_SORTEAVEIS.includes('bagunca'), false);
   conferir('  nem o Modo Tempo, que ja e o recheio', MODOS_SORTEAVEIS.includes('tempo'), false);
   conferir('  nem modo que ainda nao existe', MODOS_SORTEAVEIS.includes('equipes'), false);
-  conferir('  nem o que pediu para ficar fora dela', MODOS_SORTEAVEIS.includes('eu-te-conheco'), false);
+  conferir('  e sorteia o Eu te conheço', MODOS_SORTEAVEIS.includes('eu-te-conheco'), true);
   conferir('  e sorteia todos os outros',
     MODOS_SORTEAVEIS.length, MODOS.filter((m) => m.disponivel && !m.foraDaBagunca).length - 2);
 }
