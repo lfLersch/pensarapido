@@ -107,7 +107,7 @@ e que a versão do topo seja a do jogo.
 | Ajuste | Opções |
 | --- | --- |
 | Categorias | Bandeiras, Geografia, Matemática, Esportes (com a parte **Fórmula 1**), **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
-| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical**, **Qual é a música** ou **Bagunça**, todos num só (Equipes aparece como *em breve*) |
+| Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **Pergunta secreta**, **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical**, **Qual é a música** ou **Bagunça**, todos num só (Equipes aparece como *em breve*) |
 | Dificuldade das perguntas | só no Modo Tempo: uma faixa de **0 a 100** (padrão, *Normal*), que dá o título da sala — ver [Faixa de dificuldade](#faixa-de-dificuldade-modo-tempo) |
 | Bagunça | só nela: quantas perguntas do Modo Tempo até cada sorteio (0 a 6, **3** de padrão) , quais modos entram no sorteio (**todos** de padrão) e quanto tempo a regra do modo sorteado fica na tela (6 / 10 / 15 / 20 / 30 s, **6 s** de padrão) e se o jogo pausa na primeira vez de cada modo (**não** de padrão) |
 | Pontuação para vencer | 60 / 90 / 120 / 150 / 200 pts, ou um valor livre entre 20 e 500 |
@@ -263,7 +263,9 @@ pergunta foi enviada — o cronômetro da tela é só visual.
 
 ### Teto de 10 pontos por rodada
 
-**Nenhuma rodada paga mais que 10 pontos a uma pessoa**, em modo nenhum. Os
+**Nenhuma rodada paga mais que 10 pontos a uma pessoa**, em modo nenhum — a
+única exceção é a [Pergunta secreta](#pergunta-secreta), onde acertar cedo
+vale mais de 10 de propósito. Os
 modos com relógio (Modo Tempo, Corrida, Qual é a música, 1 é bom 2 ok 3 é
 demais) já cabiam nisso. Os outros pagam assim:
 
@@ -737,6 +739,38 @@ partida e a rodada **não alimenta a dificuldade adaptativa**: na corrida só um
 pessoa chega a acertar, e com quatro opções um em cada quatro acerta no chute.
 `testes/musicas.test.js` cobre os dois.
 
+### Eu te conheço
+
+Não tem pergunta: um jogador recebe **5 coisas** — comidas, lugares, programas,
+manias, objetos (*hambúrguer, banho gelado, praia, viagem da escola, andar de
+mãos dadas*) — e **arrasta as cartas** para rankear, do 1º (o que mais gosta) ao
+5º (o que menos gosta). Enquanto isso os outros esperam, vendo as cartas
+apagadas. Quando ele confirma, é a vez dos outros: **rankear igual a ele**.
+
+- **As cartas ficam lado a lado**, com o lugar (1º a 5º) em cima de cada uma.
+  **Cada coisa tem a sua cor**, que anda junto com a carta: no resultado dá para
+  bater o olho e ver onde cada uma foi parar.
+- **Arrastar** é o jeito principal; **tocar numa carta e depois noutra** troca as
+  duas de lugar (mais fácil no celular, com o dedo cobrindo a carta). Nas cartas
+  estreitas do celular a letra diminui até a palavra caber, em vez de quebrá-la.
+- **Cada coisa no lugar certo vale 2** — acertar as 5 dá os 10 de sempre. Quem
+  rankeou leva **a média** do que a mesa fez: ser fácil de adivinhar também é
+  mérito.
+- **O relógio**: 60 s para quem rankeia, 45 s para os outros. Quem não confirma
+  a tempo vale **como as cartas ficaram na tela** (cada mexida já vai para o
+  servidor). Quem nem mexeu leva zero. Todo mundo confirmou, a rodada fecha.
+- Quem adivinha **começa de uma ordem diferente** da de quem rankeou — senão
+  confirmar sem mexer acertaria tudo.
+- **A vez gira** por ordem de chegada e só recomeça quando todo mundo já
+  rankeou. As coisas (175, em [`server/coisas.js`](server/coisas.js)) não se
+  repetem na partida.
+- Precisa de **2 jogadores** ou mais. Quem rankeia e sai antes de confirmar
+  derruba a rodada; quem adivinha e sai só deixa de ser esperado.
+- O chat é só conversa. Não usa categorias, tempo por pergunta nem proporção de
+  imagens, a rodada **não alimenta a dificuldade nem o perfil**, e o modo
+  **fica fora da roleta da Bagunça** (uma rodada solta não dá tempo de ninguém
+  conhecer ninguém). `testes/eu-te-conheco.test.js` cobre o modo.
+
 ### Bagunça
 
 Todos os modos numa partida só. A sala joga **3 perguntas do Modo Tempo**, e aí
@@ -886,6 +920,37 @@ a lista acabar, e aí quem sobrou empata em 1º). Por isso a lista sorteada tem
 **20 itens ou mais**. A pontuação é a ordem de saída ao contrário — quem sobra
 leva 10, o último a sair 9 (ver [Teto de 10 pontos por
 rodada](#teto-de-10-pontos-por-rodada)).
+
+### Pergunta secreta
+
+A pergunta começa **toda escondida**: a tela mostra só uma ficha fechada para
+cada palavra. A vez passa de um em um, **8 segundos** para cada, e a cada vez
+**abre mais uma palavra**, da esquerda para a direita. O primeiro da roda joga
+com uma palavra à vista, o segundo com duas, e assim por diante.
+
+- **Um palpite por vez.** Acertou, leva **um ponto para cada palavra que ainda
+  estava escondida** e a rodada acaba. Errou (ou deixou o tempo passar), a vez
+  vai para o próximo, que ganha mais uma palavra. O palpite errado vai para o
+  chat: saber o que *não* é também é pista.
+- O "quase" só avisa, como no Carrossel: sobra relógio para corrigir.
+- Fora da vez ninguém escreve — senão a resposta sairia no chat de graça.
+- **A última palavra não abre**: com a pergunta inteira na tela a resposta
+  valeria zero. A vez que deixa uma palavra fechada vale 1; se ninguém acertar
+  ali, a rodada acaba e o resultado mostra a pergunta inteira (as palavras que
+  ninguém viu aparecem apagadas).
+- A cada rodada **o começo da roda anda um lugar**: abrir com uma palavra só é
+  azar, e ele precisa girar.
+- A categoria na tela é sempre *Pergunta secreta*: "Futebol" entregaria o
+  assunto antes da primeira palavra. Mas a sala só sorteia das categorias que o
+  líder marcou (se nenhuma delas tem pergunta secreta, vale o banco inteiro).
+
+As perguntas ficam em [`server/secretas.js`](server/secretas.js) — 130, todas
+com **pelo menos 13 palavras** — e são escritas ao contrário do normal: a
+pista forte vem primeiro e o assunto fica para o fim (*"Anjo das pernas tortas
+é o apelido de qual jogador de futebol brasileiro…"*). Quem sabe responde com
+duas palavras na tela e leva muito; quem precisa do assunto espera e leva
+pouco. `testes/secreta.test.js` cobra o mínimo de palavras, a falta de
+acentos e que a pergunta não traga a resposta escrita.
 
 ### Sobrenome basta
 
@@ -1319,6 +1384,7 @@ server/
   dificuldade.js dificuldade adaptativa e persistência das estatísticas
   questions.js   banco de perguntas por categoria
   musicas.js     duração e estilo de cada música de Ouvir músicas
+  coisas.js      as coisas que o Eu te conheço sorteia para rankear
   dados/         estatísticas acumuladas (criado sozinho)
 public/
   index.html     as cinco telas do jogo
@@ -1580,6 +1646,12 @@ Tchê Garotos) tem as suas próprias opções no Qual é a música.
   MB no total. A **taxa é fixa** de propósito: com taxa variável o navegador
   pula para um ponto aproximado do meio da música, e cada um ouviria um pedaço
   diferente.
+- **O trecho não abre com o nome da música.** Os primeiros 5 s nunca caem
+  onde o nome é cantado: o campo `nome` de cada música em
+  [`server/musicas.js`](server/musicas.js) guarda esses intervalos, achados
+  pelo `npm run nome-cantado` (transcreve com o whisper do ffmpeg e procura o
+  nome na letra; precisa do modelo `ggml-small.bin` em `WHISPER_MODELO`).
+  Música nova: rode de novo, ele só transcreve as que faltam.
 - **Quem sorteia o ponto é o servidor** (`sortearInicio`, em
   [`server/sala.js`](server/sala.js)), para a sala inteira ouvir o mesmo
   pedaço. O sorteio fica longe dos 15 s iniciais (silêncio, a plateia do ao

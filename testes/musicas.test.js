@@ -97,6 +97,25 @@ function abrir(sala) {
   conferir('o ponto fica entre 15s e o fim menos limite e folga', foraDaMargem, 0);
   conferir('  e varia de verdade', maior - menor > 60, true);
   conferir('musica desconhecida toca do comeco', sortearInicio('/audio/nada.mp3', 30000), 0);
+
+  // Onde o nome e cantado, os primeiros 5s do trecho ficam de fora.
+  const original = MUSICAS.yellow.nome;
+  MUSICAS.yellow.nome = [[40, 60], [100, 130]];
+  let comNome = 0;
+  for (let i = 0; i < 400; i++) {
+    const inicio = sortearInicio('/audio/musica-yellow.mp3', 30000);
+    if ((inicio > 35 && inicio < 60) || (inicio > 95 && inicio < 130)) comNome++;
+    if (inicio < 15 || inicio + 30 > MUSICAS.yellow.duracao - 10) comNome++;
+  }
+  conferir('o trecho nao abre com o nome cantado', comNome, 0);
+  MUSICAS.yellow.nome = [[0, MUSICAS.yellow.duracao]];
+  const tudo = sortearInicio('/audio/musica-yellow.mp3', 30000);
+  conferir('  nome na musica inteira: sorteia como sempre', tudo >= 15 && tudo + 30 <= MUSICAS.yellow.duracao - 10, true);
+  MUSICAS.yellow.nome = original;
+
+  const tortos = Object.entries(MUSICAS).filter(([, m]) => m.nome && !m.nome.every(([a, b], i) =>
+    a >= 0 && b > a && b <= m.duracao + 2 && (i === 0 || a > m.nome[i - 1][1]))).map(([n]) => n);
+  conferir('o nome cantado vem em intervalos em ordem, dentro da musica', tortos, []);
 }
 
 /* ---------------- 4. As opcoes do Qual e a musica ---------------- */

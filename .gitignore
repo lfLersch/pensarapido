@@ -23,3 +23,7 @@ imagens-para-baixar.txt
 
 # imagens baixadas esperando avaliacao: as aprovadas vao para public/img
 imagens-para-avaliar/
+
+# transcricoes do whisper (npm run nome-cantado): o que importa vai para
+# o campo nome de server/musicas.js
+transcricoes/

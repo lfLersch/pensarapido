@@ -228,9 +228,12 @@ function validarConfig(bruta) {
 
   // Os modos musicais só tocam música, venha o que vier marcado.
   const idsValidos = new Set(CATEGORIAS.map((c) => c.id));
+  // E os que nem usam pergunta (Eu te conheço) não levam categoria nenhuma.
   const categorias = modo.musical
     ? ['ouvir']
-    : Array.isArray(bruta.categorias)
+    : modo.semCategorias
+      ? []
+      : Array.isArray(bruta.categorias)
       ? [...new Set(bruta.categorias.filter((id) => idsValidos.has(id)))]
       : [];
   // Partes vêm como 'categoria:parte' e só valem as que existem de fato.
@@ -255,7 +258,7 @@ function validarConfig(bruta) {
   const escolha = { categorias, subs, fora };
   const comPerguntas = categoriasEmJogo(escolha)
     .filter((id) => perguntasEscolhidas(escolha, id).length > 0);
-  if (comPerguntas.length === 0) return { erro: 'Escolha pelo menos uma categoria.' };
+  if (comPerguntas.length === 0 && !modo.semCategorias) return { erro: 'Escolha pelo menos uma categoria.' };
   // Faixa estreita sobre uma parte pequena também pode não deixar nada.
   if (faixa && !comPerguntas.some((id) => naFaixa(id, perguntasEscolhidas(escolha, id), faixa).length > 0)) {
     return { erro: 'Nenhuma pergunta nessa faixa: marque mais categorias ou alargue a faixa.' };
@@ -407,6 +410,13 @@ io.on('connection', (socket) => {
     const sala = salaDoSocket();
     if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
     responder(callback, sala.escolherOpcao(socket.id, Number(indice)));
+  });
+
+  // Eu te conheço: a ordem das cartas. `final` confirma; sem ele e o rascunho.
+  socket.on('eu:ordem', ({ ordem, final } = {}, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+    responder(callback, sala.ordenarEu(socket.id, ordem, final === true));
   });
 
   // A imagem (ou a musica) da proxima pergunta terminou de carregar neste navegador. Nao

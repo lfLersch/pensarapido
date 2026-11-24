@@ -520,6 +520,20 @@
           <!-- Qual e a musica: as quatro opcoes, um clique por musica. -->
           <div class="opcoes" id="opcoes" hidden></div>
 
+          <!-- Eu te conheço: as cinco cartas, arrastadas para rankear. -->
+          <div class="eu" id="eu" hidden>
+            <p class="eu__vez" id="eu-vez"></p>
+            <div class="eu__fila" id="eu-fila"></div>
+            <p class="eu__legenda"><span>😍 mais gosta</span><span>menos gosta 😒</span></p>
+            <div class="eu__meu" id="eu-meu" hidden>
+              <p class="eu__vez eu__vez--meu" id="eu-meu-titulo">Seu ranking</p>
+              <div class="eu__fila" id="eu-meu-fila"></div>
+            </div>
+            <button class="btn btn--primario eu__confirmar" id="eu-confirmar" type="button" hidden>
+              Confirmar ranking
+            </button>
+          </div>
+
           <figure class="pergunta__figura" id="pergunta-figura" hidden>
             <img id="pergunta-imagem" alt="Imagem da pergunta" />
           </figure>

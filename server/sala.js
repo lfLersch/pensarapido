@@ -9,6 +9,8 @@ const dificuldade = require('./dificuldade');
 const usos = require('./usos');
 const perfis = require('./perfis');
 const { musicaDe } = require('./musicas');
+const { COISAS } = require('./coisas');
+const { SECRETAS } = require('./secretas');
 
 /* ---------------------------- Regras do jogo ---------------------------- */
 
@@ -72,6 +74,15 @@ const MS_POR_VEZ = 7000;
 // Lista grande para a roda girar bastante antes de acabar as respostas.
 const MIN_ITENS_CARROSSEL = 20;
 const MS_ENTRE_VEZES = 900;  // respiro para a tela mostrar quem saiu
+
+// Pergunta secreta: o enunciado comeca todo escondido e abre uma palavra por
+// vez, da esquerda para a direita, uma a cada vez de jogador. Quem acerta na
+// sua vez leva o numero de palavras que ainda estavam escondidas — por isso a
+// pergunta tem no minimo 13 palavras. A ultima palavra nao chega a abrir: com
+// a pergunta inteira na tela a resposta valeria zero.
+const MS_VEZ_SECRETA = 8000;
+const MIN_PALAVRAS_SECRETA = 13;
+const CATEGORIA_SECRETA = { id: 'pergunta-secreta', nome: 'Pergunta secreta', icone: '🤫', cor: '#8b5cf6' };
 
 // Presente Grego: joga-se em equipes. Um integrante ve a pergunta e leiloa
 // quantas respostas o PARCEIRO consegue dizer — e o parceiro so descobre a
@@ -149,12 +160,22 @@ const PONTOS_VENI = [10, 6, 3];  // quanto vale acertar em cada dica
 const DICAS_POR_RODADA = 3;
 const MS_FASE_VENI = 15000;      // cada dica abre uma janela de 15s para palpitar
 const MS_REVELA_VENI = 5000;     // quanto tempo os palpites ficam na tela
+
+/* Eu te conheço: um rankeia 5 coisas e os outros tentam rankear igual. Cada
+   coisa no lugar certo vale 2 — acertar as 5 da os 10 de sempre. */
+const ITENS_EU = 5;
+const PONTOS_POR_LUGAR_EU = 2;
+const MS_ESCOLHA_EU = 60000;     // quem rankeia tem 60s
+const MS_PALPITE_EU = 45000;     // ... e os outros, 45s para rankear igual
+const MS_RESULTADO_EU = 9000;    // da para comparar os rankings com calma
+const CATEGORIA_EU = { id: 'eu-te-conheco', nome: 'Eu te conheço', icone: '🫶', cor: '#ec4899' };
 /* Musica: o arquivo e a musica inteira, e a sala sorteia de que ponto ela
    toca. O sorteio fica longe do comeco (silencio, plateia do ao vivo) e do
    fim (o fade-out), e a musica para no limite que a sala escolheu. */
 const LIMITE_MUSICA_PADRAO = 30;   // segundos
 const MS_MARGEM_INICIO = 15000;
 const MS_MARGEM_FIM = 10000;
+const MS_SEM_NOME = 5000;          // o trecho nao abre com o nome da musica
 const OPCOES_QUAL_MUSICA = 4;      // Qual e a musica: a certa e tres erradas
 const TOTAL_MUSICAS_PADRAO = 15;   // partida que acaba pelo numero de musicas
 
@@ -274,6 +295,13 @@ const MODOS = [
     disponivel: true
   },
   {
+    id: 'pergunta-secreta',
+    nome: 'Pergunta secreta',
+    icone: '🤫',
+    descricao: 'A pergunta comeca toda escondida e a vez passa de um em um, 8s para cada. A cada vez abre mais uma palavra, da esquerda para a direita. Na sua vez, um palpite: acertou, leva um ponto para cada palavra que ainda estava escondida; errou ou deixou o tempo passar, a vez vai para o proximo e abre mais uma palavra.',
+    disponivel: true
+  },
+  {
     id: 'presente-grego',
     nome: 'Presente Grego',
     icone: '🎁',
@@ -328,6 +356,17 @@ const MODOS = [
     musical: true
   },
   {
+    id: 'eu-te-conheco',
+    nome: 'Eu te conheço',
+    icone: '🫶',
+    descricao: 'Um de cada vez recebe 5 coisas — comidas, lugares, programas, manias — e arrasta para rankear do 1o (o que mais gosta) ao 5o, enquanto os outros esperam. Depois e a vez dos outros: rankear igual a ele. Cada coisa no lugar certo vale 2 pontos (ate 10), e quem rankeou leva a media do que a mesa fez. A vez gira ate todo mundo ter rankeado.',
+    disponivel: true,
+    // Nao usa as perguntas do banco: as coisas vem de coisas.js.
+    semCategorias: true,
+    // Uma rodada solta no meio do sorteio nao da tempo de ninguem conhecer ninguem.
+    foraDaBagunca: true
+  },
+  {
     id: 'bagunca',
     nome: 'Bagunca',
     icone: '🎲',
@@ -349,7 +388,7 @@ const MODOS = [
  * mesma e o Modo Tempo, que ja e o recheio entre um sorteio e outro.
  */
 const MODOS_SORTEAVEIS = MODOS
-  .filter((m) => m.disponivel && !m.bagunca && m.id !== 'tempo')
+  .filter((m) => m.disponivel && !m.bagunca && !m.foraDaBagunca && m.id !== 'tempo')
   .map((m) => m.id);
 
 /**
@@ -471,16 +510,35 @@ function idDaPergunta(categoria, q) {
  * Longe do comeco (silencio, a plateia do ao vivo) e com folga no fim para o
  * limite caber antes do fade-out. Musica curta demais para a folga toca do
  * meio do que sobra.
+ *
+ * Os primeiros 5s do trecho nao caem onde o nome e cantado (o campo `nome`
+ * de musicas.js): "Yellow" que abre com "it was all yellow" nao e pergunta.
+ * Se o nome toma a musica inteira, o sorteio volta a ser o de sempre.
  */
 function sortearInicio(audio, limiteMs) {
   const musica = musicaDe(audio);
   if (!musica) return 0;
   const minimo = MS_MARGEM_INICIO;
   const maximo = musica.duracao * 1000 - limiteMs - MS_MARGEM_FIM;
-  const ms = maximo > minimo
-    ? minimo + Math.random() * (maximo - minimo)
-    : Math.max(0, (musica.duracao * 1000 - limiteMs) / 2);
-  return Math.round(ms / 100) / 10;
+  if (maximo <= minimo) return Math.round(Math.max(0, (musica.duracao * 1000 - limiteMs) / 2) / 100) / 10;
+
+  // O que sobra de [minimo, maximo] tirando, de cada nome cantado [a, b],
+  // os inicios que poriam o nome nos primeiros 5s: de a - 5s ate b.
+  let livres = [[minimo, maximo]];
+  for (const [a, b] of musica.nome || []) {
+    const de = a * 1000 - MS_SEM_NOME;
+    const ate = b * 1000;
+    livres = livres.flatMap(([x, y]) => [[x, Math.min(y, de)], [Math.max(x, ate), y]]).filter(([x, y]) => y > x);
+  }
+  if (!livres.length) livres = [[minimo, maximo]];
+
+  let sorte = Math.random() * livres.reduce((soma, [x, y]) => soma + y - x, 0);
+  for (const [x, y] of livres) {
+    if (sorte <= y - x) return Math.floor((x + sorte) / 100) / 10;
+    sorte -= y - x;
+  }
+  const [x] = livres[livres.length - 1];
+  return Math.floor(x / 100) / 10;
 }
 
 /** O que a pergunta de musica pede: o nome dela ou quem canta. Outras (anime, serie) nao entram. */
@@ -671,6 +729,17 @@ class Sala {
     this.dicaAtual = 0;
     this.palpitesVeni = new Map();
 
+    // Eu te conheço: a rodada no ar (quem rankeia, as coisas, os rankings) e,
+    // na partida, quem ja teve a vez e quais coisas ja sairam.
+    this.eu = null;
+    this.jaRankearam = new Set();   // nicknames normalizados
+    this.coisasUsadas = new Set();
+
+    // Pergunta secreta: a roda da rodada (quem joga, de quem e a vez, quantas
+    // palavras ja abriram) e as perguntas que ja sairam na partida.
+    this.secreta = null;
+    this.secretasUsadas = new Set();
+
     this.temporizador = null;
     this.temporizadorVez = null; // o relógio dos 7s corre à parte do da rodada
     // O que cada relogio vai fazer e quando: a pausa precisa saber quanto faltava.
@@ -838,6 +907,11 @@ class Sala {
       if (this.estado === 'pergunta' && eraAVez) this.avancarVez();
     }
 
+    // Pergunta secreta: quem sai na propria vez nao segura a roda.
+    if (this.ehSecreta() && this.secreta && this.secreta.daVez === socketId) {
+      this.passarVezSecreta(socketId, 'saiu');
+    }
+
     if (this.ehLeilao() && this.estado !== 'lobby') this.desfazerEquipe(socketId);
     this.tirarDasEquipes(socketId);
 
@@ -871,6 +945,17 @@ class Sala {
       this.travarSeTodosResponderam();
     }
 
+    // Eu te conheço: sem o ranking de quem rankeia nao ha o que adivinhar; e
+    // quem adivinhava e saiu nao segura mais a rodada.
+    if (this.ehEuTeConheco() && this.eu && this.estado === 'pergunta' && !this.vazia) {
+      if (this.eu.fase === 'escolha' && socketId === this.eu.escolhe) {
+        this.cancelarRodada(`${jogador.nickname} saiu antes de rankear`);
+      } else if (this.eu.adivinham.delete(socketId)) {
+        if (this.adivinhamEu().length === 0) this.cancelarRodada('nao sobrou ninguem para adivinhar');
+        else this.fecharSeTodosTravaramEu();
+      }
+    }
+
     // Saiu o ultimo: a sala para de rodar e fica esperando alguem voltar.
     if (this.vazia) this.congelar();
 
@@ -887,6 +972,9 @@ class Sala {
       const eraAVez = this.ordem[this.vez] === socketId;
       this.vivos.delete(socketId);
       if (this.estado === 'pergunta' && eraAVez) this.avancarVez();
+    }
+    if (this.ehSecreta() && this.secreta && this.secreta.daVez === socketId) {
+      this.passarVezSecreta(socketId, 'saiu');
     }
     this.palpitesVeni.delete(socketId);
   }
@@ -975,6 +1063,9 @@ class Sala {
     if (this.ehLeilaoGeral() && this.jogam.size < 2) {
       return { erro: 'O Leilao Geral precisa de pelo menos dois jogadores: alguem tem que cobrir o lance.' };
     }
+    if (this.ehEuTeConheco() && this.jogam.size < 2) {
+      return { erro: 'O Eu te conheço precisa de pelo menos dois jogadores: um rankeia e o outro adivinha.' };
+    }
 
     for (const jogador of this.jogadores.values()) {
       jogador.pontos = 0;
@@ -994,6 +1085,11 @@ class Sala {
     this.listasUsadas.clear();
     this.audiosUsados.clear();
     this.filasMusica = new Map();
+    this.eu = null;
+    this.jaRankearam.clear();
+    this.coisasUsadas.clear();
+    this.secreta = null;
+    this.secretasUsadas.clear();
     // desdeSorteio: perguntas do Modo Tempo desde o ultimo sorteio. vezes:
     // quantas vezes cada modo ja saiu (a Escalada e o Carrossel crescem com
     // isso). ultimo: o modo do sorteio anterior, que espera a vez.
@@ -1027,6 +1123,11 @@ class Sala {
 
   ehVeni() {
     return this.modo === 'veni';
+  }
+
+  /** Eu te conheço: um rankeia 5 coisas, os outros tentam rankear igual. */
+  ehEuTeConheco() {
+    return this.modo === 'eu-te-conheco';
   }
 
   /** Corrida musical: o primeiro que acerta leva, e a musica para ali. */
@@ -1808,6 +1909,300 @@ class Sala {
     else this.agendar(() => this.abrirFaseVeni(fase + 1), MS_REVELA_VENI);
   }
 
+  /* --------------------------- Eu te conheço --------------------------- */
+
+  /**
+   * Quem rankeia agora: a vez gira por ordem de chegada, e so volta ao
+   * primeiro quando todo mundo ja teve a sua. Vai pelo nickname, que
+   * sobrevive a cair e voltar.
+   */
+  proximoARankear() {
+    const todos = [...this.jogam.values()];
+    let falta = todos.filter((j) => !this.jaRankearam.has(normalizar(j.nickname)));
+    if (!falta.length) {
+      this.jaRankearam.clear();
+      falta = todos;
+    }
+    const quem = falta[0];
+    this.jaRankearam.add(normalizar(quem.nickname));
+    return quem;
+  }
+
+  /** Cinco coisas que ainda nao sairam na partida (acabou a lista, ela recomeca). */
+  sortearCoisas() {
+    let livres = COISAS.filter((c) => !this.coisasUsadas.has(c));
+    if (livres.length < ITENS_EU) {
+      this.coisasUsadas.clear();
+      livres = COISAS;
+    }
+    const itens = embaralhar(livres).slice(0, ITENS_EU);
+    for (const c of itens) this.coisasUsadas.add(c);
+    return itens;
+  }
+
+  /**
+   * A rodada do Eu te conheço. O ranking e sempre uma lista de indices de
+   * `itens`: `[2, 0, 4, 1, 3]` quer dizer que o item 2 esta em 1o lugar.
+   */
+  perguntaEu() {
+    const quem = this.proximoARankear();
+    const itens = this.sortearCoisas();
+    this.eu = {
+      escolhe: quem.id,
+      nickname: quem.nickname,
+      avatar: quem.avatar,
+      itens,
+      fase: 'escolha',
+      ordemDele: null,
+      // Como cada um deixou as cartas ate agora: se o tempo acabar sem
+      // confirmar, vale o que estava na tela.
+      rascunhos: new Map(),
+      travados: new Map(),
+      adivinham: new Set(),
+      // Quem adivinha comeca de outra ordem: se comecasse da mesma de quem
+      // rankeou, quem nao mexeu em nada acertaria tudo de graca.
+      inicioPalpite: null
+    };
+    return {
+      id: `eu-te-conheco:${itens.join('|')}`,
+      pergunta: `Como ${quem.nickname} rankeia estas coisas?`,
+      imagem: null,
+      audio: null,
+      letra: null,
+      resposta: null,
+      aceita: [],
+      itens: itens.map((oficial) => ({ oficial, variantes: [] })),
+      necessarias: ITENS_EU,
+      fixo: true,
+      categoria: CATEGORIA_EU,
+      difBase: 0,
+      dificuldade: 0
+    };
+  }
+
+  /** O que a mesa sabe da rodada: quem rankeia, as coisas e em que fase esta. */
+  publicoEu() {
+    const eu = this.eu;
+    return {
+      escolhe: eu.escolhe,
+      nickname: eu.nickname,
+      avatar: eu.avatar,
+      itens: eu.itens,
+      fase: eu.fase,
+      inicio: eu.fase === 'palpite' ? eu.inicioPalpite : eu.itens.map((_, i) => i),
+      pontosPorLugar: PONTOS_POR_LUGAR_EU,
+      duracaoMs: eu.fase === 'palpite' ? MS_PALPITE_EU : MS_ESCOLHA_EU
+    };
+  }
+
+  /** "1o Praia · 2o Pizza · ..." */
+  textoRankingEu(ordem) {
+    return ordem.map((item, k) => `${k + 1}º ${this.eu.itens[item]}`).join(' · ');
+  }
+
+  /** Quem ainda adivinha nesta rodada (e continua na sala, jogando). */
+  adivinhamEu() {
+    if (!this.eu) return [];
+    return [...this.eu.adivinham].filter((id) => this.jogam.has(id));
+  }
+
+  /**
+   * Alguem mexeu nas cartas. `final` e o "confirmar": trava o ranking.
+   * Sem `final` e so o rascunho, que vale se o tempo acabar antes.
+   */
+  ordenarEu(socketId, bruta, final) {
+    const jogador = this.jogadores.get(socketId);
+    if (!jogador) return { erro: 'Voce nao esta nesta sala.' };
+    if (!this.ehEuTeConheco()) return { erro: 'Esta sala nao joga o Eu te conheço.' };
+    if (this.ehTela(socketId)) return { erro: 'No jogo presencial o lider e a tela: ele nao joga.' };
+    if (this.pausa) return { erro: 'O jogo esta pausado.' };
+    if (this.estado !== 'pergunta' || !this.eu) return { erro: 'Nao ha ranking aberto agora.' };
+
+    const ordem = Array.isArray(bruta) ? bruta.map(Number) : null;
+    const valida = ordem && ordem.length === ITENS_EU
+      && [...ordem].sort((a, b) => a - b).every((v, i) => v === i);
+    if (!valida) return { erro: 'Esse ranking nao fecha: cada coisa num lugar.' };
+
+    const eu = this.eu;
+    if (eu.fase === 'escolha') {
+      if (socketId !== eu.escolhe) return { erro: `Agora e a vez de ${eu.nickname} rankear.` };
+      eu.rascunhos.set(socketId, ordem);
+      if (final) {
+        eu.ordemDele = ordem;
+        this.abrirPalpiteEu();
+      }
+      return { ok: true, travou: Boolean(final) };
+    }
+
+    if (socketId === eu.escolhe) return { erro: 'Voce ja rankeou: agora os outros tentam rankear igual.' };
+    if (!eu.adivinham.has(socketId)) return { erro: 'Voce entra na proxima rodada.' };
+    if (eu.travados.has(socketId)) return { erro: 'Voce ja confirmou o seu ranking.' };
+
+    eu.rascunhos.set(socketId, ordem);
+    if (final) {
+      eu.travados.set(socketId, ordem);
+      this.emitir('eu:travou', {
+        jogadorId: socketId,
+        quantos: eu.travados.size,
+        total: this.adivinhamEu().length
+      });
+      this.fecharSeTodosTravaramEu();
+    }
+    return { ok: true, travou: Boolean(final) };
+  }
+
+  /**
+   * Quem rankeia confirmou (ou o tempo dele acabou): agora os outros tentam
+   * rankear igual. Sem confirmar, vale como as cartas ficaram na tela dele.
+   */
+  abrirPalpiteEu() {
+    if (this.estado !== 'pergunta' || !this.eu || this.eu.fase !== 'escolha') return;
+    const eu = this.eu;
+    if (!eu.ordemDele) {
+      eu.ordemDele = eu.rascunhos.get(eu.escolhe) || eu.itens.map((_, i) => i);
+      this.avisar(`${eu.nickname} nao confirmou a tempo: vale o ranking como ficou.`);
+    }
+
+    eu.fase = 'palpite';
+    eu.rascunhos = new Map();
+    eu.adivinham = new Set([...this.jogam.keys()].filter((id) => id !== eu.escolhe));
+    if (!eu.adivinham.size) return this.cancelarRodada('nao sobrou ninguem para adivinhar');
+
+    // Uma ordem de partida diferente da resposta (com 5 coisas sempre da).
+    let inicio = embaralhar(eu.itens.map((_, i) => i));
+    while (inicio.every((v, k) => v === eu.ordemDele[k])) inicio = embaralhar(inicio);
+    eu.inicioPalpite = inicio;
+
+    this.inicioPergunta = Date.now();
+    this.duracaoPerguntaMs = MS_PALPITE_EU;
+    this.naRodada = new Set(eu.adivinham);
+
+    this.emitir('eu:palpite', { ...this.publicoEu(), adivinham: [...eu.adivinham], total: eu.adivinham.size });
+    this.agendar(() => this.encerrarRodada(), MS_PALPITE_EU);
+  }
+
+  /** Todo mundo que adivinha ja confirmou: nao ha por que esperar o relogio. */
+  fecharSeTodosTravaramEu() {
+    const eu = this.eu;
+    if (!eu || eu.fase !== 'palpite' || this.estado !== 'pergunta') return false;
+    const faltam = this.adivinhamEu().filter((id) => !eu.travados.has(id));
+    if (faltam.length) return false;
+    this.agendar(() => this.encerrarRodada(), MS_TODOS_TRAVARAM);
+    return true;
+  }
+
+  /**
+   * Fim da rodada: cada coisa no mesmo lugar que no ranking de quem rankeou
+   * vale 2. Quem nao confirmou leva o rascunho que deixou na tela; quem nem
+   * mexeu, zero. Quem rankeou leva a media do que a mesa fez — ser facil de
+   * adivinhar tambem e merito.
+   */
+  encerrarEu() {
+    this.limparTemporizador();
+    const eu = this.eu;
+    const certa = eu.ordemDele || eu.itens.map((_, i) => i);
+
+    const palpites = [];
+    for (const id of this.adivinhamEu()) {
+      const jogador = this.jogadores.get(id);
+      const ordem = eu.travados.get(id) || eu.rascunhos.get(id) || null;
+      const lugares = ordem ? ordem.filter((item, k) => item === certa[k]).length : 0;
+      const pontos = lugares * PONTOS_POR_LUGAR_EU;
+      if (pontos) {
+        jogador.pontos += pontos;
+        jogador.acertos += 1;
+        this.pontosRodada.set(id, pontos);
+      }
+      palpites.push({
+        jogadorId: id,
+        nickname: jogador.nickname,
+        avatar: jogador.avatar,
+        ordem,
+        lugares,
+        pontos,
+        confirmou: eu.travados.has(id)
+      });
+    }
+
+    const jogaram = palpites.filter((p) => p.ordem);
+    const media = jogaram.length
+      ? Math.round(jogaram.reduce((soma, p) => soma + p.pontos, 0) / jogaram.length)
+      : 0;
+    const dono = this.jogadores.get(eu.escolhe);
+    if (dono && media) {
+      dono.pontos += media;
+      dono.acertos += 1;
+      this.pontosRodada.set(eu.escolhe, media);
+    }
+    // A rodada nao entra no perfil (nao e pergunta de categoria nenhuma),
+    // mas a conta de acertos anotados segue em dia.
+    for (const j of this.jogam.values()) j.acertosAnotados = j.acertos;
+
+    this.estado = 'resultado';
+    const porId = new Map(palpites.map((p) => [p.jogadorId, p]));
+    const detalhes = [...this.jogam.values()].map((jogador) => {
+      const palpite = porId.get(jogador.id) || null;
+      const rankeou = jogador.id === eu.escolhe;
+      const ganhou = this.pontosRodada.get(jogador.id) || 0;
+      return {
+        jogadorId: jogador.id,
+        nickname: jogador.nickname,
+        avatar: jogador.avatar,
+        acertou: ganhou > 0,
+        posicao: null,
+        colocacao: false,
+        ganhou,
+        bonus: 0,
+        ms: null,
+        total: jogador.pontos,
+        itens: [],
+        necessarias: 1,
+        eliminado: false,
+        equipe: null,
+        papel: null,
+        eu: {
+          // parado: adivinhava, mas nem mexeu nas cartas.
+          papel: rankeou ? 'rankeou' : !palpite ? 'fora' : palpite.ordem ? 'adivinhou' : 'parado',
+          ordem: rankeou ? certa : (palpite ? palpite.ordem : null),
+          lugares: palpite ? palpite.lugares : null,
+          confirmou: palpite ? palpite.confirmou : null
+        }
+      };
+    });
+    // Quem rankeou primeiro, depois quem acertou mais.
+    const peso = (d) => ({ rankeou: -100, parado: 50, fora: 99 }[d.eu.papel] ?? -d.ganhou);
+    detalhes.sort((a, b) => peso(a) - peso(b));
+
+    const texto = this.textoRankingEu(certa);
+    this.avisar(`O ranking de ${eu.nickname}: ${texto}`, true);
+
+    this.emitir('rodada:resultado', {
+      rodada: this.rodada,
+      titulo: `O ranking de ${eu.nickname}`,
+      resposta: texto,
+      eu: {
+        escolhe: eu.escolhe,
+        nickname: eu.nickname,
+        avatar: eu.avatar,
+        itens: eu.itens,
+        ordem: certa,
+        media,
+        pontosPorLugar: PONTOS_POR_LUGAR_EU
+      },
+      listaCompleta: [],
+      listaParcial: false,
+      necessarias: 1,
+      aceita: [],
+      dificuldade: { valor: 0, nivel: 'sem conta', cor: '#6f6791' },
+      detalhes,
+      placar: this.placar(),
+      duracaoMs: MS_RESULTADO_EU,
+      acabou: this.acabouAPartida()
+    });
+
+    this.seguirOuTerminar(MS_RESULTADO_EU);
+  }
+
   /** Uma pergunta comum: uma resposta só. */
   perguntaSimples() {
     const bruta = this.ehBagunca() && this.ehMusical() ? this.sacarMusica() : this.sacarDaFila();
@@ -2157,13 +2552,21 @@ class Sala {
       }
     }
 
+    // Eu te conheço sem ninguem para adivinhar nao tem rodada.
+    if (this.ehEuTeConheco() && this.jogam.size < 2) {
+      this.avisar('Nao sobraram dois jogadores: alguem rankeia e alguem adivinha. Fim de jogo.', true);
+      return this.terminar();
+    }
+
     // Quem chegou com a rodada no ar ficou de fora dela; entre uma rodada e
     // outra da para encaixar sem trocar papel de ninguem no meio do caminho.
     for (const id of this.semEquipe()) this.encaixarNaEquipe(id);
 
     this.rodada += 1;
 
-    if (this.ehLeilao()) {
+    if (this.ehEuTeConheco()) {
+      this.perguntaAtual = this.perguntaEu();
+    } else if (this.ehLeilao()) {
       this.perguntaAtual = this.ehDandoDicas() ? this.perguntaDica() : this.perguntaPresente();
       this.prepararLeilao();
     } else if (this.ehRanking()) {
@@ -2183,6 +2586,9 @@ class Sala {
     } else if (this.ehCarrossel()) {
       this.perguntaAtual = this.perguntaCarrossel();
       this.prepararCarrossel();
+    } else if (this.ehSecreta()) {
+      this.perguntaAtual = this.perguntaSecreta();
+      this.prepararSecreta();
     } else if (this.modo === 'escalada') {
       // Na Bagunca a Escalada nao tem numero: 30s para lembrar o maximo que
       // der, e quem lembrou mais fica na frente.
@@ -2326,6 +2732,10 @@ class Sala {
     // 1 eh bom 2 ok 3 eh demais: o relogio que aparece e o da janela de palpite, nao o
     // da rodada inteira — sao tres janelas iguais, uma por dica.
     if (this.ehVeni()) return MS_FASE_VENI;
+    // Eu te conheço: o relogio da pergunta e o de quem rankeia primeiro.
+    if (this.ehEuTeConheco()) return MS_ESCOLHA_EU;
+    // Pergunta secreta: nao ha relogio de rodada, so o de cada vez.
+    if (this.ehSecreta()) return MS_VEZ_SECRETA;
     // Escalada da Bagunca: o relogio e fixo, a lista e que nao tem fim.
     if (this.perguntaAtual.livre) return MS_ESCALADA_LIVRE;
     // Nos modos musicais a rodada dura o que a musica toca. Nos outros modos
@@ -2351,7 +2761,9 @@ class Sala {
     this.emitir('rodada:pergunta', {
       rodada: this.rodada,
       categoria: this.perguntaAtual.categoria,
-      pergunta: this.perguntaAtual.pergunta,
+      // Pergunta secreta: o enunciado nao vai — as palavras saem uma por vez,
+      // em 'secreta:vez'.
+      pergunta: this.ehSecreta() ? '' : this.perguntaAtual.pergunta,
       imagem: this.perguntaAtual.imagem,
       audio: this.perguntaAtual.audio,
       // De que segundo a musica toca e por quanto tempo, no maximo.
@@ -2370,11 +2782,11 @@ class Sala {
       // No Dando dicas a mascara entregaria o tamanho da palavra que o
       // parceiro esta tentando arrancar a duras penas.
       // No Qual e a musica ela apontaria a opcao certa pelo tamanho.
-      mascara: !this.ehVeni() && !this.ehDandoDicas() && !this.ehQualMusica()
+      mascara: !this.ehVeni() && !this.ehDandoDicas() && !this.ehQualMusica() && !this.ehSecreta()
         && this.perguntaAtual.necessarias === 1 && this.perguntaAtual.resposta
         ? this.perguntaAtual.resposta.replace(/[\p{L}\p{N}]/gu, '•')
         : null,
-      duracaoMs: this.ehCarrossel() ? null : duracaoMs,
+      duracaoMs: this.ehCarrossel() || this.ehSecreta() ? null : duracaoMs,
       // Modo Tempo e Escalada: quantos palpites errados cada um pode dar.
       chances: this.usaChances() ? CHANCES_POR_PERGUNTA : null,
       // Mais ou Menos Pontos: a mesa precisa saber ate onde vai a lista.
@@ -2403,6 +2815,13 @@ class Sala {
       carrossel: this.ehCarrossel()
         ? { voltas: this.voltasAlvo, msPorVez: MS_POR_VEZ, ordem: this.ordem, visivel: this.mostraDitos() }
         : null,
+      // Pergunta secreta: quantas palavras tem e a ordem da roda. Nenhuma
+      // palavra vai aqui: a primeira abre junto com a primeira vez.
+      secreta: this.ehSecreta() && this.secreta
+        ? { total: this.perguntaAtual.palavras.length, ordem: this.secreta.ordem, msPorVez: MS_VEZ_SECRETA }
+        : null,
+      // Eu te conheço: quem rankeia e as coisas. O ranking dele so sai no resultado.
+      eu: this.ehEuTeConheco() && this.eu ? this.publicoEu() : null,
       // Presente Grego: agora a pergunta é pública, mas só uma pessoa responde
       // — e a mesa inteira sabe quanto ela prometeu entregar.
       presente: this.ehLeilao() && this.leilao
@@ -2422,7 +2841,9 @@ class Sala {
     // No Veni quem manda no relógio é a janela de palpite: ela é que decide
     // se entra outra dica ou se a rodada acabou.
     if (this.ehCarrossel()) this.iniciarVez();
+    else if (this.ehSecreta()) this.iniciarVezSecreta();
     else if (this.ehVeni()) this.abrirFaseVeni(0);
+    else if (this.ehEuTeConheco()) this.agendar(() => this.abrirPalpiteEu(), duracaoMs);
     else this.agendar(() => this.encerrarRodada(), duracaoMs);
   }
 
@@ -2880,6 +3301,181 @@ class Sala {
     this.agendar(() => this.encerrarRodada(), MS_ENTRE_VEZES);
   }
 
+  /* -------------------------- Pergunta secreta -------------------------- */
+
+  /** Pergunta secreta: a pergunta abre uma palavra por vez, um jogador por vez. */
+  ehSecreta() {
+    return this.modo === 'pergunta-secreta';
+  }
+
+  /**
+   * Uma pergunta do banco das secretas (secretas.js), das categorias que a
+   * sala marcou. Nao repete na partida enquanto houver outra; se nenhuma das
+   * categorias marcadas tem pergunta secreta, vale o banco inteiro.
+   */
+  perguntaSecreta() {
+    const marcadas = new Set(categoriasEmJogo(this.config));
+    let banco = SECRETAS.filter((q) => marcadas.has(q.categoria));
+    if (!banco.length) banco = SECRETAS;
+    let livres = banco.filter((q) => !this.secretasUsadas.has(q.pergunta));
+    if (!livres.length) {
+      for (const q of banco) this.secretasUsadas.delete(q.pergunta);
+      livres = banco;
+    }
+    const q = livres[Math.floor(Math.random() * livres.length)];
+    this.secretasUsadas.add(q.pergunta);
+
+    const id = dificuldade.idDe('pergunta-secreta', q.pergunta, q.resposta);
+    const difBase = 50;
+    return {
+      id,
+      pergunta: q.pergunta,
+      palavras: q.pergunta.split(/\s+/).filter(Boolean),
+      imagem: null,
+      audio: null,
+      letra: null,
+      resposta: q.resposta,
+      aceita: q.aceita || [],
+      itens: [{ oficial: q.resposta, variantes: q.aceita || [] }],
+      necessarias: 1,
+      fixo: true,
+      // A categoria de verdade nao aparece: "Futebol" na tela entregaria o
+      // assunto antes da primeira palavra.
+      categoria: CATEGORIA_SECRETA,
+      difBase,
+      dificuldade: dificuldade.dificuldadeDe(id, difBase)
+    };
+  }
+
+  /**
+   * Monta a roda da rodada. A cada rodada o comeco anda um lugar: quem abre
+   * joga com uma palavra so, e esse azar precisa girar.
+   */
+  prepararSecreta() {
+    const ids = [...this.jogam.keys()];
+    const giro = (this.rodada - 1) % Math.max(1, ids.length);
+    this.secreta = {
+      ordem: ids.slice(giro).concat(ids.slice(0, giro)),
+      vez: -1,          // indice em `ordem` de quem joga agora
+      reveladas: 0,     // quantas palavras ja abriram
+      daVez: null       // socketId de quem pode responder agora (null entre uma vez e outra)
+    };
+  }
+
+  /** O que a mesa ve de uma vez: as palavras abertas, quem joga e quanto vale. */
+  publicoSecreta() {
+    const s = this.secreta;
+    const palavras = this.perguntaAtual.palavras;
+    return {
+      jogadorId: s.daVez,
+      ordem: s.ordem,
+      total: palavras.length,
+      palavras: palavras.slice(0, s.reveladas),
+      valendo: palavras.length - s.reveladas,
+      msPorVez: MS_VEZ_SECRETA
+    };
+  }
+
+  /**
+   * Abre mais uma palavra e da a vez ao proximo da roda que ainda esta na
+   * sala. A ultima palavra nao abre: com a pergunta inteira na tela a
+   * resposta valeria zero, entao a rodada acaba ali.
+   */
+  iniciarVezSecreta() {
+    if (this.estado !== 'pergunta' || !this.secreta) return;
+    const s = this.secreta;
+    if (s.reveladas >= this.perguntaAtual.palavras.length - 1) return this.encerrarRodada();
+
+    let daVez = null;
+    for (let passo = 0; passo < s.ordem.length; passo++) {
+      s.vez = (s.vez + 1) % s.ordem.length;
+      if (this.jogam.has(s.ordem[s.vez])) {
+        daVez = s.ordem[s.vez];
+        break;
+      }
+    }
+    if (!daVez) return this.encerrarRodada();
+
+    s.reveladas += 1;
+    s.daVez = daVez;
+    this.inicioVez = Date.now();
+    this.emitir('secreta:vez', this.publicoSecreta());
+    this.agendarVez(() => this.passarVezSecreta(daVez, 'tempo'), MS_VEZ_SECRETA);
+  }
+
+  /**
+   * A vez acabou sem acerto: errou, o tempo passou ou a pessoa saiu. Depois
+   * de um respiro abre a proxima palavra para o proximo da roda.
+   */
+  passarVezSecreta(jogadorId, motivo) {
+    const s = this.secreta;
+    if (this.estado !== 'pergunta' || !s || s.daVez !== jogadorId) return;
+    this.pararVez();
+    s.daVez = null;
+
+    const jogador = this.jogadores.get(jogadorId);
+    if (motivo === 'tempo' && jogador) this.avisar(`${jogador.nickname} deixou o tempo passar.`);
+    this.emitir('secreta:passou', { jogadorId, motivo });
+    this.agendar(() => this.iniciarVezSecreta(), MS_ENTRE_VEZES);
+  }
+
+  /**
+   * O palpite de quem esta na vez. Um palpite por vez: errou, a vez passa.
+   * "Quase" e so um aviso, como no Carrossel — sobra relogio para corrigir.
+   * O palpite errado vai para o chat: saber o que nao e tambem e pista.
+   */
+  palpiteSecreto(socketId, jogador, limpo) {
+    const s = this.secreta;
+    if (!s || s.daVez !== socketId) {
+      return { erro: s && s.ordem.includes(socketId) ? 'Espere a sua vez.' : 'Voce entra na proxima rodada.' };
+    }
+
+    const r = avaliar(limpo, this.perguntaAtual.resposta, this.perguntaAtual.aceita);
+    if (r.veredito === 'certo') return this.acertoSecreto(socketId, jogador);
+    if (r.veredito === 'quase') return { veredito: 'quase', dica: mascaraDeAcerto(limpo, r.alvo) };
+
+    this.publicarChat(jogador, limpo);
+    this.passarVezSecreta(socketId, 'errou');
+    return { veredito: 'passou' };
+  }
+
+  /** Acertou na vez: leva um ponto por palavra que ainda estava escondida. */
+  acertoSecreto(socketId, jogador) {
+    const s = this.secreta;
+    this.pararVez();
+    s.daVez = null;
+
+    const agora = Date.now();
+    const ms = agora - this.inicioPergunta;
+    const pontos = this.perguntaAtual.palavras.length - s.reveladas;
+
+    jogador.pontos += pontos;
+    jogador.acertos += 1;
+    this.pontosRodada.set(socketId, pontos);
+    this.primeiroAcertoEm = agora;
+    this.acertos.set(socketId, { ms, pontos, posicao: 1, bonus: 0 });
+
+    this.emitir('chat:mensagem', {
+      tipo: 'acerto',
+      jogadorId: socketId,
+      nickname: jogador.nickname,
+      avatar: jogador.avatar,
+      pontos,
+      posicao: 1,
+      ms,
+      necessarias: 1
+    });
+    this.emitir('rodada:acertou', {
+      jogadorId: socketId,
+      totalAcertos: this.acertos.size,
+      totalJogadores: this.jogam.size,
+      placar: this.placar()
+    });
+
+    this.agendar(() => this.encerrarRodada(), MS_ENTRE_VEZES);
+    return { veredito: 'certo', pontos, posicao: 1, necessarias: 1 };
+  }
+
   /**
    * Toda mensagem digitada passa por aqui: pode ser um acerto, um "quase" ou
    * uma mensagem de chat comum.
@@ -2908,7 +3504,8 @@ class Sala {
     // Fora de rodada (saguão, resultado, fim) é chat puro.
     const rodadaViva = this.perguntaAtual && (this.estado === 'pergunta' || this.estado === 'categoria');
     // A tela do presencial nao joga: o que ela escreve e so conversa.
-    if (!rodadaViva || this.ehTela(socketId)) {
+    // Eu te conheço: a resposta e o arrasto das cartas, o chat e so conversa.
+    if (!rodadaViva || this.ehTela(socketId) || this.ehEuTeConheco()) {
       this.publicarChat(jogador, limpo);
       return { veredito: 'chat' };
     }
@@ -2938,6 +3535,12 @@ class Sala {
       if (this.ordem[this.vez] !== socketId) {
         return { erro: 'Espere a sua vez.' };
       }
+    }
+
+    // Pergunta secreta: so quem esta na vez escreve, e o palpite dele se
+    // resolve inteiro aqui.
+    if (this.ehSecreta() && this.estado === 'pergunta') {
+      return this.palpiteSecreto(socketId, jogador, limpo);
     }
 
     // 1 eh bom 2 ok 3 eh demais: o palpite e secreto ate a janela fechar. Da para
@@ -3385,6 +3988,10 @@ class Sala {
    */
   ninguemMaisPontua() {
     if (this.jogam.size === 0) return false;
+    // Eu te conheço: quem fecha a rodada sao as confirmacoes, nao os acertos.
+    if (this.ehEuTeConheco()) return false;
+    // Pergunta secreta: quem fecha e a roda — um acerto, ou a palavras acabando.
+    if (this.ehSecreta()) return false;
     // Corrida musical: o primeiro acerto leva a rodada inteira.
     if (this.ehCorrida() && this.acertos.size > 0) return true;
     // Qual e a musica: cada um clica uma vez, certo ou errado.
@@ -3403,7 +4010,7 @@ class Sala {
    */
   usaChances() {
     return !this.ehCarrossel() && !this.ehLeilao() && !this.ehRanking() && !this.ehVeni()
-      && !this.ehQualMusica();
+      && !this.ehQualMusica() && !this.ehEuTeConheco() && !this.ehSecreta();
   }
 
   /**
@@ -3787,6 +4394,7 @@ class Sala {
       // Rodada pulada não mede a pergunta: quase ninguém tentou responder.
       dificuldade: { valor: 0, nivel: 'sem conta', cor: '#6f6791' },
       opcoes: pergunta && pergunta.opcoes ? { lista: pergunta.opcoes, certa: pergunta.opcaoCerta } : null,
+      secreta: pergunta && pergunta.palavras ? { palavras: pergunta.palavras } : null,
       detalhes: [],
       placar: this.placar(),
       duracaoMs: MS_RESULTADO,
@@ -3810,6 +4418,12 @@ class Sala {
    * antes de ser jogada.
    */
   revelacaoSimples(pergunta) {
+    // Eu te conheço: o ranking de quem rankeou, se ja deu tempo de ele sair.
+    if (this.ehEuTeConheco() && this.eu) {
+      return this.eu.ordemDele
+        ? { texto: this.textoRankingEu(this.eu.ordemDele), lista: [], parcial: false }
+        : { texto: `${this.eu.nickname} ainda nao tinha rankeado`, lista: [], parcial: false };
+    }
     if (pergunta.necessarias === 1 && pergunta.resposta) {
       return { texto: pergunta.resposta, lista: [], parcial: false };
     }
@@ -3854,6 +4468,7 @@ class Sala {
 
   encerrarRodada() {
     if (this.estado !== 'pergunta') return;
+    if (this.ehEuTeConheco()) return this.encerrarEu();
     this.limparTemporizador();
 
     if (this.ehDandoDicas()) this.pagarDicas();
@@ -3879,7 +4494,8 @@ class Sala {
     // estatística da lista, então aqui a dificuldade é só lida.
     // Os modos musicais tambem so leem: na Corrida so uma pessoa chega a
     // acertar, e no Qual e a musica um em cada quatro acerta no chute.
-    const novaDificuldade = this.ehLeilao() || this.ehRanking() || this.ehMusical()
+    // Pergunta secreta tambem: so uma pessoa acerta, e com a pergunta pela metade.
+    const novaDificuldade = this.ehLeilao() || this.ehRanking() || this.ehMusical() || this.ehSecreta()
       ? dificuldade.dificuldadeDe(this.perguntaAtual.id, this.perguntaAtual.difBase)
       : dificuldade.registrar(this.perguntaAtual.id, this.perguntaAtual.difBase, {
           jogadores: participantes,
@@ -4020,6 +4636,8 @@ class Sala {
       dicasDadas: this.ehDandoDicas() && this.leilao ? this.leilao.dicasUsadas : null,
       // Qual e a musica: agora sim, qual das quatro era a certa.
       opcoes: pergunta.opcoes ? { lista: pergunta.opcoes, certa: pergunta.opcaoCerta } : null,
+      // Pergunta secreta: a pergunta inteira, ate as palavras que nao abriram.
+      secreta: pergunta.palavras ? { palavras: pergunta.palavras } : null,
       listaCompleta,
       listaParcial: !pergunta.fixo && pergunta.necessarias > 1,
       necessarias: pergunta.necessarias,
@@ -4150,8 +4768,9 @@ class Sala {
   rodadaMedeTodos() {
     // Corrida: so o primeiro acerta, os outros nem chegam a errar. Qual e a
     // musica: um clique com quatro opcoes acerta no chute.
+    // Pergunta secreta: responde um por vez, cada um com um pedaco da pergunta.
     return !this.ehLeilao() && !this.ehRanking() && !this.ehCarrossel() && !this.ehVeni()
-      && !this.ehMusical();
+      && !this.ehMusical() && !this.ehSecreta();
   }
 
   /** Conquista nova: a pessoa recebe o aviso dela e a sala fica sabendo. */
@@ -4217,6 +4836,8 @@ class Sala {
     this.voltaRanking = 0;
     this.itensJaDitos = new Set();
     this.opcoesEscolhidas = new Map();
+    this.eu = null;
+    this.secreta = null;
     // As equipes continuam como estavam: quem já escolheu não escolhe de novo.
     this.leilao = null;
     for (const jogador of this.jogadores.values()) {
@@ -4478,5 +5099,5 @@ module.exports = {
   FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
   gerarCodigo, calcularPontos, pontosQualMusica, QUAL_ESCALA_META, indicePerguntas, categoriasEmJogo, perguntasEscolhidas,
   sortearInicio, montarOpcoes, tipoMusical, idDaPergunta, configDaBagunca,
-  faixaDe, naFaixa, tituloDaFaixa
+  faixaDe, naFaixa, tituloDaFaixa, MS_VEZ_SECRETA, MIN_PALAVRAS_SECRETA
 };

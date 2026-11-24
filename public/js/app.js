@@ -36,6 +36,7 @@ const estado = {
   emRodada: false,
   placar: [],       // ultimo placar recebido
   carrossel: null,  // Carrossel: { voltas, msPorVez, ordem } da rodada
+  secreta: null,    // Pergunta secreta: { total, ordem, abertas } da rodada
   vivos: null,      // Carrossel: quem ainda nao saiu
   presente: null,   // Presente Grego: { equipes, aposta, ... } da rodada
   votei: false,     // votei para pular a rodada atual
@@ -1099,6 +1100,12 @@ function modoMusical(id = estado.escolhas.modo) {
   return Boolean(modo && modo.musical);
 }
 
+/** Modo que nao usa as perguntas do banco (Eu te conheço): sem categoria, tempo ou imagem. */
+function modoSemCategorias(id = estado.escolhas.modo) {
+  const modo = estado.config.modos.find((m) => m.id === id);
+  return Boolean(modo && modo.semCategorias);
+}
+
 /**
  * Os blocos da configuracao que valem para o modo escolhido.
  *
@@ -1109,9 +1116,11 @@ function modoMusical(id = estado.escolhas.modo) {
 function sincronizarModo() {
   const musical = modoMusical();
   const bagunca = estado.escolhas.modo === 'bagunca';
-  $('bloco-categorias').hidden = musical;
-  $('bloco-tempo').hidden = musical;
-  $('bloco-proporcao').hidden = musical;
+  const semCategorias = modoSemCategorias();
+  $('bloco-categorias').hidden = musical || semCategorias;
+  $('bloco-tempo').hidden = musical || semCategorias;
+  $('bloco-proporcao').hidden = musical || semCategorias;
+  $('bloco-limite').hidden = semCategorias;
   $('bloco-fim').hidden = !musical;
   $('bloco-bagunca').hidden = !bagunca;
   $('bloco-faixa').hidden = estado.escolhas.modo !== 'tempo';
@@ -1686,10 +1695,17 @@ function sincronizarPresencial() {
 
 function atualizarResumo() {
   const musical = modoMusical();
-  const total = musical ? 1 : categoriasEscolhidas().length;
+  const semCategorias = modoSemCategorias();
+  const total = musical || semCategorias ? 1 : categoriasEscolhidas().length;
   const modo = estado.config.modos.find((m) => m.id === estado.escolhas.modo);
   const bagunca = Boolean(modo && modo.bagunca);
-  $('resumo-config').innerHTML = musical
+  $('resumo-config').innerHTML = semCategorias
+    ? `
+    <span>${modo.icone} ${modo.nome}</span>
+    <span>Meta <b>${textoMeta(estado.escolhas.metaPontos)}</b></span>
+    <span>👥 <b>2+</b> jogadores</span>
+    ${resumoDoPresencial(estado.escolhas.presencial)}`
+    : musical
     ? `
     <span>${modo.icone} ${modo.nome}</span>
     <span>${resumoDoFim(estado.escolhas)}</span>
@@ -1722,7 +1738,7 @@ $('btn-criar').addEventListener('click', () => {
     mostrarTela('tela-lobby');
     return avisar('aviso-lobby', 'Digite um nickname com pelo menos 2 caracteres.');
   }
-  if (!modoMusical() && categoriasEscolhidas().length === 0) {
+  if (!modoMusical() && !modoSemCategorias() && categoriasEscolhidas().length === 0) {
     return avisar('aviso-config', 'Escolha pelo menos uma categoria.');
   }
   const bagunca = estado.escolhas.modo === 'bagunca';
@@ -1784,7 +1800,12 @@ function renderizarSala() {
   const modo = estado.config.modos.find((m) => m.id === sala.config.modo);
   // Categoria que entrou só com uma parte também conta.
   const emJogo = [...new Set([...sala.config.categorias, ...(sala.config.subs || []).map((s) => s.split(':')[0])])];
-  $('resumo-sala').innerHTML = modo && modo.musical
+  $('resumo-sala').innerHTML = modo && modo.semCategorias
+    ? `
+    <span>${modo.icone} ${modo.nome}</span>
+    <span>Meta <b>${sala.config.metaPontos} pts</b></span>
+    ${resumoDoPresencial(sala.config.presencial)}`
+    : modo && modo.musical
     ? `
     <span>${modo.icone} ${modo.nome}</span>
     <span>${resumoDoFim(sala.config, 1)}</span>
@@ -2507,7 +2528,7 @@ socket.on('rodada:pergunta', (dados) => {
   $('pergunta-categoria-nome').textContent = dados.categoria.nome;
 
   escreverPergunta(dados.pergunta);
-  $('pergunta-texto').classList.remove('pergunta__texto--segredo', 'pergunta__texto--celular');
+  $('pergunta-texto').classList.remove('pergunta__texto--segredo', 'pergunta__texto--celular', 'pergunta__texto--secreta');
   $('mascara').textContent = dados.mascara || '';
 
   // Perguntas de música mostram o trecho da letra em destaque, uma linha
@@ -2548,7 +2569,8 @@ socket.on('rodada:pergunta', (dados) => {
   // No Carrossel e no Presente Grego o painel "suas respostas — so voce ve"
   // nao cabe: ali cada acerto e publico, senao a pessoa seguinte repete o que
   // ja saiu (e no leilao a mesa inteira acompanha a entrega).
-  painel.hidden = estado.necessarias < 2 || Boolean(dados.carrossel) || Boolean(dados.presente);
+  painel.hidden = estado.necessarias < 2 || Boolean(dados.carrossel) || Boolean(dados.presente)
+    || Boolean(dados.eu);
   if (!painel.hidden) {
     $('escalada-itens').innerHTML = '';
     atualizarEscalada();
@@ -2557,6 +2579,8 @@ socket.on('rodada:pergunta', (dados) => {
   // Presencial: a musica toca so na tela.
   montarAudio(souControle() ? null : dados.audio, dados.audioInicio, dados.audioLimiteMs);
   desenharOpcoes(dados.opcoes);
+  // Eu te conheço: as cartas. No celular do presencial tambem — e la que se arrasta.
+  mostrarEu(dados.eu);
 
   const figura = $('pergunta-figura');
   if (dados.imagem && !souControle()) {
@@ -2594,6 +2618,22 @@ socket.on('rodada:pergunta', (dados) => {
     trancarChat('Espere a sua vez…');
   }
 
+  // Pergunta secreta: cada palavra vira uma ficha fechada, que abre uma por
+  // vez em 'secreta:vez'. A fila do carrossel mostra de quem e a vez.
+  estado.secreta = dados.secreta ? { ...dados.secreta, abertas: [] } : null;
+  carrossel.classList.toggle('carrossel--secreta', Boolean(dados.secreta));
+  if (dados.secreta) {
+    desenharSecreta([], dados.secreta.total);
+    carrossel.hidden = false;
+    estado.vivos = new Set(dados.secreta.ordem);
+    montarFilaCarrossel(dados.secreta.ordem, null);
+    $('carrossel-vez').classList.remove('minha');
+    $('carrossel-vez').textContent = 'A pergunta esta escondida';
+    $('carrossel-volta').textContent = plural(dados.secreta.total, 'palavra', 'palavras');
+    mostrarDitos(null);
+    trancarChat('Espere a sua vez…');
+  }
+
   // Presente Grego: o leilao acabou, a pergunta abriu para a mesa inteira e
   // agora so quem foi desafiado escreve.
   if (dados.presente) abrirEntregaDoPresente(dados.presente);
@@ -2606,6 +2646,11 @@ socket.on('rodada:pergunta', (dados) => {
   if (dados.veni) {
     inputChat.placeholder = 'Trave sua resposta — ninguem ve ate a janela fechar…';
     $('status-respostas').textContent = 'Ninguem palpitou ainda.';
+  }
+
+  if (dados.eu) {
+    inputChat.placeholder = 'A resposta e o arrasto das cartas. Aqui e so conversa…';
+    $('status-respostas').textContent = '';
   }
 
   // Qual e a musica: a resposta e o clique, o chat e so conversa.
@@ -2710,6 +2755,66 @@ socket.on('carrossel:vez', (dados) => {
   contarTempo(barraTempo, dados.msPorVez, true);
 });
 
+/**
+ * Pergunta secreta: as palavras abertas e uma ficha fechada para cada uma que
+ * falta. No fim da rodada `inteira` traz a pergunta toda, e as que nao
+ * chegaram a abrir aparecem apagadas.
+ */
+function desenharSecreta(abertas, total, inteira = null) {
+  const alvo = $('pergunta-texto');
+  // So a palavra que acabou de abrir anima; as outras ja estavam na tela.
+  const jaNaTela = alvo.classList.contains('pergunta__texto--secreta')
+    ? alvo.querySelectorAll('.secreta__palavra').length
+    : 0;
+  alvo.classList.add('pergunta__texto--secreta');
+  alvo.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const texto = i < abertas.length ? abertas[i] : (inteira ? inteira[i] : null);
+    if (texto == null) {
+      const ficha = criar('span', 'secreta__oculta');
+      ficha.setAttribute('aria-label', 'palavra escondida');
+      alvo.appendChild(ficha);
+      continue;
+    }
+    const palavra = criar('span', 'secreta__palavra');
+    palavra.textContent = texto;
+    if (i >= abertas.length) palavra.classList.add('secreta__palavra--fechada');
+    else if (!inteira && i === abertas.length - 1) palavra.classList.add('secreta__palavra--nova');
+    if (i < jaNaTela && !palavra.classList.contains('secreta__palavra--fechada')) palavra.classList.add('secreta__palavra--parada');
+    alvo.appendChild(palavra);
+  }
+}
+
+socket.on('secreta:vez', (dados) => {
+  if (!estado.secreta) return;
+  estado.secreta.abertas = dados.palavras;
+  desenharSecreta(dados.palavras, dados.total);
+
+  estado.vivos = new Set(dados.ordem);
+  montarFilaCarrossel(dados.ordem, dados.jogadorId);
+  const minha = dados.jogadorId === socket.id;
+  const jogador = (estado.placar || []).find((j) => j.id === dados.jogadorId);
+  const nome = jogador ? jogador.nickname : 'outro jogador';
+  const vale = plural(dados.valendo, 'ponto', 'pontos');
+
+  const rotulo = $('carrossel-vez');
+  rotulo.classList.toggle('minha', minha);
+  rotulo.textContent = minha ? 'Sua vez! Um palpite so' : `Vez de ${nome}`;
+  $('carrossel-volta').textContent = `valendo ${vale}`;
+
+  if (minha) destrancarChat(`Valendo ${vale}! Qual e a resposta?`);
+  else trancarChat(`Vez de ${nome}…`);
+
+  pararContagem();
+  contarTempo(barraTempo, dados.msPorVez, true);
+});
+
+socket.on('secreta:passou', (dados) => {
+  if (dados.jogadorId === socket.id) trancarChat('A vez passou…');
+  pararContagem();
+  barraTempo.style.transform = 'scaleX(0)';
+});
+
 socket.on('carrossel:eliminado', (dados) => {
   estado.vivos = new Set(dados.vivos);
   if (estado.carrossel) montarFilaCarrossel(estado.carrossel.ordem, null);
@@ -2780,6 +2885,7 @@ function limparTabuleiro() {
   $('status-respostas').textContent = '';
   montarAudio(null);
   desenharOpcoes(null);
+  mostrarEu(null);
 }
 
 /** Etiqueta de cima: a meta de pontos, ou em que musica a partida esta. */
@@ -2989,6 +3095,305 @@ socket.on('veni:revelacao', (dados) => {
   contarTempo(barraTempo, dados.duracaoMs, true);
 });
 
+/* ---------------------------- Eu te conheço ---------------------------- */
+
+/*
+ * Cinco cartas numa fila, cada coisa com a sua cor, e o lugar (1o a 5o) em
+ * cima. A cor e da coisa, nao do lugar: ela anda junto quando a carta e
+ * arrastada, e no resultado da para bater o olho e ver onde cada uma foi parar.
+ *
+ * Arrastar e o jeito principal. Tocar numa carta e depois noutra troca as
+ * duas de lugar — no celular, com o dedo cobrindo a carta, e mais facil.
+ */
+const CORES_EU = ['#e11d48', '#ea580c', '#16a34a', '#2563eb', '#9333ea'];
+
+// A rodada no ar: { itens, escolhe, nickname, fase, ordem, mexe, travado }.
+estado.conheco = null;
+
+/** Desenha uma fila de cartas. `marcas[k]`: a carta do lugar k esta certa? */
+function desenharFilaEu(alvo, itens, ordem, { mexe = false, marcas = null } = {}) {
+  alvo.innerHTML = '';
+  alvo.classList.toggle('eu__fila--mexe', mexe);
+
+  const posicoes = criar('div', 'eu__posicoes');
+  ordem.forEach((_, k) => {
+    const lugar = criar('span', 'eu__posicao');
+    lugar.textContent = `${k + 1}º`;
+    posicoes.appendChild(lugar);
+  });
+
+  const cartas = criar('div', 'eu__cartas');
+  ordem.forEach((item, k) => {
+    const carta = criar('div', 'eu__carta');
+    carta.dataset.item = item;
+    carta.style.setProperty('--cor-carta', CORES_EU[item % CORES_EU.length]);
+    carta.innerHTML = `<span class="eu__carta-texto">${escapar(itens[item])}</span>`;
+    if (marcas) {
+      carta.classList.add(marcas[k] ? 'eu__carta--certa' : 'eu__carta--errada');
+      carta.insertAdjacentHTML('beforeend', `<i class="eu__marca">${marcas[k] ? '✓' : '✗'}</i>`);
+    }
+    cartas.appendChild(carta);
+  });
+
+  alvo.append(posicoes, cartas);
+  ajustarTextoEu(cartas);
+  if (mexe) ligarArrastoEu(cartas);
+}
+
+/**
+ * Carta estreita (no celular sao uns 60px) e palavra comprida: "Refrigerante"
+ * nao cabe. Em vez de quebrar a palavra no meio, a letra daquela carta
+ * diminui ate a palavra caber; so o que nem em 9px cabe e quebrado.
+ */
+function ajustarTextoEu(cartas) {
+  for (const texto of cartas.querySelectorAll('.eu__carta-texto')) {
+    texto.style.fontSize = '';
+    texto.classList.remove('eu__carta-texto--aperta');
+    if (!texto.clientWidth) continue;   // painel escondido: nao ha o que medir
+    let tamanho = parseFloat(getComputedStyle(texto).fontSize);
+    while (texto.scrollWidth > texto.clientWidth && tamanho > 9) {
+      tamanho -= 0.5;
+      texto.style.fontSize = `${tamanho}px`;
+    }
+    if (texto.scrollWidth > texto.clientWidth) texto.classList.add('eu__carta-texto--aperta');
+  }
+}
+window.addEventListener('resize', () => {
+  document.querySelectorAll('#eu .eu__cartas').forEach(ajustarTextoEu);
+});
+
+/** A ordem que esta na tela agora: os itens, do 1o ao 5o lugar. */
+const ordemDaFila = (cartas) => [...cartas.children].map((c) => Number(c.dataset.item));
+
+/** Da para mexer nas cartas agora? */
+const possoMexerEu = () => Boolean(estado.conheco && estado.conheco.mexe && !estado.conheco.travado
+  && !estado.pausado);
+
+/**
+ * Anima as outras cartas do lugar antigo para o novo (FLIP): a fila muda de
+ * uma vez no DOM, e cada carta desliza a diferenca.
+ */
+function reordenarComAnimacao(cartas, mexer, fixa = null) {
+  const antes = new Map([...cartas.children].map((c) => [c, c.getBoundingClientRect().left]));
+  mexer();
+  for (const carta of cartas.children) {
+    if (carta === fixa) continue;
+    const dx = antes.get(carta) - carta.getBoundingClientRect().left;
+    if (!dx) continue;
+    carta.style.transition = 'none';
+    carta.style.transform = `translateX(${dx}px)`;
+    void carta.offsetWidth;
+    carta.style.transition = '';
+    carta.style.transform = '';
+  }
+}
+
+function ligarArrastoEu(cartas) {
+  let arrasto = null;
+  let escolhida = null;   // tocar-e-trocar: a primeira carta tocada
+
+  const soltarEscolhida = () => {
+    if (escolhida) escolhida.classList.remove('eu__carta--escolhida');
+    escolhida = null;
+  };
+
+  cartas.addEventListener('pointerdown', (e) => {
+    const carta = e.target.closest('.eu__carta');
+    if (!carta || !possoMexerEu() || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    e.preventDefault();
+    carta.setPointerCapture(e.pointerId);
+    const caixa = carta.getBoundingClientRect();
+    arrasto = {
+      carta, id: e.pointerId, x0: e.clientX, y0: e.clientY,
+      // Onde o dedo pegou a carta: ela anda presa nesse ponto.
+      dx: e.clientX - caixa.left, dy: e.clientY - caixa.top, moveu: false
+    };
+  });
+
+  cartas.addEventListener('pointermove', (e) => {
+    if (!arrasto || e.pointerId !== arrasto.id) return;
+    const { carta } = arrasto;
+    if (!arrasto.moveu) {
+      if (Math.hypot(e.clientX - arrasto.x0, e.clientY - arrasto.y0) < 6) return;
+      arrasto.moveu = true;
+      soltarEscolhida();
+      carta.classList.add('eu__carta--arrastando');
+    }
+    if (!possoMexerEu()) return;
+
+    // Em que lugar o dedo esta: a fila e dividida em cinco faixas iguais.
+    const lista = [...cartas.children];
+    const fila = cartas.getBoundingClientRect();
+    const vaga = Math.max(0, Math.min(lista.length - 1,
+      Math.floor((e.clientX - fila.left) / (fila.width / lista.length))));
+    const atual = lista.indexOf(carta);
+    if (vaga !== atual) {
+      reordenarComAnimacao(cartas, () => {
+        cartas.insertBefore(carta, vaga > atual ? lista[vaga].nextSibling : lista[vaga]);
+      }, carta);
+    }
+
+    // A carta segue o dedo a partir do lugar em que ela esta agora.
+    carta.style.transform = 'none';
+    const base = carta.getBoundingClientRect();
+    carta.style.transform = `translate(${e.clientX - arrasto.dx - base.left}px, ${
+      e.clientY - arrasto.dy - base.top}px) rotate(-2deg) scale(1.06)`;
+  });
+
+  const soltar = (e) => {
+    if (!arrasto || e.pointerId !== arrasto.id) return;
+    const { carta, moveu } = arrasto;
+    arrasto = null;
+
+    if (moveu) {
+      carta.classList.remove('eu__carta--arrastando');
+      carta.style.transform = '';
+      mandarRascunhoEu(ordemDaFila(cartas));
+      return;
+    }
+    if (!possoMexerEu()) return;
+
+    // Um toque: escolhe a carta, ou troca com a que ja estava escolhida.
+    if (!escolhida) {
+      escolhida = carta;
+      carta.classList.add('eu__carta--escolhida');
+    } else if (escolhida === carta) {
+      soltarEscolhida();
+    } else {
+      const outra = escolhida;
+      soltarEscolhida();
+      reordenarComAnimacao(cartas, () => {
+        const marcador = document.createComment('');
+        cartas.replaceChild(marcador, carta);
+        cartas.replaceChild(carta, outra);
+        cartas.replaceChild(outra, marcador);
+      });
+      mandarRascunhoEu(ordemDaFila(cartas));
+    }
+  };
+  cartas.addEventListener('pointerup', soltar);
+  cartas.addEventListener('pointercancel', soltar);
+}
+
+/** Cada mexida vai para o servidor: se o tempo acabar, vale como ficou. */
+function mandarRascunhoEu(ordem) {
+  if (!estado.conheco) return;
+  estado.conheco.ordem = ordem;
+  socket.emit('eu:ordem', { ordem, final: false });
+}
+
+function confirmarEu() {
+  const c = estado.conheco;
+  if (!c || !possoMexerEu()) return;
+  const ordem = ordemDaFila($('eu-fila').querySelector('.eu__cartas'));
+  c.travado = true;
+  $('eu-confirmar').disabled = true;
+  socket.emit('eu:ordem', { ordem, final: true }, (resposta) => {
+    if (resposta?.erro) {
+      c.travado = false;
+      $('eu-confirmar').disabled = false;
+      return avisoParticular(resposta.erro);
+    }
+    c.ordem = ordem;
+    $('eu-fila').classList.add('eu__fila--travada');
+    $('eu-confirmar').hidden = true;
+    if (c.fase === 'palpite') $('eu-vez').textContent = `Confirmado! Agora e esperar o resto da mesa.`;
+  });
+}
+$('eu-confirmar').addEventListener('click', confirmarEu);
+
+/** Monta o painel para a fase em que a rodada esta. */
+function mostrarEu(dados) {
+  const painel = $('eu');
+  painel.hidden = !dados;
+  $('eu-meu').hidden = true;
+  $('eu-fila').classList.remove('eu__fila--travada', 'eu__fila--espera');
+  if (!dados) {
+    estado.conheco = null;
+    $('eu-confirmar').hidden = true;
+    return;
+  }
+
+  const souEu = dados.escolhe === socket.id;
+  const adivinho = dados.fase === 'palpite' && !souEu && !souTela()
+    && (!dados.adivinham || dados.adivinham.includes(socket.id));
+  const mexe = !souTela() && (dados.fase === 'escolha' ? souEu : adivinho);
+  // Quem rankeou continua vendo o proprio ranking enquanto os outros tentam.
+  const anterior = estado.conheco;
+  const ordem = dados.fase === 'palpite' && souEu && anterior && anterior.ordem
+    ? anterior.ordem
+    : dados.inicio || dados.itens.map((_, i) => i);
+
+  estado.conheco = {
+    itens: dados.itens, escolhe: dados.escolhe, nickname: dados.nickname,
+    fase: dados.fase, ordem, mexe, travado: false
+  };
+
+  const quem = `${dados.avatar} ${escapar(dados.nickname)}`;
+  const vale = `${dados.pontosPorLugar || 2} pts por coisa no lugar certo`;
+  let texto;
+  if (dados.fase === 'escolha') {
+    texto = souEu
+      ? '<b>Sua vez!</b> Arraste as cartas do que voce mais gosta (1º) ao que menos gosta (5º).'
+      : `<b>${quem}</b> esta rankeando… presta atencao, que depois e a sua vez.`;
+  } else if (souEu) {
+    texto = 'Pronto! Agora a mesa tenta adivinhar o seu ranking.';
+  } else if (adivinho) {
+    texto = `<b>Rankeie como ${quem} rankeou!</b> <span class="eu__vale">${vale}</span>`;
+  } else {
+    texto = `A mesa esta tentando adivinhar o ranking de <b>${quem}</b>.`;
+  }
+  $('eu-vez').innerHTML = texto;
+
+  desenharFilaEu($('eu-fila'), dados.itens, ordem, { mexe });
+  if (!mexe) $('eu-fila').classList.add(souEu ? 'eu__fila--travada' : 'eu__fila--espera');
+  const botao = $('eu-confirmar');
+  botao.hidden = !mexe;
+  botao.disabled = false;
+}
+
+socket.on('eu:palpite', (dados) => {
+  mostrarEu(dados);
+  $('status-respostas').textContent = `Ninguem confirmou ainda (0 de ${dados.total}).`;
+  if (estado.conheco && estado.conheco.mexe && !('ontouchstart' in window)) inputChat.blur();
+  pararContagem();
+  contarTempo(barraTempo, dados.duracaoMs, true);
+});
+
+socket.on('eu:travou', ({ quantos, total } = {}) => {
+  $('status-respostas').textContent = `${quantos} de ${total} ja confirmaram.`;
+});
+
+/** Resultado: o ranking certo e, para quem tentou, o seu com o que bateu. */
+function revelarEu(eu, detalhes = []) {
+  if (!eu) return mostrarEu(null);
+  const painel = $('eu');
+  painel.hidden = false;
+  $('eu-confirmar').hidden = true;
+  if (estado.conheco) estado.conheco.mexe = false;
+
+  $('eu-vez').innerHTML = `O ranking de <b>${eu.avatar} ${escapar(eu.nickname)}</b>`;
+  desenharFilaEu($('eu-fila'), eu.itens, eu.ordem);
+  $('eu-fila').classList.remove('eu__fila--travada', 'eu__fila--espera');
+
+  const meu = detalhes.find((d) => d.jogadorId === socket.id);
+  const minha = meu && meu.eu && meu.eu.papel === 'adivinhou' ? meu.eu.ordem : null;
+  $('eu-meu').hidden = !minha;
+  if (minha) {
+    const marcas = minha.map((item, k) => item === eu.ordem[k]);
+    const quantas = marcas.filter(Boolean).length;
+    $('eu-meu-titulo').innerHTML = `Seu ranking: <b>${quantas} de ${marcas.length}</b> no lugar certo`;
+    desenharFilaEu($('eu-meu-fila'), eu.itens, minha, { marcas });
+  }
+}
+
+/** No resultado, a fila de cada um em miniatura: uma bolinha por coisa, na cor dela. */
+function miniaturaEu(ordem, certa) {
+  if (!ordem) return '';
+  return `<span class="eu-mini">${ordem.map((item, k) => `<i style="--cor-carta:${CORES_EU[item % CORES_EU.length]}"${
+    certa && item === certa[k] ? ' class="certa"' : ''}></i>`).join('')}</span>`;
+}
+
 /** No Leilao Geral cada um leiloa por si: nao ha parceiro, nem duvido. */
 const leilaoGeral = () => modoDaRodada() === 'leilao-geral';
 
@@ -3003,6 +3408,7 @@ socket.on('leilao:comeco', (dados) => {
 
   estado.acertou = false;
   estado.carrossel = null;
+  estado.secreta = null;
   estado.presente = {
     equipes: dados.equipes, aposta: 0, equipeAposta: null,
     maxAposta: dados.maxAposta, reverso: Boolean(dados.reverso), fora: []
@@ -3799,6 +4205,10 @@ function enviarDoChat() {
         ? 'Nao esta na lista — e era o seu palpite desta rodada.'
         : 'Nao vale. Tente outra — voce ainda tem tempo.');
 
+    } else if (resposta.veredito === 'passou') {
+      // Pergunta secreta: um palpite por vez, e esse nao era.
+      avisoParticular('Nao e isso! A vez passou e abre mais uma palavra.');
+
     } else if (resposta.veredito === 'eliminado') {
       // Carrossel: saiu da rodada — por errar (visível) ou repetir (às cegas).
       avisoParticular(resposta.motivo === 'repetiu'
@@ -3877,11 +4287,22 @@ socket.on('rodada:resultado', (dados) => {
   // A rodada acabou: o botao do tocador deixa de seguir a sala e toca dali.
   estado.musica = null;
   revelarOpcoes(dados.opcoes, dados.detalhes);
+  revelarEu(dados.eu, dados.detalhes);
   $('escalada').hidden = true;
   // Fim da rodada do Carrossel: a fila some e o chat volta para todos.
   if (estado.carrossel) {
     $('carrossel').hidden = true;
     estado.carrossel = null;
+    destrancarChat('Digite uma mensagem…');
+  }
+  // Fim da Pergunta secreta: a pergunta abre inteira e o chat volta.
+  if (estado.secreta) {
+    if (dados.secreta) {
+      desenharSecreta(estado.secreta.abertas || [], dados.secreta.palavras.length, dados.secreta.palavras);
+    }
+    $('carrossel').hidden = true;
+    $('carrossel').classList.remove('carrossel--secreta');
+    estado.secreta = null;
     destrancarChat('Digite uma mensagem…');
   }
   // Fim do Presente Grego: o painel do leilao sai e o chat volta para todos.
@@ -3899,6 +4320,8 @@ socket.on('rodada:resultado', (dados) => {
   const selo = $('selo-dificuldade');
   selo.style.setProperty('--cor-dif', dados.dificuldade.cor);
   selo.textContent = `${dados.dificuldade.nivel} · ${dados.dificuldade.valor}`;
+  // Eu te conheço nao tem pergunta para medir.
+  selo.hidden = Boolean(dados.eu);
   selo.title = 'Dificuldade da pergunta: sobe quando pouca gente acerta ou quando demoram muito. '
              + 'Nao altera a pontuacao.';
 
@@ -3931,9 +4354,16 @@ socket.on('rodada:resultado', (dados) => {
     const naoAcertou = dados.opcoes
       ? (detalhe.escolha ? `marcou ${detalhe.escolha}` : 'nao escolheu')
       : 'nao acertou';
-    const tempo = dados.presente
+    // Eu te conheço: quem rankeou, e quantas coisas cada um pos no lugar.
+    const papelEu = detalhe.eu && {
+      rankeou: '🫶 rankeou',
+      adivinhou: `${detalhe.eu.lugares}/${dados.eu ? dados.eu.itens.length : 5} no lugar`,
+      parado: 'nao mexeu',
+      fora: 'entrou depois'
+    }[detalhe.eu.papel];
+    const tempo = papelEu || (dados.presente
       ? (PAPEIS[detalhe.papel] || '—')
-      : (detalhe.ms === null ? naoAcertou : `${(detalhe.ms / 1000).toFixed(1)}s`);
+      : (detalhe.ms === null ? naoAcertou : `${(detalhe.ms / 1000).toFixed(1)}s`));
 
     const pedia = detalhe.necessarias || 1;
     const conseguiu = detalhe.itens || [];
@@ -3953,7 +4383,9 @@ socket.on('rodada:resultado', (dados) => {
       </span>
       ${pedia > 1 && conseguiu.length
         ? `<p class="resultado__itens">${escapar(conseguiu.join(', '))}</p>`
-        : ''}`;
+        : ''}
+      ${dados.eu && detalhe.eu && detalhe.eu.papel === 'adivinhou'
+        ? miniaturaEu(detalhe.eu.ordem, dados.eu.ordem) : ''}`;
     lista.appendChild(item);
   }
 
