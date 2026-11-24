@@ -16,6 +16,7 @@ const {
 const dificuldade = require('./dificuldade');
 const usos = require('./usos');
 const perfis = require('./perfis');
+const senso = require('./senso');
 const estatisticas = require('./estatisticas');
 const google = require('./google');
 const banco = require('./banco');
@@ -625,7 +626,7 @@ setInterval(() => {
 
 // Com banco, os contadores chegam por rede: so abre a porta depois de le-los,
 // senao a primeira partida sortearia como se nada tivesse rodado ainda.
-Promise.all([dificuldade.pronto, usos.pronto, perfis.pronto]).then(() => {
+Promise.all([dificuldade.pronto, usos.pronto, perfis.pronto, senso.pronto]).then(() => {
   servidor.listen(PORTA, () => {
     const onde = banco.ativo() ? 'banco de dados' : 'arquivos em server/dados';
     console.log(`\n  🧠 PensaRápido rodando em http://localhost:${PORTA} (dados: ${onde})\n`);
@@ -638,7 +639,7 @@ async function encerrar() {
   if (saindo) return;
   saindo = true;
   try {
-    await Promise.all([dificuldade.salvar(), usos.salvar(), perfis.salvar()]);
+    await Promise.all([dificuldade.salvar(), usos.salvar(), perfis.salvar(), senso.salvar()]);
     await banco.fechar();
   } catch (erro) {
     console.warn('Erro ao gravar antes de sair:', erro.message);

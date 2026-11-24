@@ -2655,6 +2655,8 @@ socket.on('rodada:pergunta', (dados) => {
 
   // Maria vai com as outras: as cinco linhas do top. O chat fecha ate o resultado.
   mostrarMaria(dados.maria);
+  // Senso Comum: o quadro fechado. A vez de chutar chega logo depois, em senso:vez.
+  mostrarSenso(dados.senso);
 
   // Qual e a musica: a resposta e o clique, o chat e so conversa.
   if (dados.opcoes) {
@@ -3537,6 +3539,132 @@ function revelarMaria(maria, detalhes = []) {
       <i class="maria__ficha--lugar"></i>no mesmo lugar · ×N: com quantos</span></p>
       <div class="maria__fichas">${minha.map((t, k) => fichaMaria(t, iguais[k], noLugar[k])).join('')}</div>`;
   }
+  destrancarChat('Digite uma mensagem…');
+}
+
+/* ----------------------------- Senso Comum ----------------------------- */
+
+/*
+ * O quadro: uma linha fechada para cada resposta, da mais forte para a mais
+ * fraca, que abre com o texto e a porcentagem quando alguem acerta. O chute
+ * e o chat, escondido ate a vez fechar; quem saiu da rodada fica com o chat
+ * trancado ate o resultado.
+ */
+// A rodada no ar: { linhas, outras, reveladas: Map(indice -> resposta) }.
+estado.senso = null;
+
+const nomeDe = (id) => {
+  const j = (estado.placar || []).find((p) => p.id === id);
+  return j ? `${j.avatar} ${escapar(j.nickname)}` : '?';
+};
+
+function desenharQuadroSenso({ todas = null, novas = [] } = {}) {
+  const s = estado.senso;
+  const quadro = $('senso-quadro');
+  quadro.style.setProperty('--linhas-senso', Math.ceil(s.linhas / 2));
+  quadro.innerHTML = '';
+  for (let k = 0; k < s.linhas; k++) {
+    const r = s.reveladas.get(k) || (todas && todas[k]) || null;
+    const aberta = s.reveladas.has(k);
+    const linha = criar('li', 'senso__linha' + (r ? ' senso__linha--aberta' : '')
+      + (r && !aberta ? ' senso__linha--ninguem' : '') + (novas.includes(k) ? ' senso__linha--nova' : ''));
+    linha.innerHTML = r
+      ? `<span class="senso__num">${k + 1}</span><span class="senso__texto">${escapar(r.texto)}</span>
+         <span class="senso__porcento">${r.porcento}%</span>`
+      : `<span class="senso__num">${k + 1}</span><span class="senso__texto">?</span>`;
+    if (r && r.acertou) linha.title = `${r.acertou} abriu`;
+    quadro.appendChild(linha);
+  }
+
+  // O que passa das linhas do quadro: a contagem, e o que ja abriu ali.
+  const outras = $('senso-outras');
+  const fora = todas
+    ? todas.slice(s.linhas)
+    : [...s.reveladas.values()].filter((r) => r.indice >= s.linhas);
+  outras.hidden = !s.outras;
+  if (s.outras) {
+    outras.innerHTML = `+ ${s.outras} ${s.outras === 1 ? 'resposta' : 'respostas'} com pouca gente`
+      + (fora.length ? `: ${fora.map((r) => `${escapar(r.texto)} ${r.porcento}%`).join(' · ')}` : '');
+  }
+}
+
+function mostrarSenso(dados) {
+  const vinha = estado.senso;
+  $('senso').hidden = !dados;
+  $('senso-chutes').hidden = true;
+  if (!dados) {
+    estado.senso = null;
+    if (vinha) destrancarChat('Digite uma mensagem…');
+    return;
+  }
+  estado.senso = {
+    linhas: dados.linhas, outras: dados.outras, vez: [],
+    reveladas: new Map((dados.reveladas || []).map((r) => [r.indice, r]))
+  };
+  $('senso-vez').innerHTML = `O que <b>${dados.pessoas} pessoas</b> responderam no Maria vai com as outras. `
+    + '<span class="eu__vale">acerto vale a % ÷ 10</span>';
+  desenharQuadroSenso();
+  trancarChat('Ja vai abrir a vez de chutar…');
+}
+
+socket.on('senso:vez', (dados) => {
+  const s = estado.senso;
+  if (!s) return;
+  s.vez = dados.vez;
+  $('senso-chutes').hidden = true;
+  const minha = dados.vez.includes(socket.id) && !souTela();
+  if (minha) destrancarChat('Seu chute — fica escondido ate o tempo acabar…');
+  else trancarChat(dados.numero > 1 ? 'Voce saiu desta rodada. O chat volta no resultado…' : 'Voce entra na proxima rodada…');
+  $('senso-vez').innerHTML = dados.numero === 1
+    ? '<b>Todo mundo chuta!</b> Quem acertar a resposta mais alta continua.'
+    : `<b>${minha ? 'Voce continua!' : 'Continuam chutando:'}</b> ${dados.vez.map(nomeDe).join(', ')}`;
+  $('status-respostas').textContent = `Ninguem chutou ainda (0 de ${dados.vez.length}).`;
+  pararContagem();
+  contarTempo(barraTempo, dados.duracaoMs, true);
+});
+
+socket.on('senso:chutou', ({ quantos, total } = {}) => {
+  $('status-respostas').textContent = quantos >= total ? 'Todo mundo da vez ja chutou.' : `${quantos} de ${total} ja chutaram.`;
+});
+
+socket.on('senso:revelacao', (dados) => {
+  const s = estado.senso;
+  if (!s) return;
+  const antes = new Set(s.reveladas.keys());
+  s.reveladas = new Map(dados.reveladas.map((r) => [r.indice, r]));
+  desenharQuadroSenso({ novas: dados.reveladas.map((r) => r.indice).filter((k) => !antes.has(k)) });
+  if (dados.placar) renderizarPlacar(dados.placar);
+
+  const chutes = $('senso-chutes');
+  chutes.hidden = false;
+  chutes.innerHTML = dados.chutes.map((c) => `<li class="senso__chute ${c.acertou ? 'senso__chute--certo' : ''}">
+      <span>${c.avatar} ${escapar(c.nickname)}</span>
+      <b>${c.texto ? escapar(c.texto) : '—'}</b>
+      <i>${c.acertou ? `✓ +${c.pontos}` : `✗ ${c.motivo}`}</i></li>`).join('');
+
+  const seguem = dados.continuam.map(nomeDe);
+  $('senso-vez').innerHTML = dados.fim
+    ? '<b>Fim da rodada!</b> Ja vai abrir o quadro inteiro.'
+    : `<b>Continua${seguem.length > 1 ? 'm' : ''}:</b> ${seguem.join(', ')}`;
+  $('status-respostas').textContent = '';
+  trancarChat(dados.fim ? 'Fim da rodada…' : 'Ja vem a proxima vez…');
+  pararContagem();
+  contarTempo(barraTempo, dados.duracaoMs, true);
+});
+
+/** Resultado: o quadro inteiro, com o que ninguem abriu apagado. */
+function revelarSenso(dados) {
+  if (!dados) return mostrarSenso(null);
+  if (!estado.senso) {
+    estado.senso = { linhas: Math.min(dados.linhas, dados.quadro.length), outras: 0, vez: [], reveladas: new Map() };
+  }
+  const s = estado.senso;
+  s.linhas = Math.min(dados.linhas, dados.quadro.length);
+  s.outras = Math.max(0, dados.quadro.length - s.linhas);
+  s.reveladas = new Map(dados.quadro.filter((r) => r.acertou).map((r) => [r.indice, r]));
+  $('senso').hidden = false;
+  $('senso-vez').innerHTML = `O senso comum de <b>${dados.pessoas} pessoas</b>`;
+  desenharQuadroSenso({ todas: dados.quadro });
   destrancarChat('Digite uma mensagem…');
 }
 
@@ -4435,6 +4563,7 @@ socket.on('rodada:resultado', (dados) => {
   revelarOpcoes(dados.opcoes, dados.detalhes);
   revelarEu(dados.eu, dados.detalhes);
   revelarMaria(dados.maria, dados.detalhes);
+  revelarSenso(dados.senso);
   $('escalada').hidden = true;
   // Fim da rodada do Carrossel: a fila some e o chat volta para todos.
   if (estado.carrossel) {
@@ -4468,7 +4597,7 @@ socket.on('rodada:resultado', (dados) => {
   selo.style.setProperty('--cor-dif', dados.dificuldade.cor);
   selo.textContent = `${dados.dificuldade.nivel} · ${dados.dificuldade.valor}`;
   // Eu te conheço nao tem pergunta para medir.
-  selo.hidden = Boolean(dados.eu) || Boolean(dados.maria);
+  selo.hidden = Boolean(dados.eu) || Boolean(dados.maria) || Boolean(dados.senso);
   selo.title = 'Dificuldade da pergunta: sobe quando pouca gente acerta ou quando demoram muito. '
              + 'Nao altera a pontuacao.';
 
@@ -4514,7 +4643,10 @@ socket.on('rodada:resultado', (dados) => {
       parado: 'nao escreveu',
       fora: 'entrou depois'
     }[detalhe.maria.papel];
-    const tempo = papelEu || papelMaria || (dados.presente
+    // Senso Comum: quantas respostas do quadro a pessoa acertou.
+    const papelSenso = detalhe.senso
+      && `${detalhe.senso.acertos} ${detalhe.senso.acertos === 1 ? 'acerto' : 'acertos'}`;
+    const tempo = papelEu || papelMaria || papelSenso || (dados.presente
       ? (PAPEIS[detalhe.papel] || '—')
       : (detalhe.ms === null ? naoAcertou : `${(detalhe.ms / 1000).toFixed(1)}s`));
 

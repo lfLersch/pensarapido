@@ -8,6 +8,11 @@
  * precisao, e o nome curto vale pelo comprido ("Messi" por "Lionel Messi").
  */
 
+const os = require('os');
+const path = require('path');
+// Cada rodada grava o top 3 para o Senso Comum: os testes nao sujam o dado de verdade.
+process.env.SENSO_ARQUIVO = path.join(os.tmpdir(), `senso-maria-teste-${process.pid}.json`);
+
 const { Sala, MODOS, MODOS_SORTEAVEIS, pontuarMaria } = require('../server/sala.js');
 const { TOPS } = require('../server/tops.js');
 const { normalizar, mesmaCoisa } = require('../server/comparar.js');

@@ -806,6 +806,39 @@ quem pensa igual à mesa:
   repetem na partida. Não usa categorias, **não alimenta a dificuldade nem o
   perfil**, e **fica fora da roleta da Bagunça** (os pontos somados passariam
   por cima do teto dos outros modos). `testes/maria.test.js` cobre o modo.
+- **Cada rodada grava o top 3 de cada um** (já sem repetidas) para o
+  [Senso Comum](#senso-comum).
+
+### Senso Comum
+
+O quadro sai do que as pessoas responderam no
+[Maria vai com as outras](#maria-vai-com-as-outras): de cada top 5, só o
+**top 3** conta, com **peso 4 para o 1º lugar, 3 para o 2º e 2 para o 3º**. O
+peso de cada resposta vira porcentagem, e **a coluna soma sempre 100**. Quem
+disse *azul, preto, branco* e quem disse *vermelho, azul, preto* dão azul 7,
+preto 5, vermelho 4 e branco 2: **39%, 28%, 22% e 11%** (arredondado pelo maior
+resto, para a soma fechar em 100). Grafias que são a mesma coisa (a régua de
+80% do Maria) viram uma resposta só, escrita como a maioria escreveu.
+
+- **Cada acerto vale a porcentagem ÷ 10, arredondada**: 39% vale 4, 11% vale
+  1. Acertar vale pelo menos 1, mesmo uma resposta de 3%.
+- **Todos da vez chutam juntos**, pelo chat, e o chute fica **escondido até a
+  vez fechar** (dá para trocar enquanto ela está aberta). **13 s no primeiro
+  chute, 10 s nos seguintes**; todo mundo da vez chutou, ela fecha na hora.
+- **Quem acertou a resposta mais alta continua**; quem errou, ou acertou uma
+  mais baixa, sai da rodada. Duas pessoas no mesmo chute levam os pontos as
+  duas (e, se for o mais alto, continuam juntas). Resposta que já tinha aberto
+  numa vez anterior conta como erro.
+- A rodada acaba quando **ninguém continua** ou **o quadro fecha**, e aí ele
+  abre inteiro (o que ninguém acertou aparece apagado). O quadro mostra até 8
+  linhas; o resto aparece como *"+N respostas com pouca gente"* — e também vale.
+- **Só entra pergunta com 7 pessoas ou mais.** Sem nenhuma pronta, a sala não
+  começa e avisa quanto falta (*"A mais perto é Top 5 cores, com 6"*). Quem
+  saiu da rodada fica com o chat trancado até o resultado, para não soprar.
+- Não usa categorias, não alimenta a dificuldade nem o perfil, e fica fora da
+  Bagunça (precisa de dado acumulado). A estatística e a gravação ficam em
+  [`server/senso.js`](server/senso.js) (`server/dados/senso.json` no PC, tabela
+  `senso_respostas` com banco); `testes/senso.test.js` cobre o modo.
 
 ### Bagunça
 
@@ -1307,15 +1340,15 @@ Para ligar:
 ## Banco de dados
 
 Sem configurar nada, o jogo grava os contadores (rodízio do sorteio,
-dificuldade adaptativa e perfis dos jogadores) em `server/dados/*.json`. Isso basta no PC, mas **no
+dificuldade adaptativa, perfis dos jogadores e as respostas do Senso Comum) em `server/dados/*.json`. Isso basta no PC, mas **no
 Render o disco zera a cada deploy**. Com a variável **`DATABASE_URL`**, os mesmos
 dados vão para um **Postgres** (Supabase, Neon ou outro) e voltam em cada subida.
 
 **As tabelas se criam sozinhas** quando o servidor sobe (`perguntas_usos`,
-`perguntas_stats`, `jogadores` e `vinculos`), então não há SQL para rodar no painel. A conexão fica em
+`perguntas_stats`, `jogadores`, `vinculos` e `senso_respostas`), então não há SQL para rodar no painel. A conexão fica em
 [`server/banco.js`](server/banco.js).
 
-Na mesma subida o servidor liga o **RLS** (Row-Level Security) nas quatro, sem
+Na mesma subida o servidor liga o **RLS** (Row-Level Security) em todas, sem
 nenhuma política. Isso fecha a API pública do Supabase, que o jogo não usa, e
 não muda nada para o servidor: ele entra como dono das tabelas, e o RLS não
 vale para o dono. É o que tira o aviso `rls_disabled_in_public` do Supabase.
@@ -1422,6 +1455,7 @@ server/
   musicas.js     duração e estilo de cada música de Ouvir músicas
   coisas.js      as coisas que o Eu te conheço sorteia para rankear
   tops.js        as perguntas de top 5 do Maria vai com as outras
+  senso.js       o top 3 gravado do Maria e o quadro do Senso Comum
   dados/         estatísticas acumuladas (criado sozinho)
 public/
   index.html     as cinco telas do jogo

@@ -42,6 +42,13 @@ const TABELAS = `
     conta   text NOT NULL
   );
 
+  -- Senso Comum: o top 3 de cada pessoa em cada pergunta do Maria vai com as outras.
+  CREATE TABLE IF NOT EXISTS senso_respostas (
+    pergunta      text PRIMARY KEY,
+    listas        jsonb NOT NULL,
+    atualizado_em timestamptz NOT NULL DEFAULT now()
+  );
+
   -- No Supabase, toda tabela do schema public aparece na API pública dele
   -- (anon/authenticated). O jogo não usa essa API: o servidor fala direto com
   -- o Postgres, como dono das tabelas, e o RLS não vale para o dono. Ligado e
@@ -50,6 +57,7 @@ const TABELAS = `
   ALTER TABLE perguntas_stats ENABLE ROW LEVEL SECURITY;
   ALTER TABLE jogadores       ENABLE ROW LEVEL SECURITY;
   ALTER TABLE vinculos        ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE senso_respostas ENABLE ROW LEVEL SECURITY;
 `;
 
 let pool = null;

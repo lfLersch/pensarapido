@@ -12,6 +12,7 @@ const { musicaDe } = require('./musicas');
 const { COISAS } = require('./coisas');
 const { SECRETAS } = require('./secretas');
 const { TOPS } = require('./tops');
+const senso = require('./senso');
 
 /* ---------------------------- Regras do jogo ---------------------------- */
 
@@ -182,6 +183,18 @@ const MS_MARIA = 60000;           // um minuto para pensar e escrever
 const MS_RESULTADO_MARIA = 12000; // da tempo de ler o top de todo mundo
 const MAX_ITEM_MARIA = 40;        // caracteres de cada linha do top
 const CATEGORIA_MARIA = { id: 'maria', nome: 'Maria vai com as outras', icone: '🐑', cor: '#f59e0b' };
+
+/* Senso Comum: o quadro sai do top 3 que a mesa deu no Maria vai com as
+   outras (pesos 4, 3 e 2, somando 100%). Todos da vez chutam juntos, com o
+   chute escondido ate o tempo fechar. Quem acertou a resposta mais alta
+   continua; quem errou, ou acertou uma mais baixa, sai. Cada acerto vale a
+   porcentagem dividida por 10, arredondada (pelo menos 1). */
+const MS_PRIMEIRO_CHUTE_SENSO = 13000;
+const MS_CHUTE_SENSO = 10000;
+const MS_REVELA_SENSO = 4000;     // os chutes ficam na tela antes da proxima vez
+const MS_RESULTADO_SENSO = 9000;
+const QUADRO_SENSO = 8;           // linhas do quadro; o resto vira "outras"
+const CATEGORIA_SENSO = { id: 'senso-comum', nome: 'Senso Comum', icone: '📊', cor: '#14b8a6' };
 /* Musica: o arquivo e a musica inteira, e a sala sorteia de que ponto ela
    toca. O sorteio fica longe do comeco (silencio, plateia do ao vivo) e do
    fim (o fade-out), e a musica para no limite que a sala escolheu. */
@@ -389,6 +402,17 @@ const MODOS = [
     semCategorias: true,
     // Os pontos somam com cada pessoa da sala: numa rodada solta da Bagunca,
     // passariam por cima do teto de 10 dos outros modos.
+    foraDaBagunca: true
+  },
+  {
+    id: 'senso-comum',
+    nome: 'Senso Comum',
+    icone: '📊',
+    descricao: 'O quadro sai do que todo mundo respondeu no Maria vai com as outras: o top 3 de cada um, com peso 4 para o 1o lugar, 3 para o 2o e 2 para o 3o, somando 100%. Todos chutam juntos (13s no primeiro chute, 10s nos outros), escondido ate o tempo fechar. Cada acerto vale a porcentagem dividida por 10. Quem acertou a resposta mais alta continua chutando; quem errou sai.',
+    disponivel: true,
+    // As perguntas e o quadro vem de senso.js, nao do banco.
+    semCategorias: true,
+    // Precisa de dado acumulado: numa roleta, podia sair sem quadro nenhum.
     foraDaBagunca: true
   },
   {
@@ -843,6 +867,11 @@ class Sala {
     this.maria = null;
     this.topsUsados = new Set();
 
+    // Senso Comum: o quadro da rodada, quem ainda chuta, e as perguntas que
+    // ja sairam na partida.
+    this.senso = null;
+    this.sensosUsados = new Set();
+
     this.temporizador = null;
     this.temporizadorVez = null; // o relógio dos 7s corre à parte do da rodada
     // O que cada relogio vai fazer e quando: a pausa precisa saber quanto faltava.
@@ -1065,6 +1094,12 @@ class Sala {
       this.fecharSeTodosTravaramMaria();
     }
 
+    // Senso Comum: quem saiu deixa de ser esperado na vez.
+    if (this.ehSenso() && this.senso && this.estado === 'pergunta' && !this.vazia) {
+      this.senso.chutes.delete(socketId);
+      if (this.senso.vez.delete(socketId)) this.fecharSeTodosChutaram();
+    }
+
     // Saiu o ultimo: a sala para de rodar e fica esperando alguem voltar.
     if (this.vazia) this.congelar();
 
@@ -1178,6 +1213,15 @@ class Sala {
     if (this.ehMaria() && this.jogam.size < 2) {
       return { erro: 'O Maria vai com as outras precisa de pelo menos dois jogadores: o ponto e pensar igual a alguem.' };
     }
+    if (this.ehSenso() && !senso.prontas().length) {
+      const perto = senso.maisPerto();
+      return {
+        erro: `Ainda falta dado para o Senso Comum: ele usa as respostas do Maria vai com as outras, e cada pergunta precisa de ${
+          senso.MIN_PESSOAS_SENSO} pessoas. ${perto
+          ? `A mais perto e "${perto.pergunta}", com ${perto.pessoas}.`
+          : 'Nenhuma pergunta foi jogada ainda.'}`
+      };
+    }
 
     for (const jogador of this.jogadores.values()) {
       jogador.pontos = 0;
@@ -1204,6 +1248,8 @@ class Sala {
     this.secretasUsadas.clear();
     this.maria = null;
     this.topsUsados.clear();
+    this.senso = null;
+    this.sensosUsados.clear();
     // desdeSorteio: perguntas do Modo Tempo desde o ultimo sorteio. vezes:
     // quantas vezes cada modo ja saiu (a Escalada e o Carrossel crescem com
     // isso). ultimo: o modo do sorteio anterior, que espera a vez.
@@ -1247,6 +1293,11 @@ class Sala {
   /** Maria vai com as outras: cada um escreve o seu top 5 e ganha por pensar igual. */
   ehMaria() {
     return this.modo === 'maria';
+  }
+
+  /** Senso Comum: adivinhar o que a mesa respondeu no Maria. */
+  ehSenso() {
+    return this.modo === 'senso-comum';
   }
 
   /** Corrida musical: o primeiro que acerta leva, e a musica para ali. */
@@ -2446,6 +2497,8 @@ class Sala {
     }
 
     const conta = pontuarMaria(listas);
+    // O top 3 de cada um vira dado do Senso Comum (a lista ja sem repetidas).
+    senso.registrar(maria.pergunta, [...conta.porJogador.values()].map((d) => d.lista.slice(0, 3)));
     for (const [id, { pontos }] of conta.porJogador) {
       if (!pontos) continue;
       const jogador = this.jogadores.get(id);
@@ -2517,6 +2570,213 @@ class Sala {
     });
 
     this.seguirOuTerminar(MS_RESULTADO_MARIA);
+  }
+
+  /* ----------------------------- Senso Comum ----------------------------- */
+
+  /** Uma pergunta com gente bastante que ainda nao saiu na partida. */
+  perguntaSenso() {
+    const prontas = senso.prontas();
+    let livres = prontas.filter((p) => !this.sensosUsados.has(p));
+    if (!livres.length) {
+      this.sensosUsados.clear();
+      livres = prontas;
+    }
+    const pergunta = livres[Math.floor(Math.random() * livres.length)];
+    this.sensosUsados.add(pergunta);
+    this.senso = {
+      pergunta,
+      quadro: senso.quadroDaPergunta(pergunta),
+      pessoas: senso.pessoasDe(pergunta),
+      reveladas: new Map(),   // indice no quadro -> quem acertou primeiro
+      vez: new Set(),         // quem chuta agora
+      chutes: new Map(),      // o chute de cada um nesta vez
+      acertosPor: new Map(),  // quantas respostas cada um acertou na rodada
+      aberta: false,
+      numero: 0
+    };
+    return {
+      id: `senso:${pergunta}`,
+      pergunta,
+      imagem: null,
+      audio: null,
+      letra: null,
+      resposta: null,
+      aceita: [],
+      itens: [],
+      necessarias: 1,
+      fixo: true,
+      categoria: CATEGORIA_SENSO,
+      difBase: 0,
+      dificuldade: 0
+    };
+  }
+
+  publicoSenso() {
+    const { quadro, pessoas } = this.senso;
+    return {
+      linhas: Math.min(QUADRO_SENSO, quadro.length),
+      outras: Math.max(0, quadro.length - QUADRO_SENSO),
+      pessoas,
+      reveladas: this.reveladasSenso()
+    };
+  }
+
+  /** O que ja abriu no quadro: { indice, texto, porcento, pontos }. */
+  reveladasSenso(todas = false) {
+    const { quadro, reveladas } = this.senso;
+    return quadro
+      .map((r, indice) => ({ indice, texto: r.texto, porcento: r.porcento, pontos: r.pontos,
+        acertou: reveladas.get(indice) || null }))
+      .filter((r) => todas || reveladas.has(r.indice));
+  }
+
+  /** Abre uma vez de chutar para quem ainda esta na rodada. */
+  abrirVezSenso(quem) {
+    const s = this.senso;
+    if (this.estado !== 'pergunta' || !s) return;
+    s.numero += 1;
+    s.vez = new Set([...quem].filter((id) => this.jogam.has(id)));
+    s.chutes = new Map();
+    s.aberta = true;
+    const duracaoMs = s.numero === 1 ? MS_PRIMEIRO_CHUTE_SENSO : MS_CHUTE_SENSO;
+    this.inicioPergunta = Date.now();
+    this.duracaoPerguntaMs = duracaoMs;
+    this.emitir('senso:vez', { numero: s.numero, vez: [...s.vez], duracaoMs });
+    this.agendar(() => this.fecharVezSenso(), duracaoMs);
+  }
+
+  /** Um chute: fica escondido, e da para trocar enquanto a vez estiver aberta. */
+  chutarSenso(socketId, limpo) {
+    const s = this.senso;
+    if (!s || this.estado !== 'pergunta') return { erro: 'Nao ha quadro aberto agora.' };
+    if (!s.vez.has(socketId)) {
+      return { erro: s.numero > 1 ? 'Voce saiu desta rodada. O chat volta no resultado.' : 'Voce entra na proxima rodada.' };
+    }
+    if (!s.aberta) return { erro: 'Espere a proxima vez de chutar.' };
+    const trocou = s.chutes.has(socketId);
+    s.chutes.set(socketId, limpo);
+    this.emitir('senso:chutou', { jogadorId: socketId, quantos: s.chutes.size, total: s.vez.size });
+    this.fecharSeTodosChutaram();
+    return { veredito: 'palpite', texto: limpo, trocou };
+  }
+
+  /** Todo mundo da vez ja chutou (ou saiu): nao ha por que esperar o relogio. */
+  fecharSeTodosChutaram() {
+    const s = this.senso;
+    if (!s || !s.aberta || this.estado !== 'pergunta') return false;
+    if ([...s.vez].some((id) => !s.chutes.has(id))) return false;
+    this.agendar(() => this.fecharVezSenso(), MS_TODOS_TRAVARAM);
+    return true;
+  }
+
+  /**
+   * Fecha a vez: os chutes abrem todos juntos. Cada acerto leva os pontos da
+   * resposta — duas pessoas no mesmo chute levam os dois. Resposta que ja
+   * tinha aberto numa vez anterior conta como erro. Quem acertou a resposta
+   * mais alta desta vez continua; o resto sai.
+   */
+  fecharVezSenso() {
+    const s = this.senso;
+    if (!s || !s.aberta || this.estado !== 'pergunta') return;
+    s.aberta = false;
+    const jaAbertas = new Set(s.reveladas.keys());
+
+    const chutes = [];
+    for (const id of s.vez) {
+      const jogador = this.jogadores.get(id);
+      if (!jogador) continue;
+      const texto = s.chutes.get(id) || '';
+      const indice = senso.respostaDoChute(s.quadro, texto);
+      const repetida = indice >= 0 && jaAbertas.has(indice);
+      const acertou = indice >= 0 && !repetida;
+      const pontos = acertou ? s.quadro[indice].pontos : 0;
+      if (acertou) {
+        jogador.pontos += pontos;
+        if (!this.pontosRodada.has(id)) jogador.acertos += 1;
+        this.pontosRodada.set(id, (this.pontosRodada.get(id) || 0) + pontos);
+        if (!s.reveladas.has(indice)) s.reveladas.set(indice, jogador.nickname);
+        s.acertosPor.set(id, (s.acertosPor.get(id) || 0) + 1);
+      }
+      chutes.push({
+        jogadorId: id, nickname: jogador.nickname, avatar: jogador.avatar,
+        texto, indice: acertou ? indice : null, acertou, pontos,
+        motivo: acertou ? null : !texto ? 'nao chutou' : repetida ? 'ja tinha saido' : 'nao esta no quadro'
+      });
+    }
+
+    // Continua quem acertou a mais alta (o indice mais baixo do quadro).
+    const acertos = chutes.filter((c) => c.acertou);
+    const melhor = acertos.length ? Math.min(...acertos.map((c) => c.indice)) : null;
+    const continuam = acertos.filter((c) => c.indice === melhor).map((c) => c.jogadorId);
+    const fechou = s.reveladas.size >= s.quadro.length;
+    const fim = !continuam.length || fechou;
+
+    this.emitir('senso:revelacao', {
+      numero: s.numero,
+      chutes,
+      reveladas: this.reveladasSenso(),
+      continuam,
+      fim,
+      duracaoMs: MS_REVELA_SENSO,
+      placar: this.placar()
+    });
+
+    if (fim) this.agendar(() => this.encerrarRodada(), MS_REVELA_SENSO);
+    else this.agendar(() => this.abrirVezSenso(continuam), MS_REVELA_SENSO);
+  }
+
+  /** Fim da rodada: o quadro abre inteiro. */
+  encerrarSenso() {
+    this.limparTemporizador();
+    const s = this.senso;
+    this.estado = 'resultado';
+    for (const j of this.jogam.values()) j.acertosAnotados = j.acertos;
+
+    const detalhes = [...this.jogam.values()].map((jogador) => {
+      const ganhou = this.pontosRodada.get(jogador.id) || 0;
+      return {
+        jogadorId: jogador.id,
+        nickname: jogador.nickname,
+        avatar: jogador.avatar,
+        acertou: ganhou > 0,
+        posicao: null,
+        colocacao: false,
+        ganhou,
+        bonus: 0,
+        ms: null,
+        total: jogador.pontos,
+        itens: [],
+        necessarias: 1,
+        eliminado: false,
+        equipe: null,
+        papel: null,
+        senso: { acertos: s.acertosPor.get(jogador.id) || 0 }
+      };
+    });
+    detalhes.sort((a, b) => b.ganhou - a.ganhou);
+
+    const quadro = this.reveladasSenso(true);
+    const texto = quadro.slice(0, ITENS_MARIA).map((r) => `${r.texto} ${r.porcento}%`).join(' · ');
+    this.avisar(`O senso comum: ${texto}`, true);
+
+    this.emitir('rodada:resultado', {
+      rodada: this.rodada,
+      titulo: `O senso comum (${s.pessoas} pessoas)`,
+      resposta: texto,
+      senso: { pergunta: s.pergunta, pessoas: s.pessoas, quadro, linhas: QUADRO_SENSO },
+      listaCompleta: [],
+      listaParcial: false,
+      necessarias: 1,
+      aceita: [],
+      dificuldade: { valor: 0, nivel: 'sem conta', cor: '#6f6791' },
+      detalhes,
+      placar: this.placar(),
+      duracaoMs: MS_RESULTADO_SENSO,
+      acabou: this.acabouAPartida()
+    });
+
+    this.seguirOuTerminar(MS_RESULTADO_SENSO);
   }
 
   /** Uma pergunta comum: uma resposta só. */
@@ -2889,6 +3149,8 @@ class Sala {
       this.perguntaAtual = this.perguntaEu();
     } else if (this.ehMaria()) {
       this.perguntaAtual = this.perguntaMaria();
+    } else if (this.ehSenso()) {
+      this.perguntaAtual = this.perguntaSenso();
     } else if (this.ehLeilao()) {
       this.perguntaAtual = this.ehDandoDicas() ? this.perguntaDica() : this.perguntaPresente();
       this.prepararLeilao();
@@ -3059,6 +3321,8 @@ class Sala {
     if (this.ehEuTeConheco()) return MS_ESCOLHA_EU;
     // Maria vai com as outras: um minuto para pensar no top 5.
     if (this.ehMaria()) return MS_MARIA;
+    // Senso Comum: o relogio e o de cada vez de chutar, nao o da rodada.
+    if (this.ehSenso()) return MS_PRIMEIRO_CHUTE_SENSO;
     // Pergunta secreta: nao ha relogio de rodada, so o de cada vez.
     if (this.ehSecreta()) return MS_VEZ_SECRETA;
     // Escalada da Bagunca: o relogio e fixo, a lista e que nao tem fim.
@@ -3149,6 +3413,8 @@ class Sala {
       eu: this.ehEuTeConheco() && this.eu ? this.publicoEu() : null,
       // Maria vai com as outras: quantas linhas e quanto vale cada coisa.
       maria: this.ehMaria() && this.maria ? this.publicoMaria() : null,
+      // Senso Comum: so o tamanho do quadro — as respostas abrem com os acertos.
+      senso: this.ehSenso() && this.senso ? this.publicoSenso() : null,
       // Presente Grego: agora a pergunta é pública, mas só uma pessoa responde
       // — e a mesa inteira sabe quanto ela prometeu entregar.
       presente: this.ehLeilao() && this.leilao
@@ -3172,6 +3438,7 @@ class Sala {
     else if (this.ehVeni()) this.abrirFaseVeni(0);
     else if (this.ehEuTeConheco()) this.agendar(() => this.abrirPalpiteEu(), duracaoMs);
     else if (this.ehMaria()) this.abrirMaria(duracaoMs);
+    else if (this.ehSenso()) this.abrirVezSenso(new Set(this.jogam.keys()));
     else this.agendar(() => this.encerrarRodada(), duracaoMs);
   }
 
@@ -3838,6 +4105,16 @@ class Sala {
       return { veredito: 'chat' };
     }
 
+    // Senso Comum: o chat e o chute, escondido ate a vez fechar. Quem saiu da
+    // rodada nao escreve: soprar a resposta para quem ainda chuta seria facil.
+    if (this.ehSenso()) {
+      if (this.estado === 'categoria') {
+        this.publicarChat(jogador, limpo);
+        return { veredito: 'chat' };
+      }
+      return this.chutarSenso(socketId, limpo);
+    }
+
     // Maria vai com as outras: enquanto a mesa escreve, o chat fecha — senao
     // o top de um vira cola para todo mundo.
     if (this.ehMaria()) {
@@ -4327,7 +4604,7 @@ class Sala {
   ninguemMaisPontua() {
     if (this.jogam.size === 0) return false;
     // Eu te conheço: quem fecha a rodada sao as confirmacoes, nao os acertos.
-    if (this.ehEuTeConheco() || this.ehMaria()) return false;
+    if (this.ehEuTeConheco() || this.ehMaria() || this.ehSenso()) return false;
     // Pergunta secreta: quem fecha e a roda — um acerto, ou a palavras acabando.
     if (this.ehSecreta()) return false;
     // Corrida musical: o primeiro acerto leva a rodada inteira.
@@ -4348,7 +4625,7 @@ class Sala {
    */
   usaChances() {
     return !this.ehCarrossel() && !this.ehLeilao() && !this.ehRanking() && !this.ehVeni()
-      && !this.ehQualMusica() && !this.ehEuTeConheco() && !this.ehSecreta() && !this.ehMaria();
+      && !this.ehQualMusica() && !this.ehEuTeConheco() && !this.ehSecreta() && !this.ehMaria() && !this.ehSenso();
   }
 
   /**
@@ -4764,6 +5041,11 @@ class Sala {
     }
     // Maria vai com as outras nao tem resposta: era so a pergunta.
     if (this.ehMaria()) return { texto: pergunta.pergunta, lista: [], parcial: false };
+    // Senso Comum: o quadro inteiro.
+    if (this.ehSenso() && this.senso) {
+      const lista = this.senso.quadro.map((r) => `${r.texto} ${r.porcento}%`);
+      return { texto: lista.slice(0, ITENS_MARIA).join(' · '), lista, parcial: false };
+    }
     if (pergunta.necessarias === 1 && pergunta.resposta) {
       return { texto: pergunta.resposta, lista: [], parcial: false };
     }
@@ -4810,6 +5092,7 @@ class Sala {
     if (this.estado !== 'pergunta') return;
     if (this.ehEuTeConheco()) return this.encerrarEu();
     if (this.ehMaria()) return this.encerrarMaria();
+    if (this.ehSenso()) return this.encerrarSenso();
     this.limparTemporizador();
 
     if (this.ehDandoDicas()) this.pagarDicas();
