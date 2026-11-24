@@ -132,12 +132,27 @@ function nicknameValido() {
   return nome;
 }
 
-$('btn-abrir-criar').addEventListener('click', () => {
+$('btn-abrir-criar').addEventListener('click', async () => {
   if (!nicknameValido()) return;
   avisar('aviso-lobby', '');
   $('painel-entrar').hidden = true;
+  await atualizarConfigSeMudou();
   mostrarTela('tela-config');
 });
+
+/**
+ * A aba ficou aberta enquanto o servidor ganhou modos novos (um deploy): a
+ * configuracao que ela carregou ao abrir ja nao e a do servidor, e a sala
+ * criada dali sairia sem os modos novos — na Bagunca, sem eles na roleta.
+ * Antes de mostrar a configuracao, confere de novo e remonta se mudou.
+ */
+async function atualizarConfigSeMudou() {
+  try {
+    const nova = await fetch('/api/config').then((r) => r.json());
+    const assinatura = (c) => JSON.stringify([c.versao, (c.modos || []).map((m) => m.id), c.bagunca && c.bagunca.modos]);
+    if (estado.config && assinatura(nova) !== assinatura(estado.config)) await carregarConfig();
+  } catch { /* sem rede agora: segue com a que ja tinha */ }
+}
 
 $('btn-abrir-entrar').addEventListener('click', () => {
   const painel = $('painel-entrar');
