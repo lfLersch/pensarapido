@@ -317,14 +317,18 @@ console.log('');
   // 193 membros da ONU + Vaticano e Palestina (observadores) + Taiwan.
   conferir('Africa tem os 54 paises', quantos('a Africa'), 54);
   conferir('Asia tem os 48', quantos('a Asia'), 48);
-  conferir('Europa tem os 45 (44 + Vaticano)', quantos('a Europa'), 45);
+  // 44 + Vaticano + Kosovo, e os cinco transcontinentais (abaixo).
+  conferir('Europa tem os 51', quantos('a Europa'), 51);
   conferir('America do Sul tem os 12', quantos('a America do Sul'), 12);
   conferir('Oceania tem os 14', quantos('a Oceania'), 14);
   conferir('America Central e Caribe tem os 20',
     quantos('a America Central ou do Caribe'), 20);
 
   // Nenhum pais pode aparecer em dois continentes: quem responde "Egito" em
-  // "paises da Asia" tem que ouvir que errou.
+  // "paises da Asia" tem que ouvir que errou. A excecao sao os
+  // transcontinentais do Caucaso, a Turquia e o Cazaquistao: tem territorio
+  // nos dois lados, jogam Eurocopa, e quem diz "Georgia" para Europa acertou.
+  const TRANSCONTINENTAIS = new Set(['Georgia', 'Armenia', 'Azerbaijao', 'Turquia', 'Cazaquistao']);
   const onde = new Map();
   for (const lista of LISTAS) {
     const m = lista.pergunta.match(/^Cite \{n\} paises d[ao]s? (.+)$/);
@@ -335,9 +339,35 @@ console.log('');
       onde.get(nome).push(m[1]);
     }
   }
-  const dobrados = [...onde].filter(([, cs]) => cs.length > 1)
+  const dobrados = [...onde].filter(([nome, cs]) => cs.length > 1 && !TRANSCONTINENTAIS.has(nome))
     .map(([nome, cs]) => `${nome} (${cs.join('/')})`);
   conferir('nenhum pais em dois continentes', dobrados, []);
+}
+
+/* ---------------- "Top X de Y", recortado dos rankings ---------------- */
+{
+  const { LISTAS, RECORTES_DE_RANKING, paraRodada } = require('../server/escalada.js');
+  const { RANKINGS } = require('../server/rankings.js');
+
+  const economias = LISTAS.find((l) => l.pergunta === 'Cite {n} das 20 maiores economias do mundo');
+  conferir('existe "das 20 maiores economias"', !!economias, true);
+  conferir('  com exatamente 20 itens', economias && economias.respostas.length, 20);
+  conferir('  na ordem do ranking (EUA primeiro)',
+    economias && [].concat(economias.respostas[0])[0], 'Estados Unidos');
+
+  const cortes = RECORTES_DE_RANKING.reduce((soma, r) => soma + r[2].length, 0);
+  const recortes = LISTAS.filter((l) => RANKINGS.some((r) => r.fonte === l.fonte) && /^Cite \{n\} d[ao]s \d+ /.test(l.pergunta));
+  conferir('todo corte da tabela vira uma lista', recortes.length, cortes);
+
+  const topo10 = LISTAS.find((l) => l.pergunta === 'Cite {n} dos 10 paises mais populosos do mundo');
+  conferir('o recorte e mais dificil que o ranking inteiro',
+    topo10.dif > RANKINGS.find((r) => r.id === 'paises-populosos').dif, true);
+
+  conferir('recorte entra no sorteio da Escalada', paraRodada(5).some((l) => l.fonte), true);
+
+  const europa = LISTAS.find((l) => l.pergunta === 'Cite {n} paises da Europa');
+  const nomes = europa.respostas.map((r) => [].concat(r)[0]);
+  conferir('Europa aceita Georgia e Armenia', ['Georgia', 'Armenia'].every((n) => nomes.includes(n)), true);
 }
 
 /* ------- Dois itens da mesma lista nao podem ser o mesmo palpite ------- */

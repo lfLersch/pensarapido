@@ -1546,7 +1546,7 @@ para a pessoa se situar.
 
 ## Escalada: listas parametrizadas
 
-Duas famílias de pergunta que rendem muito com pouco conteúdo escrito:
+Três famílias de pergunta que rendem muito com pouco conteúdo escrito:
 
 **"Começam com a letra X" — geradas sozinhas.** Em vez de escrever *países com
 A*, *países com B* uma a uma, cada lista-fonte é fatiada pela primeira letra do
@@ -1563,6 +1563,21 @@ e ninguém organiza vocabulário pelo fim da palavra.
 ```js
 const FONTES_POR_LETRA = [
   ['Cite {n} frutas', 'frutas', 'comidas'],
+  ...
+];
+```
+
+**"Top X de Y" — recortadas dos rankings.** Os rankings do Mais ou Menos
+Pontos já guardam as listas em ordem e com fonte, então o topo de cada um vira
+pergunta de Escalada e de Leilão: *"Cite {n} das 20 maiores economias do
+mundo"*, *"Cite {n} dos 10 países mais populosos do mundo"*. A tabela
+`RECORTES_DE_RANKING` diz qual ranking e quais cortes (10, 20, 50); hoje são
+**38 listas**. Atualizar o ranking atualiza o recorte, e o `dif` sobe quanto
+mais apertado o corte — lembrar um país não basta, tem que ser um do topo.
+
+```js
+const RECORTES_DE_RANKING = [
+  ['paises-pib', 'das {k} maiores economias do mundo', [10, 20, 50], 'geografia'],
   ...
 ];
 ```
@@ -1604,7 +1619,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3948 perguntas em 18 categorias**, mais 608 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**3948 perguntas em 18 categorias**, mais 647 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato

@@ -198,12 +198,16 @@ const LISTAS = [
       ['Islandia', 'Islandia'], ['Polonia', 'Polonia'], ['Republica Tcheca', 'Tchequia'],
       ['Eslovaquia', 'Eslovaquia'], 'Hungria', ['Romenia', 'Romenia'],
       ['Bulgaria', 'Bulgaria'], ['Grecia', 'Grecia'], ['Croacia', 'Croacia'],
-      ['Servia', 'Servia'], ['Eslovenia', 'Eslovenia'], ['Bosnia', 'Bosnia'],
+      ['Servia', 'Servia'], ['Eslovenia', 'Eslovenia'], ['Bosnia', 'Bosnia e Herzegovina', 'Bosnia-Herzegovina'],
       'Montenegro', ['Macedonia do Norte', 'Macedonia'], ['Albania', 'Albania'],
       ['Ucrania', 'Ucrania'], ['Bielorrussia', 'Bielorrussia'], ['Russia', 'Russia'],
       ['Lituania', 'Lituania'], ['Letonia', 'Letonia'], ['Estonia', 'Estonia'],
       ['Moldavia', 'Moldavia'], 'Malta', 'Chipre', 'Andorra', ['Monaco', 'Monaco'],
-      'San Marino', 'Liechtenstein', ['Vaticano', 'Cidade do Vaticano']
+      'San Marino', 'Liechtenstein', ['Vaticano', 'Cidade do Vaticano'],
+      // Transcontinentais e o Kosovo: quem cita a Georgia ou a Turquia como
+      // pais europeu nao errou — jogam Eurocopa e Eurovision.
+      'Georgia', ['Armenia', 'Armenia'], ['Azerbaijao', 'Azerbaijao'], 'Turquia',
+      ['Cazaquistao', 'Cazaquistao'], 'Kosovo'
     ]
   },
   {
@@ -1392,7 +1396,14 @@ const LISTAS = [
       'Sao Marino',
       'Vaduz',
       'Cidade do Vaticano',
-      'Luxemburgo'
+      'Luxemburgo',
+      ['Pristina', 'Prishtina'],
+      // Capitais dos transcontinentais, que tambem estao em "paises da Europa".
+      ['Tbilisi', 'Tiflis'],
+      'Erevan',
+      'Baku',
+      'Ancara',
+      'Astana'
     ]
   },
   {
@@ -12201,7 +12212,32 @@ const LISTAS = [
       ['Malawi'],
       ['Botsuana'],
       ['Namibia'],
-      ['Mauricio']
+      ['Mauricio'],
+      ['Tanzania'],
+      ['Ruanda'],
+      ['Camaroes'],
+      ['Sudao do Sul'],
+      ['Sudao'],
+      ['Lesoto'],
+      ['Essuatini', 'Suazilandia'],
+      ['Seicheles'],
+      ['Paquistao'],
+      ['Granada'],
+      ['Santa Lucia'],
+      ['Dominica'],
+      ['Antigua e Barbuda'],
+      ['Sao Vicente e Granadinas'],
+      ['Sao Cristovao e Nevis'],
+      ['Samoa'],
+      ['Tonga'],
+      ['Vanuatu'],
+      ['Ilhas Salomao'],
+      ['Kiribati'],
+      ['Tuvalu'],
+      ['Nauru'],
+      ['Ilhas Marshall'],
+      ['Palau'],
+      ['Micronesia']
     ]
   },
     {
@@ -12237,7 +12273,9 @@ const LISTAS = [
       ['Seicheles'],
       ['Comores'],
       ['Ruanda'],
-      ['Burundi']
+      ['Burundi'],
+      ['Vanuatu'],
+      ['Guine Equatorial']
     ]
   },
     {
@@ -12849,6 +12887,67 @@ for (const [enunciadoFonte, rotulo, tema] of FONTES_POR_TAMANHO) {
 }
 
 /* ------------------------------------------------------------------ *
+ * "Top X de Y", recortado dos rankings do Mais ou Menos Pontos.
+ *
+ * Os rankings ja guardam as listas em ordem e com fonte: "as 100 maiores
+ * economias", "os 100 paises mais populosos". O topo de cada uma vira
+ * pergunta de Escalada e de Leilao — "Cite {n} das 20 maiores economias do
+ * mundo" — sem copiar nada: atualizou o ranking, o recorte acompanha.
+ *
+ * O recorte e mais dificil que a lista inteira: nao basta lembrar um pais,
+ * tem que lembrar um que esta no topo. Por isso o `dif` sobe, e sobe mais
+ * quanto mais apertado o corte.
+ * ------------------------------------------------------------------ */
+
+const { RANKINGS } = require('./rankings');
+
+// [id do ranking, enunciado com {k} no lugar do corte, cortes, tema]
+const RECORTES_DE_RANKING = [
+  ['paises-pib', 'das {k} maiores economias do mundo', [10, 20, 50], 'geografia'],
+  ['paises-populosos', 'dos {k} paises mais populosos do mundo', [10, 20, 50], 'geografia'],
+  ['paises-area', 'dos {k} maiores paises do mundo em area', [10, 20, 50], 'geografia'],
+  ['paises-visitados', 'dos {k} paises mais visitados por turistas', [10, 20], 'geografia'],
+  ['medalhas-olimpicas', 'dos {k} paises com mais medalhas olimpicas', [10, 20], 'esportes'],
+  ['copas-participacoes', 'das {k} selecoes com mais Copas do Mundo disputadas', [10, 20], 'futebol'],
+  ['cidades-brasil', 'das {k} cidades mais populosas do Brasil', [10, 20, 50], 'geografia'],
+  ['cidades-mundo', 'das {k} cidades mais populosas do mundo', [20], 'geografia'],
+  ['estados-populosos', 'dos {k} estados mais populosos do Brasil', [10], 'geografia'],
+  ['linguas-faladas', 'das {k} linguas mais faladas do mundo', [10, 20], 'geografia'],
+  ['rios-extensos', 'dos {k} rios mais extensos do mundo', [10, 20], 'geografia'],
+  ['empresas-valiosas', 'das {k} empresas mais valiosas do mundo', [10, 20, 50], 'economia'],
+  ['filmes-bilheteria', 'dos {k} filmes de maior bilheteria da historia', [10, 20], 'cinema'],
+  ['jogos-vendidos', 'dos {k} jogos eletronicos mais vendidos da historia', [10, 20], 'games'],
+  ['artistas-spotify', 'dos {k} artistas mais ouvidos no Spotify', [10, 20], 'musica'],
+  ['albuns-vendidos', 'dos {k} albuns mais vendidos da historia', [20], 'musica'],
+  ['livros-vendidos', 'dos {k} livros mais vendidos da historia', [20], 'gerais'],
+  ['instagram-mundo', 'das {k} contas mais seguidas do Instagram', [10, 20], 'mainstream'],
+  ['artilheiros-brasil', 'dos {k} maiores artilheiros da Selecao Brasileira', [10], 'futebol']
+];
+
+/** Quanto o corte aperta: top 10 pesa mais que top 50. */
+function difDoRecorte(base, k) {
+  if (k <= 10) return Math.min(90, base + 15);
+  if (k <= 20) return Math.min(90, base + 10);
+  return Math.min(90, base + 5);
+}
+
+for (const [id, enunciado, cortes, tema] of RECORTES_DE_RANKING) {
+  const ranking = RANKINGS.find((r) => r.id === id);
+  if (!ranking) throw new Error(`RECORTES_DE_RANKING: ranking que nao existe: ${id}`);
+  for (const k of cortes) {
+    if (k >= ranking.itens.length) throw new Error(`RECORTES_DE_RANKING: ${id} nao tem mais que ${k} itens`);
+    LISTAS.push({
+      pergunta: `Cite {n} ${enunciado.replace('{k}', k)}`,
+      tema,
+      dif: difDoRecorte(ranking.dif, k),
+      fonte: ranking.fonte,
+      respostas: ranking.itens.slice(0, k).map((it) =>
+        (it.variantes.length ? [it.oficial, ...it.variantes] : it.oficial))
+    });
+  }
+}
+
+/* ------------------------------------------------------------------ *
  * Sobrenome basta.
  *
  * Ninguem responde "Lionel Messi" num jogo de velocidade: responde "Messi".
@@ -12908,4 +13007,4 @@ function itemDe(bruto) {
   return { oficial: formas[0], variantes: formas.slice(1) };
 }
 
-module.exports = { LISTAS, INCLUSOES, LISTAS_DE_PESSOAS, paraRodada, itemDe, tetoDeTamanho };
+module.exports = { LISTAS, INCLUSOES, LISTAS_DE_PESSOAS, RECORTES_DE_RANKING, paraRodada, itemDe, tetoDeTamanho };
