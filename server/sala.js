@@ -62,16 +62,16 @@ const MS_TETO_RODADA = 90000;
 const VARIACAO_CATEGORIAS = 0.8;
 
 // Dificuldade crescente: a partida começa pelas perguntas mais fáceis da
-// categoria e termina pelas mais difíceis. A escolha só acontece entre as 16
-// da frente da fila (as que saíram menos vezes), e sorteia entre as 3 delas
-// mais perto do alvo, para não brigar com o rodízio.
+// categoria e termina pelas mais difíceis. Mas não repetir vem antes: a
+// escolha só acontece entre as que saíram MENOS vezes (o piso do rodízio),
+// 16 delas sorteadas, e entre essas sai uma das 3 mais perto do alvo.
 //
-// Antes a janela era um quarto da fila e saía sempre a mais perto: numa
-// categoria de 200 perguntas, a partida abria com a mais fácil entre 50, que
-// é quase sempre uma das ~4 mais fáceis de todas — e as mesmas voltavam toda
-// partida. Na simulação (3 por partida, 30 partidas, categoria de 200) saíam
-// ~45 perguntas diferentes; assim saem ~76, perto das ~83 sem dificuldade
-// nenhuma, e a partida ainda abre entre as ~12% mais fáceis.
+// Uma pergunta só volta depois que a categoria inteira passou. Perto do fim
+// de uma volta sobram poucas no piso e a curva fica mais solta — é o preço,
+// e vale: quem joga costuma ser a mesma turma.
+//
+// (Antes a janela era um quarto da fila, sem olhar o piso, e saía sempre a
+// mais perto: a partida abria quase sempre com as mesmas ~4 mais fáceis.)
 const JANELA_DIFICULDADE = 16;
 const SORTEIO_DIFICULDADE = 3;
 
@@ -1778,8 +1778,8 @@ class Sala {
   montarFila() {
     this.filas = new Map();
     for (const idCategoria of categoriasEmJogo(this.config)) {
-      const perguntas = this.perguntasDaCategoria(idCategoria);
-      if (perguntas.length) this.filas.set(idCategoria, embaralhar(perguntas));
+      const fila = this.novaFila(idCategoria);
+      if (fila.length) this.filas.set(idCategoria, fila);
     }
   }
 
@@ -1877,11 +1877,17 @@ class Sala {
       return this.marcarUso(categoria, bruta);
     };
 
-    // As candidatas: as primeiras da fila que não repetem resposta.
-    const candidatas = [];
-    for (let i = 0; i < fila.length && candidatas.length < JANELA_DIFICULDADE; i++) {
-      if (livre(fila[i])) candidatas.push(i);
-    }
+    // As candidatas: as que não repetem resposta e estão no piso do rodízio.
+    // O contador é lido agora, não quando a fila nasceu: outra sala pode ter
+    // usado uma pergunta desta fila no meio da partida.
+    const vezes = (i) => usos.usosDe(idDaPergunta(categoria, fila[i]));
+    const livres = [];
+    for (let i = 0; i < fila.length; i++) if (livre(fila[i])) livres.push(i);
+    const piso = Math.min(...livres.map(vezes));
+    // 16 sorteadas de novo a cada pergunta. Se fossem sempre as 16 da frente,
+    // as que não saem ficariam lá, e alvos seguidos parecidos esgotariam as
+    // fáceis (ou as difíceis) da janela.
+    const candidatas = embaralhar(livres.filter((i) => vezes(i) === piso)).slice(0, JANELA_DIFICULDADE);
 
     if (candidatas.length > 0) {
       const indice = this.maisPertoDoAlvo(categoria, fila, candidatas);
@@ -1955,7 +1961,8 @@ class Sala {
     };
 
     const alvo = this.andamento();
-    // A ordem da fila desempata: entre distâncias iguais, quem saiu menos.
+    // As candidatas chegam embaralhadas: entre distâncias iguais, a ordem
+    // delas já é um sorteio.
     const maisPerto = candidatas
       .map((i, ordem) => ({ i, ordem, distancia: Math.abs(posicao(difDe(fila[i])) - alvo) }))
       .sort((a, b) => a.distancia - b.distancia || a.ordem - b.ordem)
@@ -1994,7 +2001,8 @@ class Sala {
   perguntaRanking() {
     const livres = RANKINGS.filter((r) => !this.listasUsadas.has(r.id));
     const bolo = livres.length ? livres : RANKINGS;
-    const lista = bolo[Math.floor(Math.random() * bolo.length)];
+    // Rodizio entre partidas: sai uma das que sairam menos vezes.
+    const lista = usos.sortear(bolo, (r) => 'ranking:' + r.id);
     this.listasUsadas.add(lista.id);
 
     const id = dificuldade.idDe('ranking', lista.pergunta, lista.id);
@@ -2028,7 +2036,8 @@ class Sala {
   perguntaVeni() {
     const livres = PALAVRAS.filter((p) => !this.respostasUsadas.has(normalizar(p.resposta)));
     const bolo = livres.length ? livres : PALAVRAS;
-    const palavra = bolo[Math.floor(Math.random() * bolo.length)];
+    // Rodizio entre partidas: sai uma das que sairam menos vezes.
+    const palavra = usos.sortear(bolo, (p) => 'veni:' + normalizar(p.resposta));
     this.respostasUsadas.add(normalizar(palavra.resposta));
 
     const id = dificuldade.idDe('veni', palavra.dicas[0], palavra.resposta);
@@ -2432,7 +2441,8 @@ class Sala {
       this.topsUsados.clear();
       livres = TOPS;
     }
-    const pergunta = livres[Math.floor(Math.random() * livres.length)];
+    // Rodizio entre partidas: sai uma das que sairam menos vezes.
+    const pergunta = usos.sortear(livres, (t) => 'top:' + t);
     this.topsUsados.add(pergunta);
     this.maria = {
       pergunta,
@@ -2640,7 +2650,9 @@ class Sala {
       this.sensosUsados.clear();
       livres = prontas;
     }
-    const pergunta = livres[Math.floor(Math.random() * livres.length)];
+    // Rodizio entre partidas: sai uma das que sairam menos vezes. O id e o
+    // mesmo do Maria vai com as outras: a pergunta vista la tambem conta.
+    const pergunta = usos.sortear(livres, (t) => 'top:' + t);
     this.sensosUsados.add(pergunta);
     this.senso = {
       pergunta,

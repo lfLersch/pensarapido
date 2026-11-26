@@ -8,12 +8,14 @@
  * seguinte começa de uma fila embaralhada do zero — e é aí que as mesmas
  * perguntas voltavam, ainda mais nas categorias magras.
  *
- * A regra é a do rodízio, não a da proibição: quem já saiu **perde peso** no
- * sorteio até as outras alcançarem. Uma pergunta com contador 1 num monte de
- * zeros entra com menos chance; quando todas estiverem em 1, todas voltam a
- * ter a mesma chance. O que conta é sempre a DISTÂNCIA para a menos usada do
- * grupo, nunca o número absoluto — senão, depois de muitas partidas, o banco
- * inteiro ficaria com pesos minúsculos e o sorteio viraria outra coisa.
+ * A regra é a do rodízio estrito: **quem saiu menos vem sempre antes**. Uma
+ * pergunta com contador 1 só volta quando todas as do grupo chegarem a 1; até
+ * lá, sorteia-se só entre as que estão no piso. Como quem joga costuma ser a
+ * mesma turma, ver de novo uma pergunta antes de passar pelo banco inteiro é
+ * pior do que qualquer outra coisa que o sorteio tente equilibrar.
+ *
+ * (Antes era um peso: quem já tinha saído só perdia chance, e com um banco
+ * grande isso ainda deixava as mesmas voltarem de uma partida para a outra.)
  *
  * Isto é diferente de `dificuldade.js`, que também tem um `vezes`: lá o
  * contador só anda nas rodadas que alimentam a dificuldade (leilão e Mais ou
@@ -29,15 +31,6 @@ const banco = require('./banco');
 // verdade e deixam o rodizio local torto.
 const ARQUIVO = process.env.USOS_ARQUIVO || path.join(__dirname, 'dados', 'usos.json');
 const SALVAR_APOS = 5000; // junta as escritas em disco a cada 5s
-
-/**
- * Quanto uma pergunta perde de peso por cada uso a mais que a menos usada.
- *
- * 0.55 dá um empurrão claro sem virar fila rígida: com um uso a mais ela entra
- * com pouco mais da metade da chance, com dois usos a mais com um terço. Ainda
- * pode sair — o que não pode é sair na mesma frequência de quem nunca saiu.
- */
-const PESO_POR_USO_EXTRA = 0.55;
 
 /** @type {Map<string, number>} id da pergunta -> quantas vezes ja entrou */
 const usos = new Map();
@@ -135,42 +128,34 @@ function usosDe(id) {
 }
 
 /**
- * O peso de cada pergunta dentro de um grupo, de 0 a 1.
+ * Ordena de quem saiu menos para quem saiu mais, embaralhando os empates.
  *
- * Relativo à menos usada do grupo: a que está no piso vale 1, e cada uso a
- * mais multiplica por `PESO_POR_USO_EXTRA`. Todas empatadas, todas valem 1.
- */
-function pesoDe(vezes, piso) {
-  return PESO_POR_USO_EXTRA ** Math.max(0, vezes - piso);
-}
-
-/**
- * Embaralha dando a frente a quem saiu menos.
- *
- * É um sorteio, não uma ordenação: cada item tira uma chave aleatória
- * `-ln(u) / peso` e a lista sai ordenada por ela. Peso maior tende a chaves
- * menores, então quem saiu menos costuma vir antes — mas qualquer ordem
- * continua possível, e com todos os pesos iguais isto é exatamente um
- * embaralhamento uniforme.
+ * Todas com o mesmo contador, isto é um embaralhamento uniforme. Com
+ * contadores diferentes, nenhuma que saiu mais passa na frente de uma que
+ * saiu menos.
  *
  * @param {T[]} itens
  * @param {(item:T)=>string} idDe  como achar o id de cada item
- * @returns {T[]} uma copia embaralhada
+ * @returns {T[]} uma copia ordenada
  * @template T
  */
 function embaralharPorUso(itens, idDe) {
   if (itens.length < 2) return itens.slice();
-
-  const vezes = itens.map((item) => usosDe(idDe(item)));
-  const piso = Math.min(...vezes);
-
   return itens
-    .map((item, i) => ({
-      item,
-      chave: -Math.log(1 - Math.random()) / pesoDe(vezes[i], piso)
-    }))
-    .sort((a, b) => a.chave - b.chave)
+    .map((item) => ({ item, vezes: usosDe(idDe(item)), sorte: Math.random() }))
+    .sort((a, b) => a.vezes - b.vezes || a.sorte - b.sorte)
     .map((x) => x.item);
+}
+
+/**
+ * Uma das menos usadas do grupo, sorteada entre elas, já contada como usada.
+ * É o sorteio de uma pergunta só (Mais ou Menos Pontos, Maria vai com as
+ * outras, Pergunta secreta...).
+ */
+function sortear(itens, idDe) {
+  const item = embaralharPorUso(itens, idDe)[0];
+  if (item !== undefined) registrar(idDe(item));
+  return item;
 }
 
 /** Para o painel de inspecao: o que ja rodou e o quanto. */
@@ -184,5 +169,5 @@ const pronto = carregar();
 process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 
 module.exports = {
-  registrar, usosDe, pesoDe, embaralharPorUso, resumo, salvar, pronto, PESO_POR_USO_EXTRA
+  registrar, usosDe, embaralharPorUso, sortear, resumo, salvar, pronto
 };

@@ -57,7 +57,7 @@ for (const categoria of ['cinema', 'geografia']) {
   for (let pontos = 0; pontos <= 100; pontos += 20) {
     ana.pontos = pontos;
     const etapa = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 12; i++) {
       const q = s.sacarDaFila();
       etapa.push(posicaoNaCategoria(categoria, q));
     }
@@ -77,7 +77,8 @@ for (const categoria of ['cinema', 'geografia']) {
  * A curva não pode prender a partida nas mesmas perguntas. Quando a janela
  * era um quarto da fila e saía sempre a mais perto do alvo, 20 partidas de
  * cinema (3 perguntas cada, no começo) mostravam umas 17 perguntas
- * diferentes; sorteando entre as 3 mais perto de uma janela de 16, umas 40.
+ * diferentes. Agora a curva só escolhe entre as que saíram menos vezes:
+ * as 60 têm que ser diferentes.
  */
 {
   const vistas = new Set();
@@ -88,11 +89,16 @@ for (const categoria of ['cinema', 'geografia']) {
     s.entrar('a', 'Ana');
     s.iniciar();
     s.limparTemporizador();
-    for (let i = 0; i < 3; i++) vistas.add(s.sacarDaFila().pergunta);
+    // Pergunta de imagem repete o enunciado ("Que filme e este?"): a
+    // identidade e enunciado + resposta + imagem.
+    for (let i = 0; i < 3; i++) {
+      const q = s.sacarDaFila();
+      vistas.add(`${q.pergunta}|${q.resposta}|${q.imagem || ''}`);
+    }
     s.destruir();
   }
   console.log(`  cinema, 20 partidas x 3 perguntas: ${vistas.size} diferentes`);
-  conferir('o comeco da partida varia de uma partida para outra (>= 25 de 60)', vistas.size >= 25, true);
+  conferir('o comeco da partida nao repete de uma partida para outra', vistas.size, 60);
 }
 
 /* O andamento nunca passa de 1, nem com o líder acima da meta. */
