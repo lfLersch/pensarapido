@@ -520,6 +520,23 @@ io.on('connection', (socket) => {
     publicarEstado(sala);
   });
 
+  // Depois da partida (ou na espera) o lider muda as regras na mesma sala.
+  socket.on('sala:configurar', ({ config } = {}, callback) => {
+    const sala = salaDoSocket();
+    if (!sala) return responder(callback, { erro: 'Você não está em uma sala.' });
+    if (!sala.ehLider(socket.id)) return responder(callback, { erro: 'Só o líder muda as regras.' });
+
+    const validacao = validarConfig(config);
+    if (validacao.erro) return responder(callback, { erro: validacao.erro });
+
+    const { erro } = sala.reconfigurar(socket.id, validacao.config);
+    if (erro) return responder(callback, { erro });
+
+    responder(callback, { ok: true, sala: sala.estadoPublico() });
+    io.to(sala.codigo).emit('sala:reconfigurada');
+    publicarEstado(sala);
+  });
+
   socket.on('sala:expulsar', ({ jogadorId } = {}, callback) => {
     const sala = salaDoSocket();
     if (!sala) return responder(callback, { erro: 'Voce nao esta em uma sala.' });

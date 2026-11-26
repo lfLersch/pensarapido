@@ -43,6 +43,7 @@ const estado = {
   contagem: null,
   urgencia: null,
   pausado: false,   // o lider pausou o jogo
+  editandoSala: false, // a tela de configuracao esta mudando as regras da sala atual
 };
 
 /* ----------------------------- Atalhos ----------------------------- */
@@ -137,6 +138,7 @@ $('btn-abrir-criar').addEventListener('click', async () => {
   avisar('aviso-lobby', '');
   $('painel-entrar').hidden = true;
   await atualizarConfigSeMudou();
+  modoDaTelaConfig(false);
   mostrarTela('tela-config');
 });
 
@@ -242,7 +244,14 @@ setInterval(carregarSalasAbertas, 4000);
    2. CONFIGURAÇÃO DA SALA
    ===================================================================== */
 
-$('btn-voltar-lobby').addEventListener('click', () => mostrarTela('tela-lobby'));
+$('btn-voltar-lobby').addEventListener('click', () => {
+  // Mudando as regras da sala: voltar desiste e devolve a tela da sala.
+  if (estado.editandoSala) {
+    modoDaTelaConfig(false);
+    if (estado.sala) return abrirTelaDaSala(estado.sala);
+  }
+  mostrarTela('tela-lobby');
+});
 
 /* ---------------------------- Novidades ----------------------------- */
 
@@ -1747,9 +1756,101 @@ function resumoDoFim(config, escala) {
     : `Meta <b>${textoMeta(config.metaPontos, config.modo, escala)}</b>`;
 }
 
+/**
+ * A mesma tela serve para criar a sala e para mudar as regras dela depois da
+ * partida: so trocam o titulo, o botao e para onde o voltar leva.
+ */
+function modoDaTelaConfig(editando) {
+  estado.editandoSala = editando;
+  $('config-titulo').textContent = editando ? 'Alterar regras' : 'Configurar sala';
+  $('config-sub').textContent = editando
+    ? 'Mude o que quiser: a galera continua na mesma sala, com o mesmo codigo.'
+    : 'Ajuste as regras antes de chamar a galera.';
+  $('btn-criar-icone').textContent = editando ? '💾' : '🎉';
+  $('btn-criar-texto').textContent = editando ? 'Salvar e voltar a sala' : 'Criar sala';
+  avisar('aviso-config', '');
+}
+
+/** Marca, numa fileira de pilulas, a do valor atual. */
+function marcarPilula(idCaixa, valor) {
+  $(idCaixa).querySelectorAll('.pilula').forEach((p) => {
+    p.classList.toggle('escolhida', p.dataset.valor === String(valor));
+  });
+}
+
+/**
+ * Traz para as escolhas da tela as regras que a sala tem agora — a aba pode
+ * ter recarregado depois de criar a sala, e ai as escolhas eram as de fabrica.
+ */
+function aplicarConfigNasEscolhas(cfg) {
+  const e = estado.escolhas;
+  const modo = estado.config.modos.find((m) => m.id === cfg.modo);
+  if (!modo) return;
+  e.modo = cfg.modo;
+  // A meta chega do servidor ja multiplicada pela escala do modo.
+  e.metaPontos = Math.round(cfg.metaPontos / escalaMeta(cfg.modo));
+  e.segundosPorPergunta = cfg.segundosPorPergunta;
+  e.proporcaoImagem = cfg.proporcaoImagem || 'livre';
+  e.presencial = Boolean(cfg.presencial);
+  e.limiteMusica = cfg.limiteMusica;
+  e.fimPor = cfg.fimPor || 'pontos';
+  e.totalMusicas = cfg.totalMusicas;
+  if (cfg.faixa) e.faixa = { ...cfg.faixa };
+  if (modo.bagunca) {
+    e.perguntasAteSorteio = cfg.perguntasAteSorteio;
+    e.segundosSorteio = cfg.segundosSorteio;
+    e.pausarModoNovo = Boolean(cfg.pausarModoNovo);
+    e.modosBagunca = new Set(cfg.modosBagunca || []);
+  }
+  // Modo musical e Eu te conheço nao guardam categoria: fica a marcacao que ja estava.
+  if (!modo.musical && !modo.semCategorias) {
+    const fora = new Set(cfg.fora || []);
+    e.categorias = new Set(cfg.categorias);
+    e.subs = new Set(cfg.subs || []);
+    for (const c of estado.config.categorias) {
+      if (!e.categorias.has(c.id)) continue;
+      partesDe(c).filter((parte) => !fora.has(parte)).forEach((parte) => e.subs.add(parte));
+    }
+  }
+
+  document.querySelectorAll('.modo').forEach((m) => m.classList.toggle('escolhido', m.dataset.id === e.modo));
+  $('input-meta').value = e.metaPontos;
+  marcarPilula('tempo-opcoes', e.segundosPorPergunta);
+  marcarPilula('proporcao-opcoes', e.proporcaoImagem);
+  $('proporcao-dica').textContent = dicaDaProporcao(e.proporcaoImagem);
+  marcarPilula('presencial-opcoes', e.presencial);
+  $('presencial-dica').textContent = DICAS_PRESENCIAL[e.presencial];
+  marcarPilula('limite-opcoes', e.limiteMusica);
+  marcarPilula('total-opcoes', e.totalMusicas);
+  marcarPilula('bagunca-perguntas', e.perguntasAteSorteio);
+  marcarPilula('bagunca-segundos', e.segundosSorteio);
+  marcarPilula('bagunca-pausar', e.pausarModoNovo);
+  sincronizarCategorias();
+  if (estado.config.faixa) sincronizarFaixa();
+  if (estado.config.bagunca) sincronizarBagunca();
+  sincronizarModo();
+}
+
+/** O lider abre a configuracao com as regras da sala, para mudar sem criar outra. */
+async function abrirEdicaoDaSala() {
+  if (!estado.sala) return;
+  await atualizarConfigSeMudou();
+  aplicarConfigNasEscolhas(estado.sala.config);
+  modoDaTelaConfig(true);
+  mostrarTela('tela-config');
+  window.scrollTo(0, 0);
+}
+
+$('btn-fim-regras').addEventListener('click', abrirEdicaoDaSala);
+$('btn-sala-regras').addEventListener('click', abrirEdicaoDaSala);
+
+socket.on('sala:reconfigurada', () => {
+  if (!estado.eu?.lider) brindar('⚙️ O lider mudou as regras da sala');
+});
+
 $('btn-criar').addEventListener('click', () => {
   const nickname = inputNickname.value.trim();
-  if (nickname.length < 2) {
+  if (!estado.editandoSala && nickname.length < 2) {
     mostrarTela('tela-lobby');
     return avisar('aviso-lobby', 'Digite um nickname com pelo menos 2 caracteres.');
   }
@@ -1785,6 +1886,17 @@ $('btn-criar').addEventListener('click', () => {
       modosBagunca: [...estado.escolhas.modosBagunca]
     } : {})
   };
+
+  if (estado.editandoSala) {
+    return socket.emit('sala:configurar', { config }, (resposta) => {
+      if (resposta?.erro) return avisar('aviso-config', resposta.erro);
+      modoDaTelaConfig(false);
+      estado.sala = resposta.sala;
+      renderizarSala();
+      mostrarTela('tela-sala');
+      brindar('⚙️ Regras atualizadas');
+    });
+  }
 
   socket.emit('sala:criar', { nickname, config, cliente: carteirinha() }, (resposta) => {
     if (resposta.erro) return avisar('aviso-config', resposta.erro);
@@ -1851,6 +1963,7 @@ function renderizarSala() {
 
   const souLider = sala.jogadores.some((j) => j.id === estado.eu?.id && j.lider);
   $('btn-iniciar').hidden = !souLider;
+  $('btn-sala-regras').hidden = !souLider;
   $('texto-espera').hidden = souLider;
 
   // Nao adianta apertar iniciar com a sala torta — o servidor recusa. A frase
@@ -4459,7 +4572,10 @@ socket.on('chat:mensagem', (msg) => {
     // No Presente Grego o item nao vale ponto na hora: a conta e no fim da
     // rodada, e e tudo ou nada.
     const ganho = msg.pontos ? ` · +${msg.pontos} pts` : '';
-    el.innerHTML = `${msg.avatar} <b>${escapar(msg.nickname)}</b> acertou${oQue}${quando}${ganho}`;
+    // Filme de saga: acertou so a saga (metade), ou o filme com o bonus.
+    const oQueAcertou = msg.saga ? 'acertou a saga' : 'acertou';
+    const extra = msg.bonus ? ` (${msg.bonus} de bonus pelo filme)` : '';
+    el.innerHTML = `${msg.avatar} <b>${escapar(msg.nickname)}</b> ${oQueAcertou}${oQue}${quando}${ganho}${extra}`;
     if (msg.texto && estado.carrossel) registrarDito(msg.texto);
     adicionarMensagem(el);
     return;
@@ -4569,6 +4685,13 @@ function enviarDoChat() {
       avisoParticular(resposta.trocou
         ? `Troquei seu palpite para "${resposta.texto}".`
         : `Palpite travado: "${resposta.texto}". Da para trocar enquanto a janela estiver aberta.`);
+
+    } else if (resposta.veredito === 'saga') {
+      // Filme de saga: acertou a saga, nao o filme. Segue tentando.
+      avisoParticular(resposta.repetida
+        ? `Voce ja acertou a saga. Agora diga qual filme e este para ganhar +${resposta.bonus}.`
+        : `Acertou a saga! +${resposta.pontos} pts. Diga qual filme e este para ganhar +${resposta.bonus}.`);
+      inputChat.placeholder = 'Qual filme da saga?';
 
     } else if (resposta.veredito === 'certo') {
       estado.acertou = true;
@@ -4690,7 +4813,7 @@ socket.on('rodada:resultado', (dados) => {
     // Qual e a musica: quem errou mostra em que clicou.
     const naoAcertou = dados.opcoes
       ? (detalhe.escolha ? `marcou ${detalhe.escolha}` : 'nao escolheu')
-      : 'nao acertou';
+      : detalhe.saga ? 'so a saga' : 'nao acertou';
     // Senso Comum: quantas respostas do quadro a pessoa acertou.
     const papelSenso = detalhe.senso
       && `${detalhe.senso.acertos} ${detalhe.senso.acertos === 1 ? 'acerto' : 'acertos'}`;
@@ -4867,6 +4990,7 @@ function renderizarFim(placar, meta, rodadas) {
 
   const souLider = placar.some((j) => j.id === estado.eu?.id && j.lider);
   $('btn-novo-jogo').hidden = !souLider;
+  $('btn-fim-regras').hidden = !souLider;
   $('fim-espera').hidden = souLider;
 }
 
@@ -5025,15 +5149,23 @@ socket.on('sala:estado', (sala) => {
   const emJogo = sala.estado !== 'lobby' && sala.estado !== 'fim';
   aplicarPausa(Boolean(emJogo && sala.pausa), sala.pausa?.por, sala.pausa?.modo);
 
+  // O lider esta mudando as regras: a sala atualiza por baixo, sem tirar ele
+  // da tela de configuracao. Se deixou de ser lider, a edicao acaba.
+  if (estado.editandoSala && !estado.eu?.lider) {
+    modoDaTelaConfig(false);
+    return abrirTelaDaSala(sala);
+  }
+  const editando = estado.editandoSala;
+
   if (sala.estado === 'lobby') {
     renderizarSala();
-    if (anterior !== 'lobby') {
+    if (anterior !== 'lobby' && !editando) {
       pararAnimacao();
       mostrarTela('tela-sala');
     }
   } else if (sala.estado === 'fim') {
     renderizarFim(sala.jogadores, sala.config.metaPontos, sala.rodada);
-    mostrarTela('tela-fim');
+    if (!editando) mostrarTela('tela-fim');
   } else {
     renderizarPlacar(sala.jogadores);
   }

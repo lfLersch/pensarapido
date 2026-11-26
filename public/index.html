@@ -206,8 +206,8 @@
       <div class="topo-tela">
         <button class="btn btn--fantasma btn--icone" id="btn-voltar-lobby" aria-label="Voltar">←</button>
         <div>
-          <h2 class="titulo">Configurar sala</h2>
-          <p class="subtitulo">Ajuste as regras antes de chamar a galera.</p>
+          <h2 class="titulo" id="config-titulo">Configurar sala</h2>
+          <p class="subtitulo" id="config-sub">Ajuste as regras antes de chamar a galera.</p>
         </div>
       </div>
 
@@ -337,7 +337,7 @@
       <div class="rodape-criar">
         <div class="resumo" id="resumo-config"></div>
         <button class="btn btn--primario btn--grande btn--bloco" id="btn-criar">
-          <span class="btn__icone">🎉</span> Criar sala
+          <span class="btn__icone" id="btn-criar-icone">🎉</span> <span id="btn-criar-texto">Criar sala</span>
         </button>
       </div>
     </div>
@@ -393,6 +393,9 @@
 
       <div class="sala__acoes">
         <button class="btn btn--fantasma" id="btn-sair-sala">Sair</button>
+        <button class="btn btn--secundario" id="btn-sala-regras" hidden>
+          <span class="btn__icone">⚙️</span> Alterar regras
+        </button>
         <button class="btn btn--primario btn--grande" id="btn-iniciar">
           <span class="btn__icone">🚀</span> Iniciar jogo
         </button>
@@ -672,6 +675,9 @@
 
       <div class="sala__acoes">
         <button class="btn btn--fantasma" id="btn-fim-sair">Voltar ao inicio</button>
+        <button class="btn btn--secundario" id="btn-fim-regras" hidden>
+          <span class="btn__icone">⚙️</span> Alterar regras
+        </button>
         <button class="btn btn--primario btn--grande" id="btn-novo-jogo">
           <span class="btn__icone">🔁</span> Jogar de novo
         </button>

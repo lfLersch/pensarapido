@@ -118,6 +118,9 @@ function distancia(a, b) {
   return anterior[b.length];
 }
 
+/** Os numeros do texto, na ordem ("toy story 3" -> "3"). */
+const numeros = (texto) => (texto.match(/\d+/g) || []).join(' ');
+
 /**
  * Avalia um palpite contra a resposta certa e suas variantes aceitas.
  *
@@ -140,7 +143,10 @@ function avaliar(palpite, resposta, aceitas = []) {
     const candidato = normalizar(forma);
     if (!candidato) continue;
 
-    const erro = distancia(p, candidato) / candidato.length;
+    // Numero diferente e outra coisa: "Toy Story 2" nao acerta "Toy Story 3", nem
+    // "Tropa de Elite" acerta "Tropa de Elite 2". Fica no maximo no "quase".
+    const bruto = distancia(p, candidato) / candidato.length;
+    const erro = numeros(p) === numeros(candidato) ? bruto : Math.max(bruto, LIMITE_CERTO);
     if (erro < melhorErro) {
       melhorErro = erro;
       melhorAlvo = forma;

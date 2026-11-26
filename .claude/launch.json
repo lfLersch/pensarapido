@@ -8,6 +8,13 @@
       "port": 3000
     },
     {
+      "name": "pensarapido-3010",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/index.js"],
+      "env": { "PORT": "3010" },
+      "port": 3010
+    },
+    {
       "name": "avaliar-imagens",
       "runtimeExecutable": "node",
       "runtimeArgs": ["testes/avaliar-imagens.js"],

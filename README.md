@@ -1932,6 +1932,24 @@ Desenhos), séries (*"Que série é esta?"*, em Séries e TV) e animes (*"Que an
 imagens de fundo "sem idioma" do TMDB: cena limpa, sem título por cima para
 entregar a resposta.
 
+**Filmes de saga** (Harry Potter, Jogos Vorazes, Star Wars, Senhor dos Anéis,
+Piratas do Caribe, Indiana Jones, Toy Story, Shrek…): cada filme tem a sua
+cena, com o *"Que filme é este?"* de sempre e um campo `saga`:
+
+```js
+{ pergunta: 'Que filme e este?', sub: 'cenas', imagem: '/img/cena-harry-potter-prisioneiro-de-azkaban.jpg',
+  resposta: 'Harry Potter e o Prisioneiro de Azkaban', aceita: ['O Prisioneiro de Azkaban', 'Prisioneiro de Azkaban'],
+  saga: ['Harry Potter'], dif: 40 }
+```
+
+Escrever só a saga (*Harry Potter*) vale **metade dos pontos** do relógio, e a
+pessoa continua na pergunta para tentar o filme. O filme vale **essa metade
+mais 5 de bônus** — acertando direto, sem passar pela saga, também. A saga
+nunca vai para o chat; a mesa só vê *"Ana acertou a saga"*. Nas partes
+(*Relíquias da Morte*, *A Esperança*, *Amanhecer*) o número da parte não é
+obrigatório. O nome da saga não pode estar em `aceita`: ele acertaria o filme
+inteiro (`testes/saga.test.js` confere).
+
 ### Geografia — pontos turísticos
 
 **101 fotos de cidades e paisagens** (`public/img/lugar-*.jpg`), 139 perguntas:

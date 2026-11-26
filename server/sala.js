@@ -19,6 +19,10 @@ const senso = require('./senso');
 const PONTOS_MAX = 10;        // base de quem responde na primeira faixa
 const MS_POR_FAIXA = 5000;    // a cada 5s de rodada, a base cai 1 ponto
 const PONTOS_MIN = 1;         // acertar sempre vale pelo menos 1
+// Filme de saga ("Harry Potter e o Prisioneiro de Azkaban"): acertar so a
+// saga vale metade dos pontos do relogio; acertar o filme vale essa metade
+// e mais este bonus, tenha ou nao acertado a saga antes.
+const BONUS_FILME_DA_SAGA = 5;
 // Sala de Qual e a musica: de 1000 a 100 em linha reta, so pelo relogio. A
 // meta de pontos da sala vai multiplicada pela escala (120 vira 12000).
 const QUAL_PONTOS_MAX = 1000;
@@ -664,6 +668,14 @@ function calcularPontos(msNaRodada, posicao) {
 }
 
 /**
+ * Filme de saga: a metade do Modo Tempo, para cima (1 continua valendo 1).
+ * O filme certo soma `BONUS_FILME_DA_SAGA` a isso.
+ */
+function pontosDaSaga(msNaRodada, posicao) {
+  return Math.ceil(calcularPontos(msNaRodada, posicao) / 2);
+}
+
+/**
  * Pontuação da sala de Qual é a música (o modo sozinho, não sorteado na
  * Bagunça): só o relógio conta. 1000 no primeiro instante, caindo em linha
  * reta até 100 quando a música chega ao limite; quem acertou antes não tira
@@ -855,6 +867,7 @@ class Sala {
     this.inicioPergunta = null;
     this.primeiroAcertoEm = null;
     this.acertos = new Map();   // socketId -> { ms, pontos, posicao }
+    this.sagas = new Map();     // filme de saga: quem ja acertou so a saga -> { ms, pontos, posicao }
     this.progresso = new Map(); // Escalada: socketId -> Set(índices já ditos)
     this.itensUsados = new Set(); // Carrossel: itens ja ditos por QUALQUER um
     this.pontosRodada = new Map(); // socketId -> pontos feitos nesta rodada
@@ -2873,6 +2886,8 @@ class Sala {
       resposta: bruta.resposta,
       aceita: bruta.aceita || [],
       itens: [{ oficial: bruta.resposta, variantes: bruta.aceita || [] }],
+      // Filme de saga: os nomes da saga, que valem metade (ver BONUS_FILME_DA_SAGA).
+      saga: bruta.saga ? [].concat(bruta.saga) : null,
       necessarias: 1,
       fixo: true,
       categoria: CATEGORIAS.find((c) => c.id === bruta.categoria),
@@ -3274,6 +3289,7 @@ class Sala {
     const categoria = this.perguntaAtual.categoria;
 
     this.acertos = new Map();
+    this.sagas = new Map();
     this.progresso = new Map();
     this.itensUsados = new Set();
     // Mais ou Menos Pontos: a lista continua, e com ela o que já foi dito.
@@ -4393,6 +4409,25 @@ class Sala {
       && !(this.ehCorrida() && this.acertos.size > 0);
     const semChances = disputando && this.chancesRestantes(jogador) === 0;
 
+    // Filme de saga: "Harry Potter" nao e o filme, mas vale metade. Quem
+    // acertou a saga continua tentando o filme. A saga nunca vai para o chat:
+    // entregaria meia resposta a mesa.
+    const saga = this.perguntaAtual && this.perguntaAtual.saga;
+    if (saga && novoItem < 0 && repetido < 0) {
+      const r = avaliar(limpo, saga[0], saga.slice(1));
+      if (r.veredito !== 'chat') {
+        if (!disputando) return { veredito: 'bloqueado' };
+        if (semChances) return { veredito: 'bloqueado', motivo: 'chances' };
+        if (this.sagas.has(socketId)) return { veredito: 'saga', repetida: true, bonus: BONUS_FILME_DA_SAGA };
+        if (r.veredito === 'certo') return this.acertoDaSaga(socketId, jogador, agora);
+        if (r.erro < quaseErro) {
+          perto = true;
+          quaseErro = r.erro;
+          quaseAlvo = r.alvo;
+        }
+      }
+    }
+
     // Longe de tudo: vai para todo mundo. Para quem ainda disputa, e tambem um
     // palpite errado — nao ha como separar conversa de chute.
     if (novoItem < 0 && repetido < 0 && !perto) {
@@ -4446,10 +4481,23 @@ class Sala {
 
     let pontos;
     let bonus = 0;
+    // O que entra no placar agora (no filme de saga, quem ja tinha a saga so
+    // recebe o bonus: a metade ja foi paga).
+    let ganhoAgora;
 
     if (necessarias > 1) {
       // Escalada: fechou a lista, mas o ponto vem no fim, pela colocação.
       pontos = 0;
+    } else if (this.perguntaAtual.saga) {
+      // Filme de saga: a metade do relogio (paga agora, ou ja paga quando
+      // acertou a saga) e mais o bonus do filme.
+      const antes = this.sagas.get(socketId);
+      const metade = antes ? antes.pontos : pontosDaSaga(ms, this.quantosJaAcertaram() + 1);
+      bonus = BONUS_FILME_DA_SAGA;
+      pontos = metade + bonus;
+      ganhoAgora = antes ? bonus : pontos;
+      jogador.pontos += ganhoAgora;
+      this.pontosRodada.set(socketId, pontos);
     } else {
       // Modo Tempo: faixa de 5s menos quem acertou antes.
       pontos = calcularPontos(ms, posicao);
@@ -4467,7 +4515,8 @@ class Sala {
       jogadorId: socketId,
       nickname: jogador.nickname,
       avatar: jogador.avatar,
-      pontos,
+      pontos: ganhoAgora ?? pontos,
+      bonus,
       posicao,
       ms,
       necessarias
@@ -4484,7 +4533,43 @@ class Sala {
       this.agendar(() => this.encerrarRodada(), MS_APOS_ULTIMO);
     }
 
-    return { veredito: 'certo', pontos, posicao, item: nomeItem, quantos: jaTenho.size, necessarias };
+    return { veredito: 'certo', pontos, bonus, posicao, item: nomeItem, quantos: jaTenho.size, necessarias };
+  }
+
+  /** Quantos ja acertaram alguma coisa nesta rodada: o filme ou so a saga. */
+  quantosJaAcertaram() {
+    return new Set([...this.acertos.keys(), ...this.sagas.keys()]).size;
+  }
+
+  /**
+   * Filme de saga: a pessoa acertou a saga, nao o filme. Leva a metade dos
+   * pontos do relogio agora e segue na pergunta, com as chances que tinha,
+   * para tentar o filme e o bonus. A mesa ve que ela acertou a saga, nao qual.
+   */
+  acertoDaSaga(socketId, jogador, agora) {
+    const ms = agora - this.inicioPergunta;
+    const posicao = this.quantosJaAcertaram() + 1;
+    const pontos = pontosDaSaga(ms, posicao);
+    jogador.pontos += pontos;
+    this.pontosRodada.set(socketId, pontos);
+    this.sagas.set(socketId, { ms, pontos, posicao });
+
+    this.emitir('chat:mensagem', {
+      tipo: 'acerto',
+      saga: true,
+      jogadorId: socketId,
+      nickname: jogador.nickname,
+      avatar: jogador.avatar,
+      pontos,
+      ms
+    });
+    this.emitir('rodada:acertou', {
+      jogadorId: socketId,
+      totalAcertos: this.acertos.size,
+      totalJogadores: this.jogam.size,
+      placar: this.placar()
+    });
+    return { veredito: 'saga', pontos, bonus: BONUS_FILME_DA_SAGA };
   }
 
   /**
@@ -5245,6 +5330,8 @@ class Sala {
         colocacao: Boolean(acerto && acerto.colocacao),
         ganhou: this.pontosRodada.get(jogador.id) || 0,
         bonus: acerto && acerto.bonus ? acerto.bonus : 0,
+        // Filme de saga: acertou a saga, mas nao o filme.
+        saga: !acerto && this.sagas.has(jogador.id),
         ms: acerto ? acerto.ms : null,
         total: jogador.pontos,
         // Escalada: o que a pessoa conseguiu lembrar, mesmo sem completar.
@@ -5553,6 +5640,7 @@ class Sala {
     this.perguntaAtual = null;
     this.modoAtual = null;
     this.acertos = new Map();
+    this.sagas = new Map();
     this.progresso = new Map();
     this.itensUsados = new Set();
     this.pontosRodada = new Map();
@@ -5570,6 +5658,32 @@ class Sala {
       jogador.pontos = 0;
       jogador.acertos = 0;
     }
+  }
+
+  /**
+   * O lider troca as regras sem precisar abrir outra sala: so fora da partida,
+   * e a sala volta para a espera com as regras novas. A config ja chega
+   * validada pelo `index.js`, do mesmo jeito que na criacao.
+   */
+  reconfigurar(socketId, config) {
+    if (!this.ehLider(socketId)) return { erro: 'So o lider muda as regras da sala.' };
+    if (this.estado !== 'lobby' && this.estado !== 'fim') {
+      return { erro: 'So da para mudar as regras com a partida parada.' };
+    }
+
+    const modo = MODOS.find((m) => m.id === config.modo);
+    this.config = modo && modo.musical
+      ? { ...config, categorias: ['ouvir'], subs: [], fora: [] }
+      : config;
+    this.voltarAoLobby();
+
+    // As equipes acompanham o modo novo: a tela do presencial nao joga, e
+    // quem estava sem time ganha um se o modo agora joga em equipes.
+    const lider = [...this.jogadores.values()].find((j) => j.lider);
+    if (lider && this.ehTela(lider.id)) this.tirarDasEquipes(lider.id);
+    for (const id of this.jogadores.keys()) this.encaixarNaEquipe(id);
+    this.renomearEquipes();
+    return { ok: true };
   }
 
   /* ------------------------------ Auxiliares ------------------------------ */
@@ -5823,7 +5937,7 @@ module.exports = {
   MODOS_SORTEAVEIS, PERGUNTAS_ATE_SORTEIO, PERGUNTAS_ATE_SORTEIO_PADRAO, MIN_JOGADORES_EQUIPES,
   SEGUNDOS_SORTEIO, SEGUNDOS_SORTEIO_PADRAO, PROPORCOES_IMAGEM, PROPORCAO_IMAGEM_PADRAO,
   FAIXA_PADRAO, FAIXA_MIN_LARGURA, NIVEIS_FAIXA, TITULOS_FAIXA,
-  gerarCodigo, calcularPontos, pontosQualMusica, QUAL_ESCALA_META, indicePerguntas, categoriasEmJogo, perguntasEscolhidas,
+  gerarCodigo, calcularPontos, pontosDaSaga, BONUS_FILME_DA_SAGA, pontosQualMusica, QUAL_ESCALA_META, indicePerguntas, categoriasEmJogo, perguntasEscolhidas,
   sortearInicio, montarOpcoes, tipoMusical, idDaPergunta, configDaBagunca,
   faixaDe, naFaixa, tituloDaFaixa, MS_VEZ_SECRETA, MIN_PALAVRAS_SECRETA,
   pontuarMaria, ITENS_MARIA, MS_MARIA
