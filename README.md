@@ -106,7 +106,7 @@ e que a versão do topo seja a do jogo.
 
 | Ajuste | Opções |
 | --- | --- |
-| Categorias | Bandeiras, Geografia, Matemática, Esportes (com a parte **Fórmula 1**), **Futebol**, Anime (com a parte **Naruto**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
+| Categorias | Bandeiras, Geografia, Matemática, Esportes (com a parte **Fórmula 1**), **Futebol**, Anime (com as partes **Naruto**, **Dragon Ball Z** e **Pokémon**), Música, **Ouvir músicas** (toca a música), Cinema & TV, História (com as partes Mitologia e **Quem dá nome**), **Ciência** (com as partes Botânica, Biologia e Química), Games, **Mainstream**, **Marcas** |
 | Tipo de jogo | **Modo Tempo**, **Escalada**, **Carrossel** (visível ou às cegas), **Pergunta secreta**, **1 é bom 2 ok 3 é demais**, **Mais ou Menos Pontos**, **Presente Grego**, **Leilão Geral**, **Dando dicas**, **Corrida musical**, **Qual é a música** ou **Bagunça**, todos num só (Equipes aparece como *em breve*) |
 | Dificuldade das perguntas | só no Modo Tempo: uma faixa de **0 a 100** (padrão, *Normal*), que dá o título da sala — ver [Faixa de dificuldade](#faixa-de-dificuldade-modo-tempo) |
 | Bagunça | só nela: quantas perguntas do Modo Tempo até cada sorteio (0 a 6, **3** de padrão) , quais modos entram no sorteio (**todos** de padrão) e quanto tempo a regra do modo sorteado fica na tela (6 / 10 / 15 / 20 / 30 s, **6 s** de padrão) e se o jogo pausa na primeira vez de cada modo (**não** de padrão) |
@@ -1619,7 +1619,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**3948 perguntas em 18 categorias**, mais 647 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**5895 perguntas em 18 categorias**, mais 647 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
