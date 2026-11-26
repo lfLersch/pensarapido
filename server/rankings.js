@@ -166,8 +166,8 @@ const RANKINGS = [
   },
   {
     id: 'paises-pib',
-    pergunta: 'Cite uma das 60 maiores economias do mundo',
-    fonte: 'Wikipedia, paises por PIB nominal (2026)',
+    pergunta: 'Cite uma das 100 maiores economias do mundo',
+    fonte: 'Wikipedia, paises por PIB nominal (2026) — da 61a posicao em diante, estimativas do FMI e ordem aproximada',
     tema: 'geografia',
     dif: 40,
     itens: [
@@ -186,25 +186,40 @@ const RANKINGS = [
       item('Republica Tcheca', 'Tchequia', 'Chequia'), item('Iraque'), item('Finlandia'),
       item('Portugal'), item('Nova Zelandia'), item('Peru'), item('Cazaquistao'),
       item('Grecia'), item('Catar', 'Qatar'), item('Ucrania'), item('Argelia'),
-      item('Hungria'), item('Kuwait'), item('Marrocos')
+      item('Hungria'), item('Kuwait'), item('Marrocos'),
+      item('Eslovaquia'), item('Quenia'), item('Equador'), item('Republica Dominicana'),
+      item('Porto Rico'), item('Etiopia'), item('Guatemala'), item('Uzbequistao'),
+      item('Bulgaria'), item('Angola'), item('Oma'), item('Costa Rica'),
+      item('Sri Lanka'), item('Croacia'), item('Costa do Marfim'), item('Luxemburgo'),
+      item('Panama'), item('Servia'), item('Gana'), item('Tanzania'),
+      item('Lituania'), item('Uruguai'), item('Turcomenistao', 'Turquemenistao'), item('Venezuela'),
+      item('Azerbaijao'), item('Bielorrussia', 'Belarus'),
+      item('Republica Democratica do Congo', 'RDC', 'Congo'), item('Eslovenia'),
+      item('Myanmar', 'Mianmar', 'Birmania'), item('Uganda'), item('Jordania'), item('Camaroes'),
+      item('Macau'), item('Tunisia'), item('Bolivia'), item('Camboja'),
+      item('Libia'), item('Bahrein', 'Barein'), item('Estonia'), item('Paraguai')
     ]
   },
   {
     id: 'paises-visitados',
-    pergunta: 'Cite um dos 30 paises mais visitados por turistas',
-    fonte: 'Organizacao Mundial do Turismo, via Wikipedia',
+    pergunta: 'Cite um dos 50 paises mais visitados por turistas',
+    fonte: 'ONU Turismo, chegadas internacionais (2024), via Wikipedia — ordem aproximada',
     tema: 'geografia',
     dif: 40,
     itens: [
-      item('Franca'), item('Espanha'), item('Estados Unidos', 'EUA', 'USA'), item('China'),
-      item('Turquia'), item('Italia'), item('Mexico'), item('Hong Kong'),
-      item('Reino Unido'), item('Alemanha'), item('Grecia'), item('Austria'),
-      item('Portugal'), item('Paises Baixos', 'Holanda'), item('Japao'), item('Tailandia'),
-      item('Macau'), item('Arabia Saudita'), item('Malasia'),
-      item('Emirados Arabes Unidos', 'Emirados Arabes'), item('Vietna', 'Vietname'),
-      item('Coreia do Sul'), item('Marrocos'), item('Egito'), item('Tunisia'),
-      item('Africa do Sul'), item('Argelia'), item('Zambia'), item('Tanzania'),
-      item('Zimbabue', 'Zimbabwe')
+      item('Franca'), item('Espanha'), item('Estados Unidos', 'EUA', 'USA'), item('Italia'),
+      item('Turquia'), item('Mexico'), item('Reino Unido'), item('Alemanha'),
+      item('Grecia'), item('Austria'), item('Japao'), item('China'),
+      item('Arabia Saudita'), item('Emirados Arabes Unidos', 'Emirados Arabes'), item('Tailandia'),
+      item('Portugal'), item('Hong Kong'), item('Malasia'), item('Paises Baixos', 'Holanda'),
+      item('Polonia'), item('Croacia'), item('Canada'), item('Marrocos'),
+      item('Macau'), item('Hungria'), item('Russia'), item('Republica Tcheca', 'Tchequia', 'Chequia'),
+      item('Vietna', 'Vietname'), item('Coreia do Sul'), item('Egito'), item('Singapura', 'Cingapura'),
+      item('Dinamarca'), item('India'), item('Suica'), item('Indonesia'),
+      item('Belgica'), item('Irlanda'), item('Albania'), item('Bahrein', 'Barein'),
+      item('Bulgaria'), item('Romenia'), item('Suecia'), item('Tunisia'),
+      item('Africa do Sul'), item('Georgia'), item('Cazaquistao'), item('Australia'),
+      item('Republica Dominicana'), item('Argentina'), item('Brasil')
     ]
   },
   {
@@ -346,8 +361,8 @@ const RANKINGS = [
   },
   {
     id: 'linguas-faladas',
-    pergunta: 'Cite uma das 30 linguas mais faladas do mundo',
-    fonte: 'Ethnologue, via Wikipedia (total de falantes)',
+    pergunta: 'Cite uma das 40 linguas mais faladas do mundo',
+    fonte: 'Ethnologue, via Wikipedia (total de falantes) — da 31a em diante, ordem aproximada',
     tema: 'geografia',
     dif: 40,
     itens: [
@@ -358,12 +373,15 @@ const RANKINGS = [
       item('Tamil'), item('Cantones', 'Chines yue'), item('Chines wu', 'Wu'),
       item('Coreano'), item('Vietnamita'), item('Hausa'), item('Persa', 'Farsi'),
       item('Arabe egipcio'), item('Suaili', 'Swahili'), item('Javanes'),
-      item('Italiano'), item('Punjabi'), item('Guzerate'), item('Tailandes')
+      item('Italiano'), item('Punjabi'), item('Guzerate'), item('Tailandes'),
+      item('Tagalo', 'Filipino'), item('Canares', 'Kannada'), item('Amarico'), item('Ioruba', 'Yoruba'),
+      item('Birmanes'), item('Polones'), item('Oria', 'Odia'), item('Malaiala', 'Malayalam'),
+      item('Ucraniano'), item('Uzbeque')
     ]
   },
   {
     id: 'medalhas-olimpicas',
-    pergunta: 'Cite um dos 30 paises com mais medalhas olimpicas',
+    pergunta: 'Cite um dos 50 paises com mais medalhas olimpicas',
     fonte: 'Quadro geral dos Jogos de Verao — ordem aproximada',
     tema: 'esportes',
     dif: 45,
@@ -371,17 +389,22 @@ const RANKINGS = [
       item('Estados Unidos', 'EUA', 'USA'), item('Uniao Sovietica', 'URSS'),
       item('Alemanha'), item('Reino Unido', 'Gra-Bretanha'), item('Franca'),
       item('Italia'), item('China'), item('Suecia'), item('Russia'),
-      item('Hungria'), item('Australia'), item('Japao'), item('Finlandia'),
+      item('Hungria'), item('Australia'), item('Japao'), item('Alemanha Oriental'), item('Finlandia'),
       item('Coreia do Sul'), item('Paises Baixos', 'Holanda'), item('Romenia'),
       item('Canada'), item('Cuba'), item('Polonia'), item('Suica'),
       item('Noruega'), item('Dinamarca'), item('Espanha'), item('Bulgaria'),
       item('Brasil'), item('Nova Zelandia'), item('Belgica'), item('Ucrania'),
-      item('Quenia'), item('Jamaica')
+      item('Quenia'), item('Jamaica'),
+      item('Turquia'), item('Iugoslavia'), item('Africa do Sul'), item('Grecia'),
+      item('Ira', 'Irao', 'Iran'), item('Austria'), item('Argentina'),
+      item('Republica Tcheca', 'Tchequia', 'Tchecoslovaquia'), item('Mexico'), item('Cazaquistao'),
+      item('Bielorrussia', 'Belarus'), item('Etiopia'), item('Azerbaijao'), item('Croacia'),
+      item('Georgia'), item('Eslovaquia'), item('Indonesia'), item('Coreia do Norte'), item('Estonia')
     ]
   },
   {
     id: 'copas-participacoes',
-    pergunta: 'Cite uma das 25 selecoes com mais Copas do Mundo disputadas',
+    pergunta: 'Cite uma das 40 selecoes com mais Copas do Mundo disputadas',
     fonte: 'Participacoes em Copas do Mundo — ordem aproximada',
     tema: 'futebol',
     dif: 45,
@@ -392,7 +415,11 @@ const RANKINGS = [
       item('Suecia'), item('Estados Unidos', 'EUA'), item('Paises Baixos', 'Holanda'),
       item('Coreia do Sul'), item('Russia'), item('Chile'), item('Paraguai'),
       item('Republica Tcheca', 'Tchecoslovaquia'), item('Portugal'), item('Camaroes'),
-      item('Polonia'), item('Hungria'), item('Austria')
+      item('Polonia'), item('Hungria'), item('Austria'),
+      item('Japao'), item('Escocia'), item('Romenia'), item('Bulgaria'),
+      item('Colombia'), item('Croacia'), item('Arabia Saudita'), item('Ira', 'Irao', 'Iran'),
+      item('Australia'), item('Marrocos'), item('Costa Rica'), item('Tunisia'),
+      item('Dinamarca'), item('Nigeria'), item('Peru')
     ]
   },
   {
