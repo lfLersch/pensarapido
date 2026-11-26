@@ -8,6 +8,19 @@
  * da base vale 2, e a base leva a media do que a mesa fez.
  */
 
+const os = require('os');
+const path = require('path');
+// O teste joga centenas de partidas: o rodizio das coisas, os perfis e as
+// estatisticas vao para arquivos de mentira, longe dos de verdade.
+for (const [chave, nome] of [['USOS_ARQUIVO', 'usos'], ['PERFIS_ARQUIVO', 'perfis'], ['SENSO_ARQUIVO', 'senso']]) {
+  process.env[chave] = path.join(os.tmpdir(), `${nome}-eu-te-conheco-${process.pid}.json`);
+}
+process.on('exit', () => {
+  for (const chave of ['USOS_ARQUIVO', 'PERFIS_ARQUIVO', 'SENSO_ARQUIVO']) {
+    require('fs').rmSync(process.env[chave], { force: true });
+  }
+});
+
 const { Sala, MODOS, MODOS_SORTEAVEIS } = require('../server/sala.js');
 const { COISAS } = require('../server/coisas.js');
 const { normalizar } = require('../server/comparar.js');
@@ -30,10 +43,16 @@ function novaSala(quantos = 3) {
 }
 
 /** Uma rodada com as cartas abertas, sem relogio correndo. */
-function rodadaAberta(quantos = 3) {
+/**
+ * A base e sorteada; aqui o teste fixa quem ela e (a Ana, se ninguem disser
+ * outra), para as contas de cada caso nao dependerem da sorte.
+ */
+function rodadaAberta(quantos = 3, base = 'ana') {
   const { sala, eventos } = novaSala(quantos);
   sala.iniciar();
   sala.limparTemporizador();
+  const j = sala.jogadores.get(base);
+  Object.assign(sala.eu, { escolhe: j.id, nickname: j.nickname, avatar: j.avatar });
   sala.mostrarPergunta();
   sala.limparTemporizador();
   return { sala, eventos };
@@ -61,7 +80,7 @@ const ultimo = (eventos, nome) => [...eventos].reverse().find((e) => e.evento ==
 {
   const { sala, eventos } = rodadaAberta();
   const pergunta = ultimo(eventos, 'rodada:pergunta').dados;
-  conferir('a primeira base e quem chegou primeiro', pergunta.eu.escolhe, 'ana');
+  conferir('a base vai na rodada', pergunta.eu.escolhe, 'ana');
   conferir('sao 5 coisas diferentes', new Set(pergunta.eu.itens).size, 5);
   conferir('o ranking de ninguem vai junto', Object.keys(pergunta.eu).some((k) => /ordem|inicio/.test(k)), false);
   conferir('nao tem mascara nem chances', [pergunta.mascara, pergunta.chances], [null, null]);
@@ -112,21 +131,57 @@ const ultimo = (eventos, nome) => [...eventos].reverse().find((e) => e.evento ==
     res.detalhes.map((d) => [d.jogadorId, d.ganhou]), [['ana', 5], ['bia', 6], ['caio', 6], ['duda', 2]]);
 }
 
-/* ---------------- A vez gira ---------------- */
-{
-  const { sala } = novaSala(3);
+/* ---------------- Quem e a base ---------------- */
+
+/** As bases das proximas `n` rodadas de uma partida nova. */
+function bases(sala, n) {
   sala.iniciar();
   sala.limparTemporizador();
   const vez = [sala.eu.escolhe];
-  for (let i = 0; i < 3; i++) {
+  while (vez.length < n) {
     sala.estado = 'resultado';
     sala.comecarRodada();
     sala.limparTemporizador();
     vez.push(sala.eu.escolhe);
   }
-  conferir('a base gira por todo mundo e recomeca', vez, ['ana', 'bia', 'caio', 'ana']);
-  const usadas = sala.coisasUsadas.size;
-  conferir('as coisas nao se repetem na partida', usadas, 20);
+  return vez;
+}
+
+{
+  // Muitas partidas de 4: cada volta de 4 rodadas passa por todo mundo uma
+  // vez, ninguem e base duas vezes seguidas, e o primeiro nao e sempre o lider.
+  const primeiras = new Map();
+  let voltasCertas = 0;
+  let seguidas = 0;
+  const PARTIDAS = 300;
+  for (let p = 0; p < PARTIDAS; p++) {
+    const { sala } = novaSala(4);
+    const vez = bases(sala, 12);
+    primeiras.set(vez[0], (primeiras.get(vez[0]) || 0) + 1);
+    for (let v = 0; v < 12; v += 4) if (new Set(vez.slice(v, v + 4)).size === 4) voltasCertas++;
+    for (let i = 1; i < vez.length; i++) if (vez[i] === vez[i - 1]) seguidas++;
+    sala.destruir();
+  }
+  conferir('cada volta passa por todo mundo uma vez', voltasCertas, PARTIDAS * 3);
+  conferir('ninguem e base duas vezes seguidas', seguidas, 0);
+  conferir('a primeira base e sorteada: todos ja abriram a partida',
+    [...primeiras.keys()].sort(), ['ana', 'bia', 'caio', 'duda']);
+  conferir('  e o lider nao abre mais que os outros',
+    [...primeiras.values()].every((n) => n > PARTIDAS / 4 * 0.6 && n < PARTIDAS / 4 * 1.4), true);
+}
+{
+  // Quem chega no meio da volta entra nela, antes de alguem repetir.
+  const { sala } = novaSala(3);
+  const vez = bases(sala, 2);
+  sala.entrar('duda', 'Duda');
+  for (let i = 0; i < 2; i++) {
+    sala.estado = 'resultado';
+    sala.comecarRodada();
+    sala.limparTemporizador();
+    vez.push(sala.eu.escolhe);
+  }
+  conferir('quem chegou no meio e base antes de alguem repetir', new Set(vez).size, 4);
+  conferir('as coisas nao se repetem na partida', sala.coisasUsadas.size, 20);
 }
 
 /* ---------------- O tempo acaba ---------------- */

@@ -767,9 +767,11 @@ fim, o ranking de cada um é comparado com o dela.
   cada um rankeou**, uma linha curta por pessoa: o nome, as cinco cartas dela
   (com ✓ e ✗ no que bateu com a base) e os pontos, de quem fez mais para quem
   fez menos. A sua linha vem destacada.
-- **A base gira** por ordem de chegada e só recomeça quando todo mundo já foi.
-  As coisas (em [`server/coisas.js`](server/coisas.js)) não se repetem na
-  partida.
+- **A base é sorteada** entre quem ainda não foi base na volta: ninguém repete
+  antes de todo mundo ter ido uma vez, e na virada da volta quem acabou de ser
+  base não abre a seguinte. Quem chega no meio entra na volta que está rolando.
+  (Antes ia pela ordem de chegada, e quem abria era sempre o líder.) As coisas
+  (em [`server/coisas.js`](server/coisas.js)) não se repetem na partida.
 - Precisa de **2 jogadores** ou mais. Quem chega no meio joga a próxima. A base
   que sai antes de confirmar derruba a rodada (já confirmada, a rodada segue
   com o ranking dela); os outros que saem só deixam de ser esperados.
