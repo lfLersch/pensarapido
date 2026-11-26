@@ -153,11 +153,8 @@ const QUESTOES_NOVAS = {
   ],
 
   anime: [
-    { pergunta: 'Qual e o nome do irmao mais velho de Goku?', resposta: 'Raditz', dif: 45 },
     { pergunta: 'Qual anime de basquete tem o ruivo Hanamichi Sakuragi?', resposta: 'Slam Dunk', dif: 45 },
-    { pergunta: 'Qual anime de futebol tem Oliver Tsubasa como protagonista?', resposta: 'Super Campeoes', aceita: ['Captain Tsubasa', 'Capitao Tsubasa'], dif: 35 },
     { pergunta: 'Qual anime de magia tem a garota Sakura capturando cartas?', resposta: 'Sakura Card Captors', aceita: ['Cardcaptor Sakura', 'Sakura Cardcaptor'], dif: 40 },
-    { pergunta: 'Qual filme de Hayao Miyazaki ganhou o Oscar de animacao em 2003?', resposta: 'A Viagem de Chihiro', aceita: ['Viagem de Chihiro', 'Spirited Away'], dif: 35 },
     { pergunta: 'Qual anime de 2023 sobre uma elfa que sobrevive aos companheiros virou fenomeno?', resposta: 'Frieren', aceita: ['Sousou no Frieren'], dif: 50 }
   ],
 
@@ -409,12 +406,6 @@ const LEVA_2 = {
     { pergunta: 'Qual pirata de One Piece tinha a fruta do tremor e era o homem mais forte do mundo?', resposta: 'Barba Branca', aceita: ['Whitebeard', 'Edward Newgate'], dif: 35 },
     { pergunta: 'Qual irmao de Luffy usa a fruta do fogo e morre em Marineford?', resposta: 'Ace', aceita: ['Portgas D. Ace', 'Portgas'], dif: 30 },
     { pergunta: 'Qual arqueologa dos Chapeus de Palha consegue ler os Poneglyphs?', resposta: 'Nico Robin', aceita: ['Robin'], dif: 35 },
-    { pergunta: 'Qual e o nome da esposa de Goku?', resposta: 'Chichi', aceita: ['Chi-Chi'], dif: 25 },
-    { pergunta: 'Qual dragao realiza os desejos das esferas de Namekusei?', resposta: 'Porunga', dif: 45 },
-    { pergunta: 'Qual criatura cinza e fofa de Miyazaki vive na floresta e anda de gatonibus?', resposta: 'Totoro', dif: 30 },
-    { pergunta: 'Qual pokemon e o numero 1 da Pokedex?', resposta: 'Bulbasaur', dif: 30 },
-    { pergunta: 'Qual pokemon lendario foi criado em laboratorio a partir do DNA de Mew?', resposta: 'Mewtwo', dif: 25 },
-    { pergunta: 'Qual pokemon dorme o tempo todo e bloqueia caminhos?', resposta: 'Snorlax', dif: 30 },
     { pergunta: 'Qual pokemon inicial de fogo evolui para Charizard?', resposta: 'Charmander', dif: 20 }
   ],
 
@@ -507,11 +498,7 @@ const LEVA_3 = {
     { pergunta: 'Como se chama a emboscada do cacador numa rota, vindo da selva?', resposta: 'Gank', dif: 25 },
     { pergunta: 'Como se chama abater tropas para ganhar ouro?', resposta: 'Farm', aceita: ['Farmar', 'Last hit'], dif: 25 },
     { pergunta: 'Qual feitico de invocador leva o campeao de volta a rota, ate uma torre aliada?', resposta: 'Teleporte', aceita: ['TP'], dif: 30 },
-    { pergunta: 'Qual feitico de invocador recupera vida do campeao e de um aliado proximo?', resposta: 'Curar', aceita: ['Cura', 'Heal'], dif: 30 },
-    { pergunta: 'Qual campeao yordle espalha cogumelos venenosos invisiveis pelo mapa?', resposta: 'Teemo', dif: 15 },
-    { pergunta: 'Qual campeao espadachim do vento e um dos mais escolhidos e mais odiados?', resposta: 'Yasuo', dif: 20 },
-    { pergunta: 'Qual campea de Demacia lanca lasers de luz e e irma de Garen?', resposta: 'Lux', dif: 25 },
-    { pergunta: 'Qual campeao de Demacia gira com a espada e grita "Demaciaaa"?', resposta: 'Garen', dif: 20 }
+    { pergunta: 'Qual feitico de invocador recupera vida do campeao e de um aliado proximo?', resposta: 'Curar', aceita: ['Cura', 'Heal'], dif: 30 }
   ],
 
   bandeiras: [
@@ -524,26 +511,9 @@ const LEVA_3 = {
   ],
 
   cinema: [
-    { pergunta: 'Qual coelho cinza da Warner pergunta "O que ha, velhinho?"', sub: 'desenhos', resposta: 'Pernalonga', dif: 15 },
-    { pergunta: 'Qual gato preto e branco passa os desenhos tentando pegar um canario?', sub: 'desenhos', resposta: 'Frajola', dif: 20 },
-    { pergunta: 'Qual canario amarelo diz "Eu acho que vi um gatinho"?', sub: 'desenhos', resposta: 'Piu-Piu', aceita: ['Piupiu', 'Piu Piu'], dif: 15 },
-    { pergunta: 'Qual diabo-da-tasmania gira como um tornado nos Looney Tunes?', sub: 'desenhos', resposta: 'Taz', dif: 25 },
-    { pergunta: 'Qual ave do deserto faz "bip bip" e sempre escapa do Coiote?', sub: 'desenhos', resposta: 'Papa-Leguas', aceita: ['Papa Leguas'], dif: 20 },
-    { pergunta: 'Qual dupla de gato e rato da MGM vive brigando quase sem falar?', sub: 'desenhos', resposta: 'Tom e Jerry', dif: 10 },
     { pergunta: 'Quais dois ratos de laboratorio tentam dominar o mundo toda noite?', sub: 'desenhos', resposta: 'Pink e Cerebro', dif: 30 },
-    { pergunta: 'Qual marinheiro fica fortissimo depois de comer espinafre?', sub: 'desenhos', resposta: 'Popeye', dif: 15 },
     { pergunta: 'Qual urso do parque Jellystone vive roubando cestas de piquenique?', sub: 'desenhos', resposta: 'Ze Colmeia', dif: 30 },
-    { pergunta: 'Qual familia futurista tem a robo empregada Rosie e o cachorro Astro?', sub: 'desenhos', resposta: 'Os Jetsons', aceita: ['Jetsons'], dif: 30 },
-    { pergunta: 'Qual desenho tem um garanhao musculoso de topete que sempre leva fora das garotas?', sub: 'desenhos', resposta: 'Johnny Bravo', dif: 25 },
-    { pergunta: 'Qual desenho dos anos 80 tem seis jovens presos num mundo magico guiados pelo Mestre dos Magos?', sub: 'desenhos', resposta: 'Caverna do Dragao', dif: 25 },
-    { pergunta: 'Qual heroi de Eternia ergue a espada e grita "Eu tenho a forca"?', sub: 'desenhos', resposta: 'He-Man', aceita: ['He Man'], dif: 20 },
     { pergunta: 'Qual vilao de caveira azul e o inimigo de He-Man?', sub: 'desenhos', resposta: 'Esqueleto', aceita: ['Skeletor'], dif: 30 },
-    { pergunta: 'Quais quatro tartarugas mutantes tem nomes de artistas do Renascimento?', sub: 'desenhos', resposta: 'Tartarugas Ninja', dif: 15 },
-    { pergunta: 'Qual gato laranja preguicoso odeia segunda-feira e ama lasanha?', sub: 'desenhos', resposta: 'Garfield', dif: 10 },
-    { pergunta: 'Qual beagle dorme em cima da casinha e e o cachorro de Charlie Brown?', sub: 'desenhos', resposta: 'Snoopy', dif: 15 },
-    { pergunta: 'Qual porquinha cor-de-rosa britanica adora pular em pocas de lama?', sub: 'desenhos', resposta: 'Peppa Pig', aceita: ['Peppa'], dif: 10 },
-    { pergunta: 'Qual desenho tem felinos humanoides de Thundera liderados por Lion-O?', sub: 'desenhos', resposta: 'Thundercats', dif: 30 },
-    { pergunta: 'Qual desenho tem os bebes Tommy Pickles e Chuckie?', sub: 'desenhos', resposta: 'Rugrats', aceita: ['Os Anjinhos'], dif: 35 },
     { pergunta: 'Qual cachorro trapalhao da Disney e amigo do Mickey?', sub: 'desenhos', resposta: 'Pateta', dif: 15 },
     { pergunta: 'Quais dois esquilos da Disney vivem aprontando com o Pato Donald?', sub: 'desenhos', resposta: 'Tico e Teco', dif: 20 }
   ],
@@ -551,7 +521,6 @@ const LEVA_3 = {
   marcas: [
     { pergunta: 'Qual montadora italiana fabricou o Uno e o Palio?', sub: 'carros', resposta: 'Fiat', dif: 15 },
     { pergunta: 'Qual montadora americana criou o Modelo T, o primeiro carro feito em linha de montagem?', sub: 'carros', resposta: 'Ford', dif: 20 },
-    { pergunta: 'Qual montadora japonesa fabrica o Corolla e a Hilux?', sub: 'carros', resposta: 'Toyota', dif: 15 },
     { pergunta: 'Qual montadora alema tem o logo azul e branco que lembra uma helice?', sub: 'carros', resposta: 'BMW', dif: 20 },
     { pergunta: 'Qual montadora alema fabrica o esportivo 911?', sub: 'carros', resposta: 'Porsche', dif: 25 },
     { pergunta: 'Qual montadora italiana de superesportivos tem um touro bravo no logo?', sub: 'carros', resposta: 'Lamborghini', dif: 20 },
@@ -565,7 +534,6 @@ const LEVA_3 = {
     { pergunta: 'Qual rede espanhola de moda pertence ao grupo Inditex?', sub: 'moda', resposta: 'Zara', dif: 30 },
     { pergunta: 'Qual rede de lojas de roupa nasceu em Porto Alegre e e uma das maiores do Brasil?', sub: 'moda', resposta: 'Renner', aceita: ['Lojas Renner'], dif: 30 },
     { pergunta: 'Qual marca catarinense de camisetas basicas tem dois peixinhos no logo?', sub: 'moda', resposta: 'Hering', dif: 35 },
-    { pergunta: 'Qual marca italiana de luxo tem a cabeca da Medusa no logo?', sub: 'moda', resposta: 'Versace', dif: 35 },
     { pergunta: 'Qual marca italiana de luxo tem uma plaquinha triangular de metal nas bolsas?', sub: 'moda', resposta: 'Prada', dif: 40 },
     { pergunta: 'Qual marca francesa de luxo e famosa pela bolsa Birkin?', sub: 'moda', resposta: 'Hermes', dif: 45 },
     { pergunta: 'Qual achocolatado da Nestle e o rival historico do Toddy?', sub: 'comida', resposta: 'Nescau', dif: 15 },
