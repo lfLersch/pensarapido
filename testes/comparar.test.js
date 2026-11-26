@@ -29,6 +29,9 @@ const casos = [
   ['água',             'H2O', ['água'], 'certo', 'variante com acento'],
 
   ['180',              '180°', ['180 graus'], 'certo', 'grau opcional'],
+  ['Toy Story 2',      'Toy Story 3', [], 'quase', 'numero diferente nao acerta'],
+  ['Tropa de Elite',   'Tropa de Elite 2', [], 'quase', 'sem o numero nao acerta a continuacao'],
+  ['Tropa de Elite 2', 'Tropa de Elite 2', [], 'certo', 'com o numero acerta'],
   ['180 graus',        '180°', ['180 graus'], 'certo', 'por extenso'],
   ['90',               '180°', ['180 graus'], 'chat',  'número errado'],
 
