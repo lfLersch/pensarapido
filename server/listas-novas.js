@@ -359,6 +359,67 @@ const LISTAS_NOVAS = [
       'Hungria', 'Kayblack', 'Recayd Mob', 'Tz da Coronel',
       'Bivolt', 'Rincon Sapiencia'
     ]
+  },
+  {
+    pergunta: 'Cite {n} exercicios de academia',
+    tema: 'esportes', dif: 30,
+    respostas: [
+      ['Supino', 'Supino reto', 'Supino inclinado'], ['Agachamento', 'Agachamento livre'], 'Leg press',
+      ['Levantamento terra', 'Terra', 'Deadlift'], ['Rosca direta', 'Rosca', 'Rosca biceps'], 'Rosca martelo',
+      ['Triceps testa', 'Testa'], ['Triceps pulley', 'Triceps corda'], ['Puxada alta', 'Puxada', 'Pulldown'],
+      ['Remada curvada', 'Remada'], 'Remada baixa', ['Desenvolvimento', 'Desenvolvimento de ombro'],
+      ['Elevacao lateral', 'Elevacao'], ['Crucifixo', 'Fly', 'Voador'], ['Barra fixa', 'Pull-up', 'Barra'],
+      ['Flexao', 'Flexao de braco'], ['Abdominal', 'Abdominal supra'], 'Prancha', ['Afundo', 'Passada'],
+      ['Stiff', 'Levantamento terra romeno'], ['Cadeira extensora', 'Extensora'], ['Cadeira flexora', 'Flexora', 'Mesa flexora'],
+      ['Panturrilha', 'Gemeos', 'Elevacao de panturrilha'], ['Elevacao pelvica', 'Hip thrust'], ['Abdutora'],
+      ['Adutora'], ['Agachamento bulgaro', 'Bulgaro'], 'Agachamento sumo', 'Hack',
+      ['Mergulho', 'Paralelas', 'Dips'], ['Encolhimento', 'Encolhimento de ombros'], ['Crossover', 'Cross over'],
+      ['Pullover', 'Pull over'], ['Remada unilateral', 'Serrote'], 'Esteira', ['Bicicleta', 'Bike', 'Spinning'],
+      ['Eliptico', 'Transport'], ['Pular corda', 'Corda'], 'Burpee', ['Polichinelo', 'Jumping jack'], 'Kettlebell swing',
+      ['Rosca concentrada'], ['Face pull'], ['Good morning', 'Bom dia'], ['Abdominal infra', 'Elevacao de pernas']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} movimentos ou termos de CrossFit',
+    tema: 'esportes', dif: 45,
+    respostas: [
+      ['WOD', 'Workout of the Day', 'Treino do dia'], 'Box', 'Burpee', ['Thruster'], ['Snatch', 'Arranco'],
+      ['Clean', 'Power clean', 'Clean and jerk', 'Arremesso'], ['Wall ball', 'Wallball'], ['Box jump', 'Salto na caixa'],
+      ['Double under', 'Double unders', 'Pulo duplo'], ['Muscle-up', 'Muscle up'], ['Pull-up', 'Barra fixa'],
+      ['Toes to bar', 'T2B', 'Pe na barra'], ['Handstand push-up', 'HSPU', 'Flexao de cabeca para baixo'],
+      ['Kettlebell swing', 'Swing'], ['AMRAP'], ['EMOM'], ['For time'], ['Tabata'], ['Rope climb', 'Subida na corda', 'Corda'],
+      ['Air squat', 'Agachamento livre'], ['Front squat', 'Agachamento frontal'], ['Overhead squat', 'Agachamento overhead'],
+      ['Deadlift', 'Levantamento terra'], ['Push press'], ['Push jerk', 'Jerk'], ['Remo', 'Row', 'Remo ergometrico'],
+      ['Assault bike', 'Air bike'], ['Murph'], ['Fran'], ['Cindy'], ['Grace'], ['Hero WOD', 'Heroi'],
+      ['Ring dip', 'Dip na argola', 'Argola'], ['Lunge', 'Afundo'], ['Sit-up', 'Abdominal'], ['Pistol', 'Agachamento unilateral'],
+      ['Kipping'], ['Scaled', 'Escalonado'], ['RX'], ['PR', 'Recorde pessoal'], ['CrossFit Games'], ['Open', 'CrossFit Open'],
+      ['Sled push', 'Treno'], ['Devil press'], ['Burpee over the bar']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} musculos ou grupos musculares do corpo',
+    tema: 'ciencia', dif: 35,
+    respostas: [
+      ['Biceps'], ['Triceps'], ['Peitoral', 'Peito'], ['Deltoide', 'Ombro', 'Ombros'], ['Trapezio'],
+      ['Dorsal', 'Grande dorsal', 'Costas'], ['Abdomen', 'Abdominal', 'Reto abdominal'], ['Obliquos', 'Obliquo'],
+      ['Gluteo', 'Gluteos', 'Bumbum'], ['Quadriceps', 'Coxa'], ['Posterior de coxa', 'Isquiotibiais', 'Posterior'],
+      ['Panturrilha', 'Gemeos'], ['Antebraco'], ['Lombar'], ['Adutores', 'Adutor'], ['Abdutores', 'Abdutor'],
+      ['Romboides', 'Romboide'], ['Serratil', 'Serratil anterior'], ['Sartorio'], ['Soleo'], ['Diafragma'],
+      ['Coracao', 'Miocardio'], ['Masseter'], ['Esternocleidomastoideo'], ['Gluteo medio'], ['Tibial anterior', 'Tibial'],
+      ['Braquial'], ['Manguito rotador', 'Manguito']
+    ]
+  },
+  {
+    pergunta: 'Cite {n} suplementos ou alimentos famosos de academia',
+    tema: 'comidas', dif: 30,
+    respostas: [
+      ['Whey', 'Whey protein'], 'Creatina', ['Pre-treino', 'Pre treino'], ['BCAA'], ['Glutamina'], ['Albumina'],
+      ['Cafeina'], ['Hipercalorico', 'Massa'], ['Multivitaminico', 'Vitaminas'], ['Omega 3', 'Omega-3', 'Oleo de peixe'],
+      ['Beta-alanina', 'Beta alanina'], ['Barra de proteina', 'Barrinha de proteina'], ['Pasta de amendoim'], ['Ovo', 'Ovos', 'Clara de ovo'],
+      ['Frango', 'Peito de frango', 'Frango com batata doce'], ['Batata-doce', 'Batata doce'], ['Aveia'], ['Banana'],
+      ['Arroz integral'], ['Tapioca'], ['Cottage', 'Queijo cottage'], ['Iogurte grego'], ['Atum'], ['Colageno'],
+      ['Termogenico'], ['Caseina'], ['Vitamina D'], ['Magnesio'], ['Coqueteleira'], ['Maltodextrina', 'Malto']
+    ]
   }
 ];
 

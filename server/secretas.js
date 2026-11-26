@@ -352,7 +352,12 @@ const SECRETAS = [
   { categoria: 'comidas', pergunta: 'Frango desfiado com catupiry dentro de massa frita em formato de gota: qual salgado de festa?', resposta: 'Coxinha', aceita: [] },
   { categoria: 'comidas', pergunta: 'Fruta roxa da Amazonia batida congelada na tigela, com granola e banana por cima: qual comida?', resposta: 'Acai', aceita: [] },
   { categoria: 'comidas', pergunta: 'Massa fina recheada de queijo e presunto dobrada e frita na hora na feira de domingo, com caldo de cana: qual comida?', resposta: 'Pastel', aceita: ['Pastel de feira'] },
-  { categoria: 'comidas', pergunta: 'Tortilha de milho dobrada com carne, guacamole, pimenta e cebola por cima: qual comida mexicana e essa?', resposta: 'Taco', aceita: [] }
+  { categoria: 'comidas', pergunta: 'Tortilha de milho dobrada com carne, guacamole, pimenta e cebola por cima: qual comida mexicana e essa?', resposta: 'Taco', aceita: [] },
+  { categoria: 'esportes', pergunta: 'Box, WOD, burpees e thrusters cronometrados fazem parte de qual treino funcional de alta intensidade criado nos Estados Unidos?', resposta: 'CrossFit', aceita: ['Crossfit'] },
+  { categoria: 'esportes', pergunta: 'Sete titulos de Mr. Olympia, filmes de acao e governo da California marcam qual fisiculturista nascido na Austria?', resposta: 'Arnold Schwarzenegger', aceita: ['Arnold', 'Schwarzenegger'] },
+  { categoria: 'esportes', pergunta: 'Barra nas costas, joelhos dobrados e quadril abaixo da linha do joelho: qual exercicio e chamado de rei da academia?', resposta: 'Agachamento', aceita: ['Agachamento livre'] },
+  { categoria: 'esportes', pergunta: 'Proteina do soro do leite batida na coqueteleira depois do treino e o suplemento mais vendido de academia, qual e?', resposta: 'Whey protein', aceita: ['Whey'] },
+  { categoria: 'esportes', pergunta: 'Halteres, esteira, leg press e espelho para tirar foto ficam em qual lugar onde se faz musculacao?', resposta: 'Academia', aceita: [] }
 ];
 
 module.exports = { SECRETAS };

@@ -555,7 +555,47 @@ const LEVA_3 = {
   ]
 };
 
-for (const leva of [LEVA_2, LEVA_3]) {
+/* Academia, musculacao e CrossFit. */
+const ACADEMIA = {
+  esportes: [
+    { pergunta: 'Como se chama o local onde se treina CrossFit?', resposta: 'Box', dif: 30 },
+    { pergunta: 'Qual sigla do CrossFit significa "treino do dia"?', resposta: 'WOD', aceita: ['Workout of the Day'], dif: 35 },
+    { pergunta: 'Qual sigla de treino significa fazer o maximo de rodadas possivel num tempo fixo?', resposta: 'AMRAP', dif: 50 },
+    { pergunta: 'Qual sigla de treino manda fazer um exercicio no comeco de cada minuto?', resposta: 'EMOM', dif: 50 },
+    { pergunta: 'Qual metodo de treino alterna 20 segundos de esforco maximo e 10 de descanso?', resposta: 'Tabata', dif: 40 },
+    { pergunta: 'Qual exercicio junta agachamento, flexao no chao e salto, odiado por quase todo mundo?', resposta: 'Burpee', dif: 20 },
+    { pergunta: 'Qual WOD em homenagem a um militar tem corrida de 1 milha, 100 barras, 200 flexoes e 300 agachamentos?', resposta: 'Murph', dif: 55 },
+    { pergunta: 'Qual WOD classico do CrossFit tem thrusters e barras em 21, 15 e 9 repeticoes?', resposta: 'Fran', dif: 60 },
+    { pergunta: 'Qual competicao anual define o atleta mais preparado do mundo no CrossFit?', resposta: 'CrossFit Games', aceita: ['Games'], dif: 35 },
+    { pergunta: 'Qual americano venceu cinco vezes seguidas os CrossFit Games, de 2016 a 2020?', resposta: 'Mat Fraser', aceita: ['Fraser', 'Mathew Fraser'], dif: 55 },
+    { pergunta: 'Qual australiana venceu seis vezes seguidas os CrossFit Games entre as mulheres?', resposta: 'Tia-Clair Toomey', aceita: ['Tia Toomey', 'Toomey'], dif: 60 },
+    { pergunta: 'Qual americano fundou o CrossFit no ano 2000?', resposta: 'Greg Glassman', aceita: ['Glassman'], dif: 60 },
+    { pergunta: 'Qual movimento de CrossFit passa o corpo por cima da barra ou das argolas depois da puxada?', resposta: 'Muscle-up', aceita: ['Muscle up'], dif: 45 },
+    { pergunta: 'Qual exercicio junta agachamento frontal e desenvolvimento com a barra num so movimento?', resposta: 'Thruster', dif: 55 },
+    { pergunta: 'Como se chama pular corda passando ela duas vezes por baixo dos pes num salto so?', resposta: 'Double under', aceita: ['Double unders', 'Pulo duplo'], dif: 45 },
+    { pergunta: 'Qual bola pesada e arremessada contra um alvo na parede depois do agachamento?', resposta: 'Wall ball', aceita: ['Wallball'], dif: 40 },
+    { pergunta: 'Qual peso de ferro com alca, parecido com uma bola de canhao, e usado no swing?', resposta: 'Kettlebell', dif: 25 },
+    { pergunta: 'Como se chama o levantamento que tira a barra do chao ate a cintura, com as costas retas?', resposta: 'Levantamento terra', aceita: ['Terra', 'Deadlift'], dif: 30 },
+    { pergunta: 'Qual exercicio deitado no banco empurra a barra para cima trabalhando o peitoral?', resposta: 'Supino', aceita: ['Supino reto'], dif: 15 },
+    { pergunta: 'Qual exercicio de perna e chamado de rei dos exercicios, com a barra nas costas?', resposta: 'Agachamento', aceita: ['Agachamento livre'], dif: 20 },
+    { pergunta: 'Qual exercicio sobe o quadril com as costas apoiadas no banco para trabalhar o gluteo?', resposta: 'Elevacao pelvica', aceita: ['Hip thrust'], dif: 35 },
+    { pergunta: 'Qual exercicio isometrico mantem o corpo reto apoiado nos antebracos?', resposta: 'Prancha', aceita: ['Prancha abdominal'], dif: 15 },
+    { pergunta: 'Qual maquina de perna empurra uma plataforma com os pes, sentado e inclinado?', resposta: 'Leg press', dif: 20 },
+    { pergunta: 'Qual exercicio de braco dobra o cotovelo segurando a barra com as palmas para cima?', resposta: 'Rosca direta', aceita: ['Rosca'], dif: 25 },
+    { pergunta: 'Qual musculo da parte de tras do braco tem tres cabecas?', resposta: 'Triceps', dif: 20 },
+    { pergunta: 'Qual musculo da frente da coxa tem quatro cabecas?', resposta: 'Quadriceps', dif: 25 },
+    { pergunta: 'Qual suplemento e feito da proteina do soro do leite?', resposta: 'Whey protein', aceita: ['Whey'], dif: 15 },
+    { pergunta: 'Qual suplemento muito estudado aumenta forca e e tomado em doses de 3 a 5 gramas por dia?', resposta: 'Creatina', dif: 25 },
+    { pergunta: 'Como se chama o crescimento do musculo, objetivo de quem faz musculacao?', resposta: 'Hipertrofia', dif: 25 },
+    { pergunta: 'Como se chama a dor muscular que aparece um ou dois dias depois do treino?', resposta: 'Dor tardia', aceita: ['DOMS', 'Dor muscular tardia'], dif: 45 },
+    { pergunta: 'Como se chama o dia de treino de perna, famoso por ser pulado?', resposta: 'Leg day', aceita: ['Dia de perna'], dif: 15 },
+    { pergunta: 'Qual fisiculturista austriaco foi sete vezes Mr. Olympia e virou o Exterminador do Futuro?', resposta: 'Arnold Schwarzenegger', aceita: ['Arnold', 'Schwarzenegger'], dif: 20 },
+    { pergunta: 'Qual campeonato de fisiculturismo da o titulo de melhor do mundo, vencido oito vezes por Ronnie Coleman?', resposta: 'Mr. Olympia', aceita: ['Mr Olympia', 'Olympia'], dif: 40 },
+    { pergunta: 'Qual fisiculturista canadense foi seis vezes campeao da categoria Classic Physique no Mr. Olympia?', resposta: 'Chris Bumstead', aceita: ['CBum', 'Bumstead'], dif: 45 }
+  ]
+};
+
+for (const leva of [LEVA_2, LEVA_3, ACADEMIA]) {
   for (const [categoria, perguntas] of Object.entries(leva)) {
     QUESTOES_NOVAS[categoria] = [...(QUESTOES_NOVAS[categoria] || []), ...perguntas];
   }

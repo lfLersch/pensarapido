@@ -104,7 +104,12 @@ const COISAS = [
   'Livro de papel', 'Kindle', 'Garrafa térmica', 'Canivete', 'Guarda-chuva',
   'Bicicleta', 'Skate', 'Violão', 'Bola de futebol', 'Baralho',
   'Rede de dormir', 'Sofá', 'Cama de casal', 'Almofada', 'Vela aromática',
-  'Planta em vaso', 'Quadro na parede', 'Tapete felpudo', 'Luminária', 'Cafeteira'
+  'Planta em vaso', 'Quadro na parede', 'Tapete felpudo', 'Luminária', 'Cafeteira',
+  // Academia
+  'Dia de perna', 'Treino de peito', 'Treino de CrossFit', 'Musculação', 'Aula de spinning',
+  'Treinar às 6 da manhã', 'Treinar à noite', 'Whey depois do treino', 'Dieta com frango e batata-doce', 'Burpee',
+  'Esteira', 'Agachamento', 'Supino', 'Abdominal', 'Personal trainer',
+  'Foto no espelho da academia', 'Academia lotada', 'Treino de funcional', 'Pilates', 'Dor muscular no dia seguinte'
 ];
 
 module.exports = { COISAS };
