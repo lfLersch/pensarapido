@@ -54,7 +54,57 @@ const COISAS = [
   'Perfume', 'Boné', 'Tênis novo', 'Pijama', 'Ventilador',
   // Bichos
   'Cachorro', 'Gato', 'Peixinho', 'Passarinho', 'Hamster',
-  'Cavalo', 'Tartaruga', 'Coelho', 'Golfinho', 'Panda'
+  'Cavalo', 'Tartaruga', 'Coelho', 'Golfinho', 'Panda',
+  'Papagaio', 'Porquinho-da-índia', 'Pinguim', 'Coruja', 'Borboleta',
+  'Leão', 'Elefante', 'Girafa', 'Macaco', 'Capivara',
+  // Mais comidas
+  'Picanha', 'Frango assado de domingo', 'Pão com ovo', 'Misto-quente', 'Acarajé',
+  'Moqueca', 'Baião de dois', 'Escondidinho', 'Nhoque', 'Risoto',
+  'Ramen', 'Yakisoba', 'Temaki', 'Taco mexicano', 'Kebab',
+  'Batata recheada', 'Pamonha', 'Canjica', 'Paçoca', 'Pé de moleque',
+  'Bolo de chocolate', 'Cheesecake', 'Petit gâteau', 'Sonho de padaria', 'Churros',
+  'Waffle', 'Panetone', 'Rabanada', 'Ovo de Páscoa', 'Brigadeiro de panela',
+  'Pipoca doce', 'Algodão-doce', 'Maçã do amor', 'Picolé', 'Gelatina',
+  'Comida de avião', 'Comida de hospital', 'Buffet por quilo', 'Rodízio de pizza', 'Café colonial',
+  'Pizza fria no café da manhã', 'Ovo frito com gema mole', 'Abacate com açúcar', 'Quiabo', 'Jiló',
+  'Coentro', 'Uva-passa no arroz', 'Azeitona', 'Pimenta', 'Comida apimentada',
+  // Mais bebidas
+  'Leite com Nescau', 'Vitamina de banana', 'Limonada', 'Guaraná', 'Mate gelado',
+  'Iogurte', 'Água com gás', 'Café gelado', 'Smoothie', 'Chá de camomila',
+  // Mais programas e lugares
+  'Lanchonete de esquina', 'Restaurante chique', 'Feira de artesanato', 'Show de stand-up', 'Teatro',
+  'Circo', 'Aquário', 'Planetário', 'Pescaria', 'Piquenique',
+  'Churrasco com a família', 'Festa à fantasia', 'Casamento', 'Formatura', 'Chá de bebê',
+  'Viagem para a praia', 'Viagem para o interior', 'Viagem internacional', 'Mochilão', 'Hotel fazenda',
+  'Resort com tudo incluso', 'Casa de praia', 'Sítio do avô', 'Cidade grande', 'Cidade pequena',
+  'Parque aquático', 'Kart', 'Paintball', 'Tirolesa', 'Montanha-russa',
+  'Roda-gigante', 'Trem-fantasma', 'Pular de paraquedas', 'Mergulho', 'Passeio de barco',
+  'Show de fogos', 'Desfile de escola de samba', 'Bloco de carnaval', 'Rave', 'Pagode com os amigos',
+  'Bar com música ao vivo', 'Noite de jogos', 'Noite do pijama', 'Encontro às cegas', 'Viagem sozinho',
+  // Mais atividades
+  'Jogar vôlei', 'Jogar tênis', 'Jogar xadrez', 'Jogar truco', 'Jogar no celular',
+  'Assistir anime', 'Ver vídeo no YouTube', 'Rolar o feed', 'Ouvir podcast', 'Ler mangá',
+  'Fazer bolo', 'Fazer churrasco', 'Cuidar de plantas', 'Fazer tricô', 'Pintar quadro',
+  'Escrever diário', 'Estudar para prova', 'Fazer trabalho em grupo', 'Apresentar trabalho', 'Falar em público',
+  'Dirigir', 'Andar de patins', 'Surfar', 'Escalar', 'Lutar',
+  'Meditar', 'Tomar sol', 'Fazer as unhas', 'Cortar o cabelo', 'Fazer faxina',
+  'Passar roupa', 'Organizar o guarda-roupa', 'Ir ao dentista', 'Tomar vacina', 'Ir ao médico',
+  'Fazer amigos novos', 'Mandar meme', 'Responder e-mail', 'Postar foto', 'Gravar dancinha',
+  // Mais situações e manias
+  'Chegar atrasado', 'Chegar muito cedo', 'Planejar tudo', 'Improvisar', 'Ganhar no jogo',
+  'Perder no jogo', 'Pedir comida por aplicativo', 'Cozinhar para os outros', 'Lavar o cabelo', 'Secar o cabelo',
+  'Manhã de sábado', 'Noite de domingo', 'Véspera de feriado', 'Aniversário', 'Dia dos namorados',
+  'Natal', 'Páscoa', 'Halloween', 'Festa surpresa', 'Viajar de madrugada',
+  'Ficar sem internet', 'Bateria do celular acabando', 'Esquecer a senha', 'Perder o ônibus', 'Pisar no Lego',
+  'Acordar com barulho', 'Dormir com a TV ligada', 'Dormir de meia', 'Dormir de janela aberta', 'Ar-condicionado gelado',
+  'Ouvir a mesma música no repeat', 'Spoiler', 'Final de novela', 'Último episódio da série', 'Fila de show',
+  'Ganhar elogio no trabalho', 'Tirar nota boa', 'Receber carta', 'Encontrar dinheiro no bolso', 'Achar vaga na porta',
+  // Mais objetos
+  'Videogame', 'Notebook', 'Tablet', 'Caixinha de som', 'Câmera fotográfica',
+  'Livro de papel', 'Kindle', 'Garrafa térmica', 'Canivete', 'Guarda-chuva',
+  'Bicicleta', 'Skate', 'Violão', 'Bola de futebol', 'Baralho',
+  'Rede de dormir', 'Sofá', 'Cama de casal', 'Almofada', 'Vela aromática',
+  'Planta em vaso', 'Quadro na parede', 'Tapete felpudo', 'Luminária', 'Cafeteira'
 ];
 
 module.exports = { COISAS };

@@ -10,6 +10,14 @@
  * difíceis. A comparação é dentro da categoria, igual ao sorteio.
  */
 
+const os = require('os');
+const path = require('path');
+
+// Contador de usos zerado e so deste teste: com o arquivo de verdade, o que
+// partidas e testes anteriores deixaram muda a frente da fila e o resultado.
+process.env.USOS_ARQUIVO = path.join(os.tmpdir(), `usos-crescente-${process.pid}.json`);
+delete process.env.DATABASE_URL;
+
 const { Sala, idDaPergunta } = require('../server/sala.js');
 const { QUESTOES } = require('../server/questions.js');
 const dificuldade = require('../server/dificuldade.js');
@@ -65,6 +73,28 @@ for (const categoria of ['cinema', 'geografia']) {
   conferir(`${categoria}: o fim e mais dificil que o comeco`, fim > inicio, true);
 }
 
+/*
+ * A curva não pode prender a partida nas mesmas perguntas. Quando a janela
+ * era um quarto da fila e saía sempre a mais perto do alvo, 20 partidas de
+ * cinema (3 perguntas cada, no começo) mostravam umas 17 perguntas
+ * diferentes; sorteando entre as 3 mais perto de uma janela de 16, umas 40.
+ */
+{
+  const vistas = new Set();
+  for (let p = 0; p < 20; p++) {
+    const s = new Sala('CRE3' + p, {
+      modo: 'tempo', categorias: ['cinema'], metaPontos: 100, segundosPorPergunta: 20
+    }, () => {});
+    s.entrar('a', 'Ana');
+    s.iniciar();
+    s.limparTemporizador();
+    for (let i = 0; i < 3; i++) vistas.add(s.sacarDaFila().pergunta);
+    s.destruir();
+  }
+  console.log(`  cinema, 20 partidas x 3 perguntas: ${vistas.size} diferentes`);
+  conferir('o comeco da partida varia de uma partida para outra (>= 25 de 60)', vistas.size >= 25, true);
+}
+
 /* O andamento nunca passa de 1, nem com o líder acima da meta. */
 {
   const s = new Sala('CRE2', {
@@ -76,6 +106,9 @@ for (const categoria of ['cinema', 'geografia']) {
   s.jogadores.get('a').pontos = 0;
   conferir('andamento 0 no comeco', s.andamento(), 0);
 }
+
+// Depois do `exit` do usos.js, que grava o que ficou pendente.
+process.on('exit', () => require('fs').rmSync(process.env.USOS_ARQUIVO, { force: true }));
 
 if (falhas) {
   console.log(`\n${falhas} falha(s).`);

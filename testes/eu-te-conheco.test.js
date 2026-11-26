@@ -1,12 +1,11 @@
 'use strict';
 
 /*
- * Eu te conheço: um rankeia 5 coisas, os outros tentam rankear igual.
+ * Eu te conheço: todo mundo rankeia 5 coisas ao mesmo tempo, e o ranking de
+ * cada um e comparado com o da base da rodada.
  *
- * A vez de rankear gira por ordem de chegada. Enquanto quem rankeia arrasta
- * as cartas, os outros esperam; quando ele confirma (ou o tempo acaba), e a
- * vez dos outros. Cada coisa no mesmo lugar vale 2, e quem rankeou leva a
- * media do que a mesa fez.
+ * A base gira por ordem de chegada. Cada coisa no mesmo lugar que no ranking
+ * da base vale 2, e a base leva a media do que a mesa fez.
  */
 
 const { Sala, MODOS, MODOS_SORTEAVEIS } = require('../server/sala.js');
@@ -30,7 +29,7 @@ function novaSala(quantos = 3) {
   return { sala, eventos };
 }
 
-/** Uma rodada parada no comeco da escolha, sem relogio correndo. */
+/** Uma rodada com as cartas abertas, sem relogio correndo. */
 function rodadaAberta(quantos = 3) {
   const { sala, eventos } = novaSala(quantos);
   sala.iniciar();
@@ -62,13 +61,12 @@ const ultimo = (eventos, nome) => [...eventos].reverse().find((e) => e.evento ==
 {
   const { sala, eventos } = rodadaAberta();
   const pergunta = ultimo(eventos, 'rodada:pergunta').dados;
-  conferir('a primeira a rankear e quem chegou primeiro', pergunta.eu.escolhe, 'ana');
+  conferir('a primeira base e quem chegou primeiro', pergunta.eu.escolhe, 'ana');
   conferir('sao 5 coisas diferentes', new Set(pergunta.eu.itens).size, 5);
-  conferir('a fase e a de escolha', pergunta.eu.fase, 'escolha');
-  conferir('o ranking de ninguem vai junto', 'ordem' in pergunta.eu || 'ordemDele' in pergunta.eu, false);
+  conferir('o ranking de ninguem vai junto', Object.keys(pergunta.eu).some((k) => /ordem|inicio/.test(k)), false);
   conferir('nao tem mascara nem chances', [pergunta.mascara, pergunta.chances], [null, null]);
+  conferir('todo mundo joga a rodada', [...sala.eu.participam].sort(), ['ana', 'bia', 'caio']);
 
-  conferir('quem nao e da vez nao rankeia', Boolean(sala.ordenarEu('bia', [0, 1, 2, 3, 4], true).erro), true);
   conferir('ranking torto e recusado', Boolean(sala.ordenarEu('ana', [0, 0, 1, 2, 3], true).erro), true);
   conferir('ranking curto e recusado', Boolean(sala.ordenarEu('ana', [0, 1, 2], true).erro), true);
 
@@ -77,32 +75,41 @@ const ultimo = (eventos, nome) => [...eventos].reverse().find((e) => e.evento ==
   conferir('escrever uma das coisas e so conversa',
     sala.palpitar('bia', pergunta.eu.itens[0]).veredito, 'chat');
 
-  sala.ordenarEu('ana', [4, 3, 2, 1, 0], false);
-  conferir('rascunho nao fecha a escolha', sala.eu.fase, 'escolha');
-  const r = sala.ordenarEu('ana', [2, 0, 4, 1, 3], true);
-  sala.limparTemporizador();
-  conferir('confirmar abre a vez dos outros', [r.travou, sala.eu.fase], [true, 'palpite']);
-  const palpite = ultimo(eventos, 'eu:palpite').dados;
-  conferir('  e os outros sabem quantos adivinham', palpite.total, 2);
-  conferir('  e comecam de outra ordem', JSON.stringify(palpite.inicio) === JSON.stringify([2, 0, 4, 1, 3]), false);
-  conferir('quem rankeou nao adivinha', Boolean(sala.ordenarEu('ana', [0, 1, 2, 3, 4], true).erro), true);
-
-  // Bia acerta tudo; Caio acerta 2 (as posicoes 1 e 3) e nao confirma.
-  sala.ordenarEu('caio', [2, 1, 4, 0, 3], false);
-  sala.ordenarEu('bia', [2, 0, 4, 1, 3], true);
+  // Todo mundo rankeia ao mesmo tempo: os outros nem esperam a base.
+  conferir('quem nao e a base rankeia antes dela', sala.ordenarEu('bia', [2, 0, 4, 1, 3], true).travou, true);
   conferir('confirmado nao muda mais', Boolean(sala.ordenarEu('bia', [0, 1, 2, 3, 4], true).erro), true);
-  conferir('com gente faltando a rodada segue', sala.estado, 'pergunta');
+  sala.ordenarEu('ana', [4, 3, 2, 1, 0], false);
+  sala.ordenarEu('ana', [2, 0, 4, 1, 3], true);
+  conferir('a base confirmou: a rodada segue para quem falta', sala.estado, 'pergunta');
+  // Caio acerta 3 (lugares 1, 3 e 5) e nao confirma.
+  sala.ordenarEu('caio', [2, 1, 4, 0, 3], false);
 
   sala.encerrarRodada();
   sala.limparTemporizador();
   const res = ultimo(eventos, 'rodada:resultado').dados;
   const de = (id) => res.detalhes.find((d) => d.jogadorId === id);
-  conferir('o resultado traz o ranking certo', res.eu.ordem, [2, 0, 4, 1, 3]);
+  conferir('o resultado traz o ranking da base', res.eu.ordem, [2, 0, 4, 1, 3]);
   conferir('acertou as 5: 10 pontos', [de('bia').eu.lugares, de('bia').ganhou], [5, 10]);
   conferir('rascunho sem confirmar vale: 3 no lugar, 6 pontos', [de('caio').eu.lugares, de('caio').ganhou], [3, 6]);
-  conferir('quem rankeou leva a media (10 e 6 -> 8)', de('ana').ganhou, 8);
-  conferir('quem rankeou vem primeiro na lista', res.detalhes[0].jogadorId, 'ana');
+  conferir('  e vem marcado como nao confirmado', [de('bia').eu.confirmou, de('caio').eu.confirmou], [true, false]);
+  conferir('cada um leva o proprio ranking no resultado', de('caio').eu.ordem, [2, 1, 4, 0, 3]);
+  conferir('a base leva a media (10 e 6 -> 8)', de('ana').ganhou, 8);
+  conferir('a base vem primeiro na lista', res.detalhes[0].jogadorId, 'ana');
   conferir('o placar soma', [sala.jogadores.get('ana').pontos, sala.jogadores.get('bia').pontos], [8, 10]);
+}
+
+{
+  const { sala, eventos } = rodadaAberta(4);
+  sala.ordenarEu('ana', [0, 1, 2, 3, 4], true);
+  sala.ordenarEu('bia', [0, 1, 3, 2, 4], true);
+  sala.ordenarEu('caio', [0, 1, 4, 3, 2], true);
+  sala.ordenarEu('duda', [4, 0, 2, 1, 3], true);
+  sala.limparTemporizador();
+  sala.encerrarRodada();
+  sala.limparTemporizador();
+  const res = ultimo(eventos, 'rodada:resultado').dados;
+  conferir('a lista: a base, depois de quem fez mais para quem fez menos',
+    res.detalhes.map((d) => [d.jogadorId, d.ganhou]), [['ana', 5], ['bia', 6], ['caio', 6], ['duda', 2]]);
 }
 
 /* ---------------- A vez gira ---------------- */
@@ -117,7 +124,7 @@ const ultimo = (eventos, nome) => [...eventos].reverse().find((e) => e.evento ==
     sala.limparTemporizador();
     vez.push(sala.eu.escolhe);
   }
-  conferir('a vez gira por todo mundo e recomeca', vez, ['ana', 'bia', 'caio', 'ana']);
+  conferir('a base gira por todo mundo e recomeca', vez, ['ana', 'bia', 'caio', 'ana']);
   const usadas = sala.coisasUsadas.size;
   conferir('as coisas nao se repetem na partida', usadas, 20);
 }
@@ -126,39 +133,64 @@ const ultimo = (eventos, nome) => [...eventos].reverse().find((e) => e.evento ==
 {
   const { sala, eventos } = rodadaAberta();
   sala.ordenarEu('ana', [1, 0, 2, 3, 4], false);
-  sala.abrirPalpiteEu();                       // o relogio de quem rankeia acabou
-  sala.limparTemporizador();
-  conferir('sem confirmar, vale o rascunho de quem rankeou', sala.eu.ordemDele, [1, 0, 2, 3, 4]);
-  sala.encerrarRodada();                       // ninguem mexeu em nada
+  sala.ordenarEu('bia', [1, 0, 2, 4, 3], false);
+  sala.encerrarRodada();                       // o relogio acabou, ninguem confirmou
   sala.limparTemporizador();
   const res = ultimo(eventos, 'rodada:resultado').dados;
-  conferir('quem nem mexeu leva zero', res.detalhes.filter((d) => d.eu.papel === 'parado').map((d) => d.ganhou), [0, 0]);
-  conferir('  e quem rankeou tambem', res.detalhes.find((d) => d.jogadorId === 'ana').ganhou, 0);
+  const de = (id) => res.detalhes.find((d) => d.jogadorId === id);
+  conferir('sem confirmar, vale o rascunho da base', res.eu.ordem, [1, 0, 2, 3, 4]);
+  conferir('  e o de quem adivinhava', [de('bia').eu.lugares, de('bia').ganhou], [3, 6]);
+  conferir('quem nem mexeu leva zero', [de('caio').eu.papel, de('caio').ganhou], ['parado', 0]);
+}
+{
+  const { sala, eventos } = rodadaAberta();
+  sala.ordenarEu('bia', [1, 0, 2, 4, 3], true);
+  sala.encerrarRodada();                       // a base nem mexeu nas cartas
+  sala.limparTemporizador();
+  const res = ultimo(eventos, 'rodada:resultado').dados;
+  conferir('a base nao rankeou: sem com o que comparar', res.eu.ordem, null);
+  conferir('  ninguem pontua', res.detalhes.map((d) => d.ganhou), [0, 0, 0]);
 }
 
 /* ---------------- Todos confirmam ---------------- */
 {
   const { sala } = rodadaAberta();
-  sala.ordenarEu('ana', [0, 1, 2, 3, 4], true);
-  sala.limparTemporizador();
   sala.ordenarEu('bia', [1, 0, 2, 3, 4], true);
-  conferir('falta um: nao fecha', Boolean(sala.agendado), false);
   sala.ordenarEu('caio', [0, 1, 2, 4, 3], true);
+  conferir('falta a base: nao fecha', Boolean(sala.agendado), false);
+  sala.ordenarEu('ana', [0, 1, 2, 3, 4], true);
   conferir('todos confirmaram: fecha sem esperar o relogio', Boolean(sala.agendado), true);
   sala.limparTemporizador();
 }
 
-/* ---------------- Gente saindo ---------------- */
+/* ---------------- Gente chegando e saindo ---------------- */
+{
+  const { sala } = rodadaAberta();
+  sala.entrar('duda', 'Duda');
+  conferir('quem chega no meio entra na proxima', Boolean(sala.ordenarEu('duda', [0, 1, 2, 3, 4], true).erro), true);
+}
 {
   const { sala, eventos } = rodadaAberta();
   sala.sair('ana');
-  conferir('quem rankeia saiu antes: a rodada cai', ultimo(eventos, 'rodada:resultado').dados.titulo, 'Rodada cancelada');
+  conferir('a base saiu sem confirmar: a rodada cai', ultimo(eventos, 'rodada:resultado').dados.titulo, 'Rodada cancelada');
   sala.limparTemporizador();
+}
+{
+  const { sala, eventos } = rodadaAberta();
+  sala.ordenarEu('ana', [3, 1, 2, 0, 4], true);
+  sala.sair('ana');
+  conferir('a base saiu ja confirmada: a rodada segue', sala.estado, 'pergunta');
+  sala.ordenarEu('bia', [3, 1, 2, 0, 4], true);
+  sala.ordenarEu('caio', [3, 1, 2, 4, 0], true);
+  sala.limparTemporizador();
+  sala.encerrarRodada();
+  sala.limparTemporizador();
+  const res = ultimo(eventos, 'rodada:resultado').dados;
+  conferir('  e compara com o ranking que ela deixou', res.detalhes.map((d) => d.ganhou), [10, 6]);
 }
 {
   const { sala } = rodadaAberta();
   sala.ordenarEu('ana', [0, 1, 2, 3, 4], true);
-  sala.limparTemporizador();
   sala.ordenarEu('bia', [1, 0, 2, 3, 4], true);
   sala.sair('caio');
   conferir('saiu o unico que faltava: fecha', Boolean(sala.agendado), true);
@@ -167,21 +199,25 @@ const ultimo = (eventos, nome) => [...eventos].reverse().find((e) => e.evento ==
 {
   const { sala, eventos } = rodadaAberta(2);
   sala.ordenarEu('ana', [0, 1, 2, 3, 4], true);
-  sala.limparTemporizador();
   sala.sair('bia');
   conferir('saiu quem adivinhava sozinho: a rodada cai', ultimo(eventos, 'rodada:resultado').dados.titulo, 'Rodada cancelada');
   sala.limparTemporizador();
 }
 
-/* ---------------- Pular ---------------- */
+/* ---------------- Pausa e pular ---------------- */
+{
+  const { sala } = rodadaAberta();
+  sala.pausa = { desde: Date.now() };
+  conferir('pausado ninguem mexe nas cartas', Boolean(sala.ordenarEu('bia', [0, 1, 2, 3, 4], true).erro), true);
+  sala.pausa = null;
+}
 {
   const { sala, eventos } = rodadaAberta();
   sala.ordenarEu('ana', [3, 1, 2, 0, 4], true);
-  sala.limparTemporizador();
   sala.pularRodada();
   sala.limparTemporizador();
   const itens = sala.eu.itens;
-  conferir('rodada pulada mostra o ranking de quem rankeou',
+  conferir('rodada pulada mostra o ranking da base',
     ultimo(eventos, 'rodada:resultado').dados.resposta.startsWith(`1º ${itens[3]}`), true);
 }
 

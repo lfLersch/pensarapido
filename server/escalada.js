@@ -1832,7 +1832,15 @@ const LISTAS = [
       'Snorlax',
       'Gengar',
       'Jigglypuff',
-      'Psyduck'
+      'Psyduck',
+      'Raichu', 'Pichu', 'Ivysaur', 'Venusaur', 'Wartortle', 'Blastoise', 'Charmeleon', 'Caterpie',
+      'Butterfree', 'Pidgey', 'Pidgeotto', 'Rattata', 'Ekans', 'Arbok', 'Vulpix', 'Ninetales',
+      'Meowth', 'Machamp', 'Geodude', 'Onix', 'Slowpoke', 'Magikarp', 'Gyarados', 'Lapras', 'Ditto',
+      'Vaporeon', 'Jolteon', 'Flareon', 'Dragonite', 'Articuno', 'Zapdos', 'Moltres', 'Togepi',
+      'Chikorita', 'Cyndaquil', 'Totodile', 'Lugia', 'Ho-Oh', 'Celebi', 'Umbreon', 'Espeon',
+      'Treecko', 'Torchic', 'Mudkip', 'Rayquaza', 'Kyogre', 'Groudon', 'Lucario', 'Piplup',
+      'Greninja', 'Sylveon', 'Rowlet', 'Mimikyu', 'Cubone', 'Haunter', 'Gastly', 'Alakazam',
+      'Abra', 'Hitmonlee', 'Lickitung', 'Scyther', 'Arcanine', 'Growlithe', 'Poliwag', 'Oddish'
     ]
   },
   {
@@ -5689,7 +5697,11 @@ const LISTAS = [
       'Banco',
       'Balanca',
       'Caneleira',
-      'Luva'
+      'Luva',
+      'Kettlebell', 'Leg press', ['Supino', 'Banco de supino'], ['Puxador', 'Pulley'], 'Smith',
+      'Escada', 'Eliptico', ['Remo', 'Remo ergometrico'], 'Bola de pilates', 'Bebedouro', 'Armario',
+      'Recepcao', 'Catraca', 'Musica alta', ['Whey', 'Whey protein'], 'Coqueteleira', 'Crossover',
+      'Paralela', 'Barra fixa', 'Step', 'Spinning', 'Cadeira extensora', 'Cadeira flexora', 'Ventilador'
     ]
   },
   {
@@ -12622,6 +12634,9 @@ const LISTAS = [
   }
 ];
 
+// Mais listas, num arquivo a parte (ver listas-novas.js).
+LISTAS.push(...require('./listas-novas').LISTAS_NOVAS);
+
 /* ------------------------------------------------------------------ *
  * Listas que contem outras.
  *
@@ -12638,6 +12653,7 @@ const INCLUSOES = {
   'Cite {n} viloes de quadrinhos': ['Cite {n} viloes da Marvel', 'Cite {n} viloes da DC'],
   'Cite {n} filmes de super-heroi': ['Cite {n} filmes da Marvel'],
   'Cite {n} marcas de carro': ['Cite {n} marcas de carro de luxo'],
+  'Cite {n} filmes de animacao da Disney': ['Cite {n} filmes da Pixar'],
   'Cite {n} marcas famosas': [
     'Cite {n} marcas de celular', 'Cite {n} marcas de roupa ou tenis', 'Cite {n} marcas de carro'
   ],
@@ -12806,6 +12822,10 @@ const MINIMO_POR_LETRA = 4;
 // vira pergunta.
 const TETO_FATIA_DA_LETRA = 0.25;
 
+// Recortes que saem mesmo passando nos limites. Bandas com T sao quase
+// todas "The Alguma Coisa": a letra nao recorta o nome da banda, so o artigo.
+const LETRAS_FORA = new Set(['bandas de rock:T']);
+
 /** Primeira letra do nome oficial, sem acento e em maiuscula. */
 function letraInicial(bruto) {
   const nome = Array.isArray(bruto) ? bruto[0] : bruto;
@@ -12826,6 +12846,7 @@ for (const [enunciadoFonte, rotulo, tema] of FONTES_POR_LETRA) {
   for (const [letra, itens] of porLetra) {
     if (itens.length < MINIMO_POR_LETRA) continue;
     if (itens.length > fonte.respostas.length * TETO_FATIA_DA_LETRA) continue;
+    if (LETRAS_FORA.has(`${rotulo}:${letra}`)) continue;
     LISTAS.push({
       pergunta: `Cite {n} ${rotulo} que comecam com a letra ${letra}`,
       tema,
@@ -12969,7 +12990,8 @@ for (const [id, enunciado, cortes, tema] of RECORTES_DE_RANKING) {
 const LISTAS_DE_PESSOAS = new RegExp([
   'jogador', 'cantor', 'cantora', 'atores', 'atrizes', 'filosofos', 'pilotos', 'ditadores',
   'lideres mundiais', 'humoristas', 'apresentadores', 'artistas', 'divas', 'presidentes',
-  'imperadores', 'campeoes', 'youtubers', 'influenciador', 'personagens'
+  'imperadores', 'campeoes', 'youtubers', 'influenciador', 'personagens', 'escritores',
+  'tenistas', 'lutadores', 'rappers'
 ].join('|'), 'i');
 
 /** O atalho acertaria outra pessoa da lista? */

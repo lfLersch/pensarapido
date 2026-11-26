@@ -25,7 +25,9 @@ const fs = require('fs');
 const path = require('path');
 const banco = require('./banco');
 
-const ARQUIVO = path.join(__dirname, 'dados', 'usos.json');
+// Os testes apontam para um arquivo temporario: senao gravam no contador de
+// verdade e deixam o rodizio local torto.
+const ARQUIVO = process.env.USOS_ARQUIVO || path.join(__dirname, 'dados', 'usos.json');
 const SALVAR_APOS = 5000; // junta as escritas em disco a cada 5s
 
 /**

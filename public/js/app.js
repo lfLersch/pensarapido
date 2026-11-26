@@ -3316,16 +3316,25 @@ function confirmarEu() {
     c.ordem = ordem;
     $('eu-fila').classList.add('eu__fila--travada');
     $('eu-confirmar').hidden = true;
-    if (c.fase === 'palpite') $('eu-vez').textContent = `Confirmado! Agora e esperar o resto da mesa.`;
+    $('eu-vez').innerHTML = c.souBase
+      ? '<b>Confirmado!</b> Agora e ver quem te conhece de verdade.'
+      : '<b>Confirmado!</b> Esperando o resto da mesa.';
   });
 }
 $('eu-confirmar').addEventListener('click', confirmarEu);
 
-/** Monta o painel para a fase em que a rodada esta. */
+/**
+ * A rodada abriu: todo mundo rankeia ao mesmo tempo. A base rankeia do jeito
+ * dela; os outros tentam rankear igual a ela. Cada um comeca de uma ordem
+ * sorteada aqui mesmo, no proprio navegador — se todos comecassem da mesma,
+ * quem nao mexesse em nada acertaria a base que tambem nao mexeu.
+ */
 function mostrarEu(dados) {
   const painel = $('eu');
   painel.hidden = !dados;
-  $('eu-meu').hidden = true;
+  $('eu-todos').hidden = true;
+  $('eu-fila').hidden = false;
+  $('eu-legenda').hidden = false;
   $('eu-fila').classList.remove('eu__fila--travada', 'eu__fila--espera');
   if (!dados) {
     estado.conheco = null;
@@ -3333,84 +3342,91 @@ function mostrarEu(dados) {
     return;
   }
 
-  const souEu = dados.escolhe === socket.id;
-  const adivinho = dados.fase === 'palpite' && !souEu && !souTela()
-    && (!dados.adivinham || dados.adivinham.includes(socket.id));
-  const mexe = !souTela() && (dados.fase === 'escolha' ? souEu : adivinho);
-  // Quem rankeou continua vendo o proprio ranking enquanto os outros tentam.
-  const anterior = estado.conheco;
-  const ordem = dados.fase === 'palpite' && souEu && anterior && anterior.ordem
-    ? anterior.ordem
-    : dados.inicio || dados.itens.map((_, i) => i);
+  const souBase = dados.escolhe === socket.id;
+  const mexe = !souTela();
+  const ordem = dados.itens.map((_, i) => i);
+  for (let i = ordem.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ordem[i], ordem[j]] = [ordem[j], ordem[i]];
+  }
 
   estado.conheco = {
     itens: dados.itens, escolhe: dados.escolhe, nickname: dados.nickname,
-    fase: dados.fase, ordem, mexe, travado: false
+    ordem, mexe, souBase, travado: false
   };
 
   const quem = `${dados.avatar} ${escapar(dados.nickname)}`;
   const vale = `${dados.pontosPorLugar || 2} pts por coisa no lugar certo`;
-  let texto;
-  if (dados.fase === 'escolha') {
-    texto = souEu
-      ? '<b>Sua vez!</b> Arraste as cartas do que voce mais gosta (1º) ao que menos gosta (5º).'
-      : `<b>${quem}</b> esta rankeando… presta atencao, que depois e a sua vez.`;
-  } else if (souEu) {
-    texto = 'Pronto! Agora a mesa tenta adivinhar o seu ranking.';
-  } else if (adivinho) {
-    texto = `<b>Rankeie como ${quem} rankeou!</b> <span class="eu__vale">${vale}</span>`;
-  } else {
-    texto = `A mesa esta tentando adivinhar o ranking de <b>${quem}</b>.`;
-  }
-  $('eu-vez').innerHTML = texto;
+  $('eu-vez').innerHTML = souTela()
+    ? `A mesa esta rankeando. Quem chegar mais perto do ranking de <b>${quem}</b> leva mais.`
+    : souBase
+      ? '<b>Voce e a base!</b> Arraste do que voce mais gosta (1º) ao que menos gosta (5º) — a mesa tenta rankear igual a voce.'
+      : `<b>Rankeie como ${quem} rankearia!</b> <span class="eu__vale">${vale}</span>`;
 
   desenharFilaEu($('eu-fila'), dados.itens, ordem, { mexe });
-  if (!mexe) $('eu-fila').classList.add(souEu ? 'eu__fila--travada' : 'eu__fila--espera');
+  if (!mexe) $('eu-fila').classList.add('eu__fila--espera');
   const botao = $('eu-confirmar');
   botao.hidden = !mexe;
   botao.disabled = false;
 }
 
-socket.on('eu:palpite', (dados) => {
-  mostrarEu(dados);
-  $('status-respostas').textContent = `Ninguem confirmou ainda (0 de ${dados.total}).`;
-  if (estado.conheco && estado.conheco.mexe && !('ontouchstart' in window)) inputChat.blur();
-  pararContagem();
-  contarTempo(barraTempo, dados.duracaoMs, true);
+socket.on('eu:travou', ({ jogadorId, quantos, total } = {}) => {
+  const base = estado.conheco && jogadorId === estado.conheco.escolhe && jogadorId !== socket.id
+    ? ` · ${estado.conheco.nickname} (a base) ja confirmou` : '';
+  $('status-respostas').textContent = `${quantos} de ${total} ja confirmaram${base}.`;
 });
 
-socket.on('eu:travou', ({ quantos, total } = {}) => {
-  $('status-respostas').textContent = `${quantos} de ${total} ja confirmaram.`;
-});
+/** Uma fila de cartas pequenas, para a lista do resultado. */
+function cartinhasEu(itens, ordem, certa) {
+  return `<ol class="eu-cartinhas">${ordem.map((item, k) => {
+    const marca = certa ? (item === certa[k] ? 'certa' : 'errada') : '';
+    return `<li class="eu-cartinha ${marca ? 'eu-cartinha--' + marca : ''}" style="--cor-carta:${
+      CORES_EU[item % CORES_EU.length]}" title="${k + 1}º"><span>${escapar(itens[item])}</span>${
+      marca ? `<i>${marca === 'certa' ? '✓' : '✗'}</i>` : ''}</li>`;
+  }).join('')}</ol>`;
+}
 
-/** Resultado: o ranking certo e, para quem tentou, o seu com o que bateu. */
+/**
+ * Resultado: o ranking da base em cartas grandes e, embaixo, uma linha por
+ * pessoa — o nome, as cinco cartas dela (com o que bateu com a base) e os
+ * pontos. As cartas ficam na mesma coluna das grandes de cima.
+ */
 function revelarEu(eu, detalhes = []) {
   if (!eu) return mostrarEu(null);
-  const painel = $('eu');
-  painel.hidden = false;
+  $('eu').hidden = false;
   $('eu-confirmar').hidden = true;
   if (estado.conheco) estado.conheco.mexe = false;
 
-  $('eu-vez').innerHTML = `O ranking de <b>${eu.avatar} ${escapar(eu.nickname)}</b>`;
-  desenharFilaEu($('eu-fila'), eu.itens, eu.ordem);
-  $('eu-fila').classList.remove('eu__fila--travada', 'eu__fila--espera');
-
-  const meu = detalhes.find((d) => d.jogadorId === socket.id);
-  const minha = meu && meu.eu && meu.eu.papel === 'adivinhou' ? meu.eu.ordem : null;
-  $('eu-meu').hidden = !minha;
-  if (minha) {
-    const marcas = minha.map((item, k) => item === eu.ordem[k]);
-    const quantas = marcas.filter(Boolean).length;
-    $('eu-meu-titulo').innerHTML = `Seu ranking: <b>${quantas} de ${marcas.length}</b> no lugar certo`;
-    desenharFilaEu($('eu-meu-fila'), eu.itens, minha, { marcas });
+  const base = `${eu.avatar} ${escapar(eu.nickname)}`;
+  if (eu.ordem) {
+    $('eu-vez').innerHTML = `O ranking de <b>${base}</b>`;
+    desenharFilaEu($('eu-fila'), eu.itens, eu.ordem);
+    $('eu-fila').classList.remove('eu__fila--travada', 'eu__fila--espera');
+  } else {
+    $('eu-vez').innerHTML = `<b>${base}</b> nao rankeou a tempo — sem base para comparar, ninguem pontua.`;
+    $('eu-fila').hidden = true;
+    $('eu-legenda').hidden = true;
   }
-}
 
-/** No resultado, a fila de cada um em miniatura: uma bolinha por coisa, na cor dela. */
-function miniaturaEu(ordem, certa) {
-  if (!ordem) return '';
-  return `<span class="eu-mini">${ordem.map((item, k) => `<i style="--cor-carta:${CORES_EU[item % CORES_EU.length]}"${
-    certa && item === certa[k] ? ' class="certa"' : ''}></i>`).join('')}</span>`;
+  const lista = $('eu-lista');
+  lista.innerHTML = '';
+  for (const d of detalhes) {
+    if (!d.eu || d.eu.papel === 'fora') continue;
+    const minha = d.jogadorId === socket.id;
+    const ehBase = d.eu.papel === 'rankeou';
+    const item = criar('li', `eu-linha${minha ? ' eu-linha--minha' : ''}${ehBase ? ' eu-linha--base' : ''}`);
+    // A base mostra o ranking dela sem marca; quem nem mexeu fica sem cartas.
+    const meio = d.eu.ordem
+      ? cartinhasEu(eu.itens, d.eu.ordem, ehBase ? null : eu.ordem)
+      : '<span class="eu-linha__vazio">nao mexeu</span>';
+
+    item.innerHTML = `
+      <span class="eu-linha__nome" title="${escapar(d.nickname)}">${ehBase ? '🫶' : d.avatar} ${escapar(d.nickname)}</span>
+      ${meio}
+      <span class="eu-linha__pontos ${d.ganhou > 0 ? 'positivo' : ''}">${d.ganhou > 0 ? '+' + d.ganhou : '0'}</span>`;
+    lista.appendChild(item);
+  }
+  $('eu-todos').hidden = !lista.children.length;
 }
 
 /* ------------------------ Maria vai com as outras ------------------------ */
@@ -3462,6 +3478,7 @@ function mostrarMaria(dados) {
   const painel = $('maria');
   painel.hidden = !dados;
   $('maria-mesa').hidden = true;
+  $('maria-lista').hidden = false;
   $('maria-lista').classList.remove('maria__lista--travada', 'maria__lista--resultado');
   const vinha = estado.maria;
   if (vinha) clearTimeout(vinha.envio);
@@ -3514,16 +3531,27 @@ socket.on('maria:travou', ({ quantos, total } = {}) => {
   $('status-respostas').textContent = `${quantos} de ${total} ja confirmaram.`;
 });
 
-/** Uma coisa do top no resultado: com quantos ela bateu e se foi no mesmo lugar. */
-function fichaMaria(texto, iguais, noLugar) {
-  if (!texto) return '<span class="maria__ficha maria__ficha--vazia">—</span>';
-  const classe = noLugar ? ' maria__ficha--lugar' : iguais ? ' maria__ficha--igual' : '';
-  const marca = iguais ? `<b>×${iguais}</b>` : '';
-  return `<span class="maria__ficha${classe}"${noLugar ? ` title="${noLugar} no mesmo lugar"` : ''}>${
-    escapar(texto)}${marca}</span>`;
+/*
+ * O resultado do Maria e uma tabela: uma linha por pessoa, uma coluna por
+ * lugar (1o a 5o). Cada coisa que mais de uma pessoa escreveu ganha uma cor,
+ * a mesma em todas as linhas — da para bater o olho e ver quem pensou igual.
+ * O que caiu no mesmo lugar para mais de uma pessoa ganha o 📍. O que so uma
+ * pessoa escreveu fica cinza.
+ */
+const CORES_MARIA = ['#e11d48', '#2563eb', '#16a34a', '#ea580c', '#9333ea', '#0891b2', '#ca8a04', '#db2777',
+  '#4f46e5', '#059669'];
+const corMaria = (grupo) => CORES_MARIA[grupo % CORES_MARIA.length];
+
+/** Uma celula da tabela: a coisa, pintada pela cor do grupo, com 📍 se coincidiu no lugar. */
+function celulaMaria(texto, grupo, noLugar) {
+  if (!texto) return '<li class="maria-celula maria-celula--vazia">—</li>';
+  const cor = grupo === null || grupo === undefined ? '' : ` style="--cor-maria:${corMaria(grupo)}"`;
+  const classe = grupo === null || grupo === undefined ? '' : noLugar ? ' maria-celula--lugar' : ' maria-celula--igual';
+  return `<li class="maria-celula${classe}"${cor}${noLugar ? ` title="No mesmo lugar que mais ${noLugar}"` : ''}>
+    <span>${escapar(texto)}</span>${noLugar ? '<i>📍</i>' : ''}</li>`;
 }
 
-/** Resultado: o top da mesa e, para quem escreveu, o seu com o que bateu. */
+/** Resultado: o que mais de um escreveu e, embaixo, o top de cada um lado a lado. */
 function revelarMaria(maria, detalhes = []) {
   if (!maria) return mostrarMaria(null);
   if (estado.maria) {
@@ -3532,27 +3560,43 @@ function revelarMaria(maria, detalhes = []) {
   }
   $('maria').hidden = false;
   $('maria-confirmar').hidden = true;
-  $('maria-vez').innerHTML = '<b>O top 5 da mesa</b>';
+  $('maria-lista').hidden = true;
 
-  const lista = $('maria-lista');
-  lista.classList.remove('maria__lista--travada');
-  lista.classList.add('maria__lista--resultado');
-  lista.innerHTML = maria.daMesa.length
-    ? maria.daMesa.map((c, k) => `<li class="maria__linha"><span class="maria__lugar">${k + 1}º</span>
-        <span class="maria__texto">${escapar(c.texto)}</span>
-        <span class="maria__votos">${c.votos} ${c.votos === 1 ? 'voto' : 'votos'}</span></li>`).join('')
-    : '<li class="maria__linha"><span class="maria__texto">Ninguem escreveu nada.</span></li>';
+  const repetidas = maria.repetidas || [];
+  $('maria-vez').innerHTML = '';
 
-  const meu = detalhes.find((d) => d.jogadorId === socket.id);
+  const resumo = repetidas.map((r, g) => {
+    const lugares = r.mesmoLugar.map((l) => `📍 ${l.pessoas} no ${l.lugar}º`).join(' · ');
+    return `<li class="maria-repetida" style="--cor-maria:${corMaria(g)}">
+      <i></i><b>${escapar(r.texto)}</b><span>${r.pessoas} pessoas${lugares ? ` · ${lugares}` : ''}</span></li>`;
+  }).join('');
+
+  const linhas = detalhes.filter((d) => d.maria && d.maria.papel !== 'fora').map((d) => {
+    const m = d.maria;
+    const minha = d.jogadorId === socket.id;
+    const meio = m.lista
+      ? `<ol class="maria-celulas">${m.lista.map((t, k) => celulaMaria(t, m.grupo ? m.grupo[k] : null, m.noLugar[k])).join('')}</ol>`
+      : '<span class="eu-linha__vazio">nao escreveu</span>';
+    return `<li class="eu-linha maria-linha${minha ? ' eu-linha--minha' : ''}">
+      <span class="eu-linha__nome" title="${escapar(d.nickname)}">${d.avatar} ${escapar(d.nickname)}</span>
+      ${meio}
+      <span class="eu-linha__pontos ${d.ganhou > 0 ? 'positivo' : ''}">${d.ganhou > 0 ? '+' + d.ganhou : '0'}</span></li>`;
+  }).join('');
+
   const mesa = $('maria-mesa');
-  mesa.hidden = !(meu && meu.maria && meu.maria.lista);
-  if (!mesa.hidden) {
-    const { lista: minha, iguais, noLugar } = meu.maria;
-    mesa.innerHTML = `<p class="maria__vez">Seu top: <b>+${meu.ganhou}</b>
-      <span class="maria__legenda"><i class="maria__ficha--igual"></i>alguem escreveu igual
-      <i class="maria__ficha--lugar"></i>no mesmo lugar · ×N: com quantos</span></p>
-      <div class="maria__fichas">${minha.map((t, k) => fichaMaria(t, iguais[k], noLugar[k])).join('')}</div>`;
-  }
+  mesa.hidden = false;
+  mesa.innerHTML = `
+    <p class="eu__vez eu__vez--todos">${repetidas.length
+      ? 'Escreveram igual' : 'Ninguem escreveu nada igual — cada um pensou numa coisa.'}</p>
+    ${resumo ? `<ul class="maria-repetidas">${resumo}</ul>` : ''}
+    <p class="eu__vez eu__vez--todos">O top de cada um</p>
+    <ol class="eu-lista">
+      <li class="eu-linha maria-linha maria-linha--cabeca" aria-hidden="true"><span></span>
+        <ol class="maria-celulas">${[1, 2, 3, 4, 5].map((n) => `<li>${n}º</li>`).join('')}</ol><span>pts</span></li>
+      ${linhas}
+    </ol>
+    <p class="maria__legenda"><i class="maria-celula--igual"></i>mais de um escreveu
+      <i class="maria-celula--lugar"></i>📍 no mesmo lugar · cinza: so a pessoa escreveu</p>`;
   destrancarChat('Digite uma mensagem…');
 }
 
@@ -4630,13 +4674,16 @@ socket.on('rodada:resultado', (dados) => {
 
   const lista = $('resultado-lista');
   lista.innerHTML = '';
+  // Eu te conheço e Maria tem a lista deles, com o top de cada um lado a lado.
+  const listaPropria = Boolean(dados.eu) || Boolean(dados.maria);
+  lista.hidden = listaPropria;
 
   const PAPEIS = {
     apostou: '🔨 apostou', duvidou: '🤨 duvidou', respondeu: '🎁 respondeu',
     passou: '🚪 passou', dicou: '💡 deu as dicas', adivinhou: '🤔 adivinhou'
   };
 
-  for (const detalhe of dados.detalhes) {
+  for (const detalhe of listaPropria ? [] : dados.detalhes) {
     const item = criar('li', 'resultado__item ' + (detalhe.acertou ? 'acertou' : 'errou'));
     // No Presente Grego quase ninguem responde: o "nao acertou" pelo relogio
     // nao diz nada, e quem conta a historia e o papel na rodada.
@@ -4644,23 +4691,10 @@ socket.on('rodada:resultado', (dados) => {
     const naoAcertou = dados.opcoes
       ? (detalhe.escolha ? `marcou ${detalhe.escolha}` : 'nao escolheu')
       : 'nao acertou';
-    // Eu te conheço: quem rankeou, e quantas coisas cada um pos no lugar.
-    const papelEu = detalhe.eu && {
-      rankeou: '🫶 rankeou',
-      adivinhou: `${detalhe.eu.lugares}/${dados.eu ? dados.eu.itens.length : 5} no lugar`,
-      parado: 'nao mexeu',
-      fora: 'entrou depois'
-    }[detalhe.eu.papel];
-    // Maria vai com as outras: com quantas coisas a pessoa pensou igual a mesa.
-    const papelMaria = detalhe.maria && {
-      escreveu: `${(detalhe.maria.iguais || []).filter(Boolean).length} em comum`,
-      parado: 'nao escreveu',
-      fora: 'entrou depois'
-    }[detalhe.maria.papel];
     // Senso Comum: quantas respostas do quadro a pessoa acertou.
     const papelSenso = detalhe.senso
       && `${detalhe.senso.acertos} ${detalhe.senso.acertos === 1 ? 'acerto' : 'acertos'}`;
-    const tempo = papelEu || papelMaria || papelSenso || (dados.presente
+    const tempo = papelSenso || (dados.presente
       ? (PAPEIS[detalhe.papel] || '—')
       : (detalhe.ms === null ? naoAcertou : `${(detalhe.ms / 1000).toFixed(1)}s`));
 
@@ -4682,12 +4716,7 @@ socket.on('rodada:resultado', (dados) => {
       </span>
       ${pedia > 1 && conseguiu.length
         ? `<p class="resultado__itens">${escapar(conseguiu.join(', '))}</p>`
-        : ''}
-      ${dados.eu && detalhe.eu && detalhe.eu.papel === 'adivinhou'
-        ? miniaturaEu(detalhe.eu.ordem, dados.eu.ordem) : ''}
-      ${detalhe.maria && detalhe.maria.lista
-        ? `<div class="maria__fichas maria__fichas--mini">${detalhe.maria.lista
-          .map((t, k) => fichaMaria(t, detalhe.maria.iguais[k], detalhe.maria.noLugar[k])).join('')}</div>` : ''}`;
+        : ''}`;
     lista.appendChild(item);
   }
 
@@ -4852,19 +4881,30 @@ $('btn-novo-jogo').addEventListener('click', () => {
    ===================================================================== */
 
 /*
- * So o lider pausa e continua. Pausado, a tela "Jogo pausado" cobre a
- * pergunta, os relogios congelam onde estavam, a musica para e o campo de
- * resposta tranca. O servidor e quem manda: ele recusa palpite, voto e lance
+ * So o lider pausa e continua. Pausado, nada cobre a tela: ela fica como
+ * estava, para dar para ler o resultado, o placar ou as cartas com calma. Os
+ * relogios congelam onde estavam, a musica para, o campo de resposta tranca,
+ * um aviso pequeno no topo diz quem pausou, e o botao de pausar vira o de
+ * continuar. O servidor e quem manda: ele recusa palpite, voto e lance
  * enquanto a pausa durar, e avisa todo mundo com 'sala:pausa'.
+ *
+ * A unica pausa que ainda abre uma caixa e a da Bagunca num modo novo: ali a
+ * caixa e o conteudo, com a regra do modo para ler.
  */
 
 const souLider = () => Boolean(estado.eu?.lider);
 
+const BOTOES_DE_PAUSA = ['btn-pausar', 'btn-pausar-rev', 'btn-pausar-sorteio'];
+
 function atualizarBotoesDePausa() {
-  const mostra = souLider() && !estado.pausado;
-  $('btn-pausar').hidden = !mostra;
-  $('btn-pausar-rev').hidden = !mostra;
-  $('btn-pausar-sorteio').hidden = !mostra;
+  for (const id of BOTOES_DE_PAUSA) {
+    const botao = $(id);
+    botao.hidden = !souLider();
+    botao.classList.toggle('btn--continuar', estado.pausado);
+    botao.title = estado.pausado ? 'Continuar o jogo' : 'Pausar o jogo';
+    botao.querySelector('.btn__icone').textContent = estado.pausado ? '▶' : '⏸';
+    botao.querySelector('.btn--pausar__rotulo').textContent = estado.pausado ? ' Continuar' : ' Pausar';
+  }
   $('btn-continuar').hidden = !souLider();
   $('pausa-espera').hidden = souLider();
 }
@@ -4881,10 +4921,8 @@ function aplicarPausa(pausado, por, modo = null) {
     if (estado.musicaDaPausa) pararAudio();
     // O relogio da musica para junto: na volta ela segue de onde estava.
     if (estado.musica) estado.musica.pausouEm = Date.now();
-    $('pausa').hidden = false;
   } else if (!pausado && estado.pausado) {
     estado.pausado = false;
-    $('pausa').hidden = true;
     const chat = estado.chatDaPausa || { disabled: false, placeholder: 'Escreva sua resposta…' };
     inputChat.disabled = chat.disabled;
     inputChat.placeholder = chat.placeholder;
@@ -4899,7 +4937,14 @@ function aplicarPausa(pausado, por, modo = null) {
       else $('tocador-audio').play().then(() => marcarTocando(true)).catch(() => {});
     }
   }
-  // Pausa da Bagunca num modo novo: a caixa vira a regra do modo, com calma.
+  // A caixa so abre na pausa da Bagunca num modo novo: ela e a regra do modo.
+  // Nas outras, so o aviso no topo — a tela continua a vista.
+  $('pausa').hidden = !(pausado && modo);
+  const aviso = $('pausa-aviso');
+  aviso.hidden = !pausado || Boolean(modo);
+  aviso.textContent = !pausado ? ''
+    : souLider() ? '⏸ Jogo pausado'
+      : `⏸ ${por ? `${por} pausou o jogo` : 'Jogo pausado'}`;
   const regra = $('pausa-regra');
   regra.hidden = !(pausado && modo);
   $('pausa-titulo').textContent = pausado && modo ? `${modo.icone} Modo novo: ${modo.nome}` : 'Jogo pausado';
@@ -4912,14 +4957,13 @@ function aplicarPausa(pausado, por, modo = null) {
   atualizarBotoesDePausa();
 }
 
-function pedirPausa() {
-  socket.emit('sala:pausar', {}, (resposta) => {
+/** O mesmo botao pausa e continua: pausado, ele vira o "Continuar". */
+function alternarPausa() {
+  socket.emit(estado.pausado ? 'sala:continuar' : 'sala:pausar', {}, (resposta) => {
     if (resposta?.erro) brindar(resposta.erro);
   });
 }
-$('btn-pausar').addEventListener('click', pedirPausa);
-$('btn-pausar-rev').addEventListener('click', pedirPausa);
-$('btn-pausar-sorteio').addEventListener('click', pedirPausa);
+for (const id of BOTOES_DE_PAUSA) $(id).addEventListener('click', alternarPausa);
 $('btn-continuar').addEventListener('click', () => {
   socket.emit('sala:continuar', {}, (resposta) => {
     if (resposta?.erro) brindar(resposta.erro);

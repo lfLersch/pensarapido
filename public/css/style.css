@@ -1572,37 +1572,105 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   font-size: 12px;
   color: var(--texto-fraco);
 }
-.eu__meu {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--borda);
-}
-.eu__meu .eu__carta { min-height: 84px; }
 .eu__confirmar { display: block; width: 100%; margin-top: 14px; }
 
-/* No resultado, a fila de cada um em miniatura: uma bolinha por coisa. */
-.eu-mini {
-  display: inline-flex;
+/* No resultado: uma linha por pessoa, tudo na mesma linha — o nome, as cinco
+   cartas dela (com o que bateu com a base) e os pontos. */
+.eu__todos {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--borda);
+}
+.eu__vez--todos { margin-bottom: 8px; font-size: 14px; font-weight: 700; color: var(--texto); }
+.eu-lista {
+  display: grid;
   gap: 4px;
-  margin-left: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.eu-mini i {
-  width: 12px;
-  height: 12px;
+.eu-linha {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+}
+.eu-linha--minha { border-color: var(--primaria); background: rgba(124, 92, 255, 0.12); }
+.eu-linha--base { border-style: dashed; }
+.eu-linha__nome {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.eu-linha__vazio { font-size: 12px; color: var(--texto-fraco); }
+.eu-linha__pontos {
+  font-size: 16px;
+  font-weight: 800;
+  text-align: right;
+  color: var(--texto-fraco);
+}
+.eu-linha__pontos.positivo { color: var(--certo); }
+.eu-cartinhas {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.eu-cartinha {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 30px;
+  padding: 3px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  color: #fff;
   background: var(--cor-carta);
-  border-radius: 3px;
-  opacity: 0.35;
+  border: 2px solid transparent;
+  border-radius: 6px;
 }
-.eu-mini i.certa { opacity: 1; box-shadow: 0 0 0 2px var(--certo); }
+.eu-cartinha span { min-width: 0; overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto; }
+.eu-cartinha i {
+  position: absolute;
+  top: -6px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  font-size: 9px;
+  font-style: normal;
+  border: 1.5px solid var(--fundo);
+  border-radius: 50%;
+}
+.eu-cartinha--certa { border-color: var(--certo); }
+.eu-cartinha--certa i { background: var(--certo); }
+.eu-cartinha--errada { opacity: 0.5; }
+.eu-cartinha--errada i { background: var(--errado); }
 
 @media (max-width: 560px) {
   /* A fila avanca sobre o respiro do painel: cada carta ganha uns pixels a mais. */
   .eu__fila { --gap-eu: 4px; margin-inline: -10px; }
   .eu__legenda { margin-inline: -10px; }
   .eu__carta { min-height: 96px; padding: 8px 2px; font-size: 12px; border-width: 1.5px; }
-  .eu__meu .eu__carta { min-height: 72px; }
   .eu__posicao { font-size: 15px; }
   .eu__marca { top: -8px; right: -5px; width: 20px; height: 20px; font-size: 12px; }
+  .eu-linha { grid-template-columns: 62px minmax(0, 1fr) 28px; gap: 5px; padding: 4px 5px; }
+  .eu-linha__nome { font-size: 12px; }
+  .eu-linha__pontos { font-size: 14px; }
+  .eu-cartinhas { gap: 3px; }
+  .eu-cartinha { min-height: 28px; padding: 2px; font-size: 9px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .eu__carta { transition: none; }
@@ -1620,6 +1688,7 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: var(--texto-suave);
 }
 .maria__vez b { color: var(--texto); }
+.maria__vez:empty { display: none; }
 .maria__lista {
   display: grid;
   gap: 8px;
@@ -1680,65 +1749,117 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 .maria__lista--resultado .maria__linha { min-height: 40px; padding-right: 10px; }
 .maria__confirmar { display: block; width: 100%; margin-top: 14px; }
-.maria__mesa {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--borda);
-}
+/* No resultado a lista de escrever some e a mesa ocupa o painel inteiro. */
+.maria__mesa { margin-top: 4px; }
+.maria__mesa .eu__vez--todos + .eu-lista,
+.maria__mesa .maria-repetidas + .eu__vez--todos { margin-top: 4px; }
 
-/* Uma coisa do top no resultado: apagada se ninguem mais escreveu, verde se
-   alguem escreveu igual, dourada se foi no mesmo lugar. O "×2" e com quantos. */
-.maria__fichas {
+/* O resultado do Maria: o que mais de um escreveu, e uma tabela com o top de
+   cada um. A mesma coisa tem a mesma cor em todas as linhas; o 📍 marca a que
+   caiu no mesmo lugar para mais de uma pessoa; cinza e o que so um escreveu. */
+.maria-repetidas {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
 }
-.maria__ficha {
+.maria-repetida {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  font-size: 14px;
-  color: var(--texto-suave);
-  background: var(--superficie);
-  border: 1px solid var(--borda);
+  padding: 4px 10px 4px 6px;
+  font-size: 13px;
+  background: color-mix(in srgb, var(--cor-maria) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cor-maria) 60%, transparent);
   border-radius: 999px;
 }
-.maria__ficha b { font-size: 12px; }
-.maria__ficha--vazia { color: var(--texto-fraco); }
-.maria__ficha--igual {
-  color: var(--texto);
-  background: rgba(34, 197, 94, 0.14);
-  border-color: rgba(34, 197, 94, 0.5);
+.maria-repetida i {
+  width: 12px;
+  height: 12px;
+  background: var(--cor-maria);
+  border-radius: 50%;
 }
-.maria__ficha--igual b { color: var(--certo); }
-.maria__ficha--lugar {
-  color: var(--texto);
-  background: rgba(251, 191, 36, 0.14);
-  border-color: rgba(251, 191, 36, 0.6);
+.maria-repetida span { color: var(--texto-suave); }
+/* A tabela usa a linha do Eu te conheço: nome, as cinco coisas e os pontos. */
+.maria-linha--cabeca {
+  padding-block: 0;
+  background: none;
+  border-color: transparent;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--texto-suave);
 }
-.maria__ficha--lugar b { color: var(--destaque); }
+.maria-linha--cabeca .maria-celulas li:first-child { color: var(--destaque); }
+.maria-linha--cabeca > span:last-child { text-align: right; }
+.maria-celulas {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.maria-celula {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 30px;
+  padding: 3px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--texto-suave);
+  background: var(--superficie-2);
+  border: 2px solid transparent;
+  border-radius: 6px;
+}
+.maria-celula span { min-width: 0; overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto; }
+.maria-celula--vazia { color: var(--texto-fraco); background: none; }
+.maria-celula--igual {
+  font-weight: 700;
+  color: #fff;
+  background: color-mix(in srgb, var(--cor-maria) 55%, transparent);
+}
+.maria-celula--lugar {
+  font-weight: 800;
+  color: #fff;
+  background: var(--cor-maria);
+  border-color: #fff;
+}
+.maria-celula i {
+  position: absolute;
+  top: -8px;
+  right: -5px;
+  font-size: 12px;
+  font-style: normal;
+}
 .maria__legenda {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 5px;
-  margin-left: 8px;
+  margin: 10px 0 0;
   font-size: 12px;
   color: var(--texto-fraco);
 }
 .maria__legenda i {
-  width: 10px;
-  height: 10px;
-  margin-left: 4px;
-  border: 1px solid;
-  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: 6px;
+  border-radius: 3px;
+  --cor-maria: var(--primaria);
 }
-.maria__fichas--mini {
-  flex-basis: 100%;
-  margin-top: 6px;
-  gap: 4px;
+.maria__legenda i:first-child { margin-left: 0; }
+
+@media (max-width: 560px) {
+  .maria-celulas { gap: 3px; }
+  .maria-celula { min-height: 28px; padding: 2px; font-size: 9px; }
+  .maria-repetida { font-size: 12px; }
 }
-.maria__fichas--mini .maria__ficha { padding: 2px 8px; font-size: 12px; }
 
 /* ----------------------------- Senso Comum ----------------------------- */
 
@@ -2944,14 +3065,48 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 .revelacao .btn--pausar:hover { opacity: 1; }
 
+/* Pausado, o mesmo botao vira o "Continuar", em destaque. */
+.btn--pausar.btn--continuar,
+.revelacao .btn--pausar.btn--continuar {
+  opacity: 1;
+  color: #fff;
+  background: var(--primaria);
+  border-color: var(--primaria);
+  box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.25);
+}
+
+/* O aviso de jogo pausado: pequeno, no topo, sem cobrir nada nem pegar clique. */
+.pausa-aviso {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  z-index: 40;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--texto);
+  background: var(--vidro);
+  border: 1px solid var(--primaria);
+  border-radius: 999px;
+  box-shadow: var(--sombra);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 @media (max-width: 560px) {
   .btn--pausar { padding: 8px 11px; font-size: 12.5px; }
   .jogo__canto .btn--pausar__rotulo { display: none; }
+  .pausa-aviso { top: 8px; padding: 6px 14px; font-size: 13px; white-space: nowrap; }
 }
 
-/* A tela de pausa cobre a pergunta inteira: com o relogio parado, ninguem
-   fica olhando a imagem ou o enunciado com todo o tempo do mundo. Fica abaixo
-   dos avisos (brindes), que continuam aparecendo por cima. */
+/* A caixa de pausa so abre na Bagunca, quando sai um modo novo: ela traz a
+   regra dele para ler. A pausa comum nao cobre nada (ver .pausa-aviso). Fica
+   abaixo dos avisos (brindes), que continuam aparecendo por cima. */
 .pausa {
   position: fixed;
   inset: 0;

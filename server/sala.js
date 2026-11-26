@@ -62,11 +62,18 @@ const MS_TETO_RODADA = 90000;
 const VARIACAO_CATEGORIAS = 0.8;
 
 // Dificuldade crescente: a partida começa pelas perguntas mais fáceis da
-// categoria e termina pelas mais difíceis. A escolha só acontece entre as da
-// frente da fila (as que saíram menos vezes), para não brigar com o rodízio:
-// um quarto da fila, e nunca menos que 8 opções.
-const JANELA_DIFICULDADE = 0.25;
-const JANELA_DIFICULDADE_MIN = 8;
+// categoria e termina pelas mais difíceis. A escolha só acontece entre as 16
+// da frente da fila (as que saíram menos vezes), e sorteia entre as 3 delas
+// mais perto do alvo, para não brigar com o rodízio.
+//
+// Antes a janela era um quarto da fila e saía sempre a mais perto: numa
+// categoria de 200 perguntas, a partida abria com a mais fácil entre 50, que
+// é quase sempre uma das ~4 mais fáceis de todas — e as mesmas voltavam toda
+// partida. Na simulação (3 por partida, 30 partidas, categoria de 200) saíam
+// ~45 perguntas diferentes; assim saem ~76, perto das ~83 sem dificuldade
+// nenhuma, e a partida ainda abre entre as ~12% mais fáceis.
+const JANELA_DIFICULDADE = 16;
+const SORTEIO_DIFICULDADE = 3;
 
 // Carrossel: a vez passa de jogador em jogador e quem não souber sai da
 // rodada. Cada pessoa tem 9s, e as voltas não têm fim: a rodada só acaba
@@ -170,9 +177,8 @@ const MS_REVELA_VENI = 5000;     // quanto tempo os palpites ficam na tela
    coisa no lugar certo vale 2 — acertar as 5 da os 10 de sempre. */
 const ITENS_EU = 5;
 const PONTOS_POR_LUGAR_EU = 2;
-const MS_ESCOLHA_EU = 60000;     // quem rankeia tem 60s
-const MS_PALPITE_EU = 45000;     // ... e os outros, 45s para rankear igual
-const MS_RESULTADO_EU = 9000;    // da para comparar os rankings com calma
+const MS_RANKING_EU = 60000;     // todo mundo rankeia ao mesmo tempo, em 60s
+const MS_RESULTADO_EU = 12000;   // da para comparar os rankings com calma
 const CATEGORIA_EU = { id: 'eu-te-conheco', nome: 'Eu te conheço', icone: '🫶', cor: '#ec4899' };
 
 /* Maria vai com as outras: uma pergunta de top 5 e cada um escreve o seu.
@@ -532,6 +538,62 @@ function pontuarMaria(listas) {
   return { porJogador: por, daMesa };
 }
 
+/**
+ * Maria vai com as outras, para a tela do resultado: as coisas que mais de
+ * uma pessoa escreveu, com quantas pessoas e em que lugares, e, para cada
+ * pessoa, qual dessas coisas esta em cada linha do top dela.
+ *
+ * `grupoDe(id)` devolve, linha a linha, o indice em `repetidas` (ou null se
+ * so aquela pessoa escreveu a coisa). E por esse indice que a tela pinta a
+ * mesma coisa da mesma cor em todos os tops.
+ *
+ * @param {Map<string, {lista: string[]}>} porJogador  o que pontuarMaria devolve
+ */
+function agruparMaria(porJogador) {
+  const grupos = [];
+  const linhas = new Map();
+  for (const [id, { lista }] of porJogador) {
+    linhas.set(id, lista.map((t, k) => {
+      if (!t) return null;
+      let g = grupos.findIndex((x) => mesmaCoisa(x.chave, t));
+      if (g < 0) {
+        grupos.push({ chave: t, quem: new Set(), lugares: lista.map(() => 0), formas: new Map() });
+        g = grupos.length - 1;
+      }
+      grupos[g].quem.add(id);
+      grupos[g].lugares[k] += 1;
+      const forma = normalizar(t);
+      const ja = grupos[g].formas.get(forma);
+      grupos[g].formas.set(forma, { texto: ja ? ja.texto : t, vezes: (ja ? ja.vezes : 0) + 1 });
+      return g;
+    }));
+  }
+
+  // So interessa o que mais de uma pessoa escreveu: de quem mais escreveu
+  // para quem menos, e no empate o que caiu mais vezes no mesmo lugar.
+  const maisNoMesmo = (g) => Math.max(...g.lugares);
+  const repetidos = grupos
+    .map((g, i) => ({ g, i }))
+    .filter(({ g }) => g.quem.size > 1)
+    .sort((a, b) => b.g.quem.size - a.g.quem.size || maisNoMesmo(b.g) - maisNoMesmo(a.g));
+  const novo = new Map(repetidos.map(({ i }, n) => [i, n]));
+
+  return {
+    repetidas: repetidos.map(({ g }) => {
+      const [forma] = [...g.formas.values()].sort((x, y) => y.vezes - x.vezes || y.texto.length - x.texto.length);
+      return {
+        texto: forma.texto,
+        pessoas: g.quem.size,
+        // Os lugares em que 2 ou mais puseram a coisa: [{ lugar: 1, pessoas: 3 }]
+        mesmoLugar: g.lugares
+          .map((n, k) => ({ lugar: k + 1, pessoas: n }))
+          .filter((l) => l.pessoas > 1)
+      };
+    }),
+    grupoDe: (id) => (linhas.get(id) || []).map((g) => (g !== null && novo.has(g) ? novo.get(g) : null))
+  };
+}
+
 /** Modo Tempo: a faixa de dificuldade conferida. Torta ou estreita demais vira 0 a 100. */
 function faixaDe(bruta) {
   const min = Number(bruta && bruta.min);
@@ -554,6 +616,14 @@ function tituloDaFaixa(faixa) {
 }
 
 /* ------------------------------ Utilidades ------------------------------ */
+
+/**
+ * O id de uma lista (Escalada, Carrossel, Presente Grego) no rodizio de usos.
+ * As fatias "... com a letra X" de uma mesma fonte dividem o mesmo id.
+ */
+function idDeLista(lista) {
+  return 'lista:' + lista.pergunta.replace(/\s*(cujo nome )?(que )?comeca[m]? com a letra \w+$/i, '');
+}
 
 function embaralhar(lista) {
   const copia = lista.slice();
@@ -855,6 +925,7 @@ class Sala {
     // na partida, quem ja teve a vez e quais coisas ja sairam.
     this.eu = null;
     this.jaRankearam = new Set();   // nicknames normalizados
+    this.ultimaBaseEu = null;       // quem foi a base da rodada anterior
     this.coisasUsadas = new Set();
 
     // Pergunta secreta: a roda da rodada (quem joga, de quem e a vez, quantas
@@ -1077,14 +1148,18 @@ class Sala {
       this.travarSeTodosResponderam();
     }
 
-    // Eu te conheço: sem o ranking de quem rankeia nao ha o que adivinhar; e
-    // quem adivinhava e saiu nao segura mais a rodada.
-    if (this.ehEuTeConheco() && this.eu && this.estado === 'pergunta' && !this.vazia) {
-      if (this.eu.fase === 'escolha' && socketId === this.eu.escolhe) {
-        this.cancelarRodada(`${jogador.nickname} saiu antes de rankear`);
-      } else if (this.eu.adivinham.delete(socketId)) {
-        if (this.adivinhamEu().length === 0) this.cancelarRodada('nao sobrou ninguem para adivinhar');
-        else this.fecharSeTodosTravaramEu();
+    // Eu te conheço: a base que sai sem confirmar leva junto o ranking com que
+    // todos seriam comparados; e quem saiu nao segura mais a rodada.
+    if (this.ehEuTeConheco() && this.eu && this.estado === 'pergunta' && !this.vazia
+        && this.eu.participam.has(socketId)) {
+      const eu = this.eu;
+      const outros = this.participantesEu().filter((id) => id !== eu.escolhe);
+      if (socketId === eu.escolhe && !eu.travados.has(socketId)) {
+        this.cancelarRodada(`${jogador.nickname} saiu antes de confirmar o ranking`);
+      } else if (outros.length === 0) {
+        this.cancelarRodada('nao sobrou ninguem para adivinhar');
+      } else {
+        this.fecharSeTodosTravaramEu();
       }
     }
 
@@ -1243,6 +1318,7 @@ class Sala {
     this.filasMusica = new Map();
     this.eu = null;
     this.jaRankearam.clear();
+    this.ultimaBaseEu = null;
     this.coisasUsadas.clear();
     this.secreta = null;
     this.secretasUsadas.clear();
@@ -1802,9 +1878,8 @@ class Sala {
     };
 
     // As candidatas: as primeiras da fila que não repetem resposta.
-    const janela = Math.max(JANELA_DIFICULDADE_MIN, Math.ceil(fila.length * JANELA_DIFICULDADE));
     const candidatas = [];
-    for (let i = 0; i < fila.length && candidatas.length < janela; i++) {
+    for (let i = 0; i < fila.length && candidatas.length < JANELA_DIFICULDADE; i++) {
       if (livre(fila[i])) candidatas.push(i);
     }
 
@@ -1854,7 +1929,9 @@ class Sala {
   }
 
   /**
-   * Entre as candidatas, a que tem a dificuldade mais perto do andamento.
+   * Entre as candidatas, uma das que têm a dificuldade mais perto do
+   * andamento: sorteada entre as `SORTEIO_DIFICULDADE` mais perto. Pegar
+   * sempre a mais perto fazia a partida abrir sempre com as mesmas.
    *
    * A dificuldade é medida DENTRO da categoria (em que ponto ela fica entre
    * as mais fáceis e as mais difíceis de lá), senão categoria difícil nunca
@@ -1878,16 +1955,12 @@ class Sala {
     };
 
     const alvo = this.andamento();
-    let melhor = candidatas[0];
-    let menorDistancia = Infinity;
-    for (const i of candidatas) {
-      const distancia = Math.abs(posicao(difDe(fila[i])) - alvo);
-      if (distancia < menorDistancia) {
-        menorDistancia = distancia;
-        melhor = i;
-      }
-    }
-    return melhor;
+    // A ordem da fila desempata: entre distâncias iguais, quem saiu menos.
+    const maisPerto = candidatas
+      .map((i, ordem) => ({ i, ordem, distancia: Math.abs(posicao(difDe(fila[i])) - alvo) }))
+      .sort((a, b) => a.distancia - b.distancia || a.ordem - b.ordem)
+      .slice(0, SORTEIO_DIFICULDADE);
+    return maisPerto[Math.floor(Math.random() * maisPerto.length)].i;
   }
 
   /**
@@ -2082,19 +2155,26 @@ class Sala {
   /* --------------------------- Eu te conheço --------------------------- */
 
   /**
-   * Quem rankeia agora: a vez gira por ordem de chegada, e so volta ao
-   * primeiro quando todo mundo ja teve a sua. Vai pelo nickname, que
-   * sobrevive a cair e voltar.
+   * Quem e a base agora: sorteado entre quem ainda nao foi nesta volta. So
+   * quando todo mundo ja foi uma vez a volta recomeca — assim ninguem e base
+   * duas vezes antes de todos terem sido uma. Na virada da volta, quem acabou
+   * de ser base fica de fora do primeiro sorteio, para nao repetir seguido.
+   * Quem chega no meio entra na volta que esta rolando.
+   *
+   * Antes ia pela ordem de chegada, e a primeira base era sempre o lider.
+   * Vai pelo nickname, que sobrevive a cair e voltar.
    */
   proximoARankear() {
     const todos = [...this.jogam.values()];
     let falta = todos.filter((j) => !this.jaRankearam.has(normalizar(j.nickname)));
     if (!falta.length) {
       this.jaRankearam.clear();
-      falta = todos;
+      const semRepetir = todos.filter((j) => normalizar(j.nickname) !== this.ultimaBaseEu);
+      falta = semRepetir.length ? semRepetir : todos;
     }
-    const quem = falta[0];
+    const quem = falta[Math.floor(Math.random() * falta.length)];
     this.jaRankearam.add(normalizar(quem.nickname));
+    this.ultimaBaseEu = normalizar(quem.nickname);
     return quem;
   }
 
@@ -2105,14 +2185,22 @@ class Sala {
       this.coisasUsadas.clear();
       livres = COISAS;
     }
-    const itens = embaralhar(livres).slice(0, ITENS_EU);
-    for (const c of itens) this.coisasUsadas.add(c);
+    // Rodizio entre partidas: a coisa que ja saiu mais vezes perde peso.
+    const itens = usos.embaralharPorUso(livres, (c) => 'coisa:' + c).slice(0, ITENS_EU);
+    for (const c of itens) {
+      this.coisasUsadas.add(c);
+      usos.registrar('coisa:' + c);
+    }
     return itens;
   }
 
   /**
    * A rodada do Eu te conheço. O ranking e sempre uma lista de indices de
    * `itens`: `[2, 0, 4, 1, 3]` quer dizer que o item 2 esta em 1o lugar.
+   *
+   * Todo mundo rankeia ao mesmo tempo: quem e a base da rodada rankeia do
+   * jeito dele, e os outros tentam rankear igual. No fim, o de cada um e
+   * comparado com o da base.
    */
   perguntaEu() {
     const quem = this.proximoARankear();
@@ -2122,16 +2210,13 @@ class Sala {
       nickname: quem.nickname,
       avatar: quem.avatar,
       itens,
-      fase: 'escolha',
-      ordemDele: null,
+      // Quem estava na sala quando as cartas abriram: so essas pessoas jogam
+      // a rodada (e so por elas a sala espera).
+      participam: new Set(),
       // Como cada um deixou as cartas ate agora: se o tempo acabar sem
       // confirmar, vale o que estava na tela.
       rascunhos: new Map(),
-      travados: new Map(),
-      adivinham: new Set(),
-      // Quem adivinha comeca de outra ordem: se comecasse da mesma de quem
-      // rankeou, quem nao mexeu em nada acertaria tudo de graca.
-      inicioPalpite: null
+      travados: new Map()
     };
     return {
       id: `eu-te-conheco:${itens.join('|')}`,
@@ -2150,7 +2235,14 @@ class Sala {
     };
   }
 
-  /** O que a mesa sabe da rodada: quem rankeia, as coisas e em que fase esta. */
+  /** As cartas abriram: quem esta na sala agora joga, e o relogio comeca. */
+  abrirEu() {
+    this.eu.participam = new Set(this.jogam.keys());
+    this.naRodada = new Set(this.eu.participam);
+    this.agendar(() => this.encerrarRodada(), MS_RANKING_EU);
+  }
+
+  /** O que a mesa sabe da rodada: quem e a base e as coisas. Ninguem ve o ranking de ninguem. */
   publicoEu() {
     const eu = this.eu;
     return {
@@ -2158,10 +2250,8 @@ class Sala {
       nickname: eu.nickname,
       avatar: eu.avatar,
       itens: eu.itens,
-      fase: eu.fase,
-      inicio: eu.fase === 'palpite' ? eu.inicioPalpite : eu.itens.map((_, i) => i),
       pontosPorLugar: PONTOS_POR_LUGAR_EU,
-      duracaoMs: eu.fase === 'palpite' ? MS_PALPITE_EU : MS_ESCOLHA_EU
+      duracaoMs: MS_RANKING_EU
     };
   }
 
@@ -2170,10 +2260,17 @@ class Sala {
     return ordem.map((item, k) => `${k + 1}º ${this.eu.itens[item]}`).join(' · ');
   }
 
-  /** Quem ainda adivinha nesta rodada (e continua na sala, jogando). */
-  adivinhamEu() {
+  /** Quem joga esta rodada e continua na sala. */
+  participantesEu() {
     if (!this.eu) return [];
-    return [...this.eu.adivinham].filter((id) => this.jogam.has(id));
+    return [...this.eu.participam].filter((id) => this.jogam.has(id));
+  }
+
+  /** O ranking da base: o confirmado, ou o rascunho se o tempo acabou antes. */
+  rankingDaBaseEu() {
+    const eu = this.eu;
+    if (!eu) return null;
+    return eu.travados.get(eu.escolhe) || eu.rascunhos.get(eu.escolhe) || null;
   }
 
   /**
@@ -2194,18 +2291,7 @@ class Sala {
     if (!valida) return { erro: 'Esse ranking nao fecha: cada coisa num lugar.' };
 
     const eu = this.eu;
-    if (eu.fase === 'escolha') {
-      if (socketId !== eu.escolhe) return { erro: `Agora e a vez de ${eu.nickname} rankear.` };
-      eu.rascunhos.set(socketId, ordem);
-      if (final) {
-        eu.ordemDele = ordem;
-        this.abrirPalpiteEu();
-      }
-      return { ok: true, travou: Boolean(final) };
-    }
-
-    if (socketId === eu.escolhe) return { erro: 'Voce ja rankeou: agora os outros tentam rankear igual.' };
-    if (!eu.adivinham.has(socketId)) return { erro: 'Voce entra na proxima rodada.' };
+    if (!eu.participam.has(socketId)) return { erro: 'Voce entra na proxima rodada.' };
     if (eu.travados.has(socketId)) return { erro: 'Voce ja confirmou o seu ranking.' };
 
     eu.rascunhos.set(socketId, ordem);
@@ -2214,88 +2300,52 @@ class Sala {
       this.emitir('eu:travou', {
         jogadorId: socketId,
         quantos: eu.travados.size,
-        total: this.adivinhamEu().length
+        total: this.participantesEu().length
       });
       this.fecharSeTodosTravaramEu();
     }
     return { ok: true, travou: Boolean(final) };
   }
 
-  /**
-   * Quem rankeia confirmou (ou o tempo dele acabou): agora os outros tentam
-   * rankear igual. Sem confirmar, vale como as cartas ficaram na tela dele.
-   */
-  abrirPalpiteEu() {
-    if (this.estado !== 'pergunta' || !this.eu || this.eu.fase !== 'escolha') return;
-    const eu = this.eu;
-    if (!eu.ordemDele) {
-      eu.ordemDele = eu.rascunhos.get(eu.escolhe) || eu.itens.map((_, i) => i);
-      this.avisar(`${eu.nickname} nao confirmou a tempo: vale o ranking como ficou.`);
-    }
-
-    eu.fase = 'palpite';
-    eu.rascunhos = new Map();
-    eu.adivinham = new Set([...this.jogam.keys()].filter((id) => id !== eu.escolhe));
-    if (!eu.adivinham.size) return this.cancelarRodada('nao sobrou ninguem para adivinhar');
-
-    // Uma ordem de partida diferente da resposta (com 5 coisas sempre da).
-    let inicio = embaralhar(eu.itens.map((_, i) => i));
-    while (inicio.every((v, k) => v === eu.ordemDele[k])) inicio = embaralhar(inicio);
-    eu.inicioPalpite = inicio;
-
-    this.inicioPergunta = Date.now();
-    this.duracaoPerguntaMs = MS_PALPITE_EU;
-    this.naRodada = new Set(eu.adivinham);
-
-    this.emitir('eu:palpite', { ...this.publicoEu(), adivinham: [...eu.adivinham], total: eu.adivinham.size });
-    this.agendar(() => this.encerrarRodada(), MS_PALPITE_EU);
-  }
-
-  /** Todo mundo que adivinha ja confirmou: nao ha por que esperar o relogio. */
+  /** Todo mundo confirmou: nao ha por que esperar o relogio. */
   fecharSeTodosTravaramEu() {
     const eu = this.eu;
-    if (!eu || eu.fase !== 'palpite' || this.estado !== 'pergunta') return false;
-    const faltam = this.adivinhamEu().filter((id) => !eu.travados.has(id));
+    if (!eu || this.estado !== 'pergunta') return false;
+    const faltam = this.participantesEu().filter((id) => !eu.travados.has(id));
     if (faltam.length) return false;
     this.agendar(() => this.encerrarRodada(), MS_TODOS_TRAVARAM);
     return true;
   }
 
   /**
-   * Fim da rodada: cada coisa no mesmo lugar que no ranking de quem rankeou
-   * vale 2. Quem nao confirmou leva o rascunho que deixou na tela; quem nem
-   * mexeu, zero. Quem rankeou leva a media do que a mesa fez — ser facil de
-   * adivinhar tambem e merito.
+   * Fim da rodada: o ranking de cada um e comparado com o da base, e cada
+   * coisa no mesmo lugar vale 2. Quem nao confirmou leva o rascunho que
+   * deixou na tela; quem nem mexeu, zero. A base leva a media do que a mesa
+   * fez — ser facil de adivinhar tambem e merito. Se a base nem mexeu nas
+   * cartas, nao ha com o que comparar: ninguem pontua.
    */
   encerrarEu() {
     this.limparTemporizador();
     const eu = this.eu;
-    const certa = eu.ordemDele || eu.itens.map((_, i) => i);
+    const certa = this.rankingDaBaseEu();
 
     const palpites = [];
-    for (const id of this.adivinhamEu()) {
+    for (const id of this.participantesEu()) {
+      if (id === eu.escolhe) continue;
       const jogador = this.jogadores.get(id);
       const ordem = eu.travados.get(id) || eu.rascunhos.get(id) || null;
-      const lugares = ordem ? ordem.filter((item, k) => item === certa[k]).length : 0;
+      const lugares = ordem && certa ? ordem.filter((item, k) => item === certa[k]).length : 0;
       const pontos = lugares * PONTOS_POR_LUGAR_EU;
       if (pontos) {
         jogador.pontos += pontos;
         jogador.acertos += 1;
         this.pontosRodada.set(id, pontos);
       }
-      palpites.push({
-        jogadorId: id,
-        nickname: jogador.nickname,
-        avatar: jogador.avatar,
-        ordem,
-        lugares,
-        pontos,
-        confirmou: eu.travados.has(id)
-      });
+      palpites.push({ jogadorId: id, ordem, lugares, pontos, confirmou: eu.travados.has(id) });
     }
 
     const jogaram = palpites.filter((p) => p.ordem);
-    const media = jogaram.length
+    const media = jogaram.length && certa
       ? Math.round(jogaram.reduce((soma, p) => soma + p.pontos, 0) / jogaram.length)
       : 0;
     const dono = this.jogadores.get(eu.escolhe);
@@ -2331,7 +2381,7 @@ class Sala {
         equipe: null,
         papel: null,
         eu: {
-          // parado: adivinhava, mas nem mexeu nas cartas.
+          // parado: jogava, mas nem mexeu nas cartas. fora: entrou depois.
           papel: rankeou ? 'rankeou' : !palpite ? 'fora' : palpite.ordem ? 'adivinhou' : 'parado',
           ordem: rankeou ? certa : (palpite ? palpite.ordem : null),
           lugares: palpite ? palpite.lugares : null,
@@ -2339,12 +2389,12 @@ class Sala {
         }
       };
     });
-    // Quem rankeou primeiro, depois quem acertou mais.
+    // A base primeiro, depois quem acertou mais.
     const peso = (d) => ({ rankeou: -100, parado: 50, fora: 99 }[d.eu.papel] ?? -d.ganhou);
-    detalhes.sort((a, b) => peso(a) - peso(b));
+    detalhes.sort((a, b) => peso(a) - peso(b) || a.nickname.localeCompare(b.nickname));
 
-    const texto = this.textoRankingEu(certa);
-    this.avisar(`O ranking de ${eu.nickname}: ${texto}`, true);
+    const texto = certa ? this.textoRankingEu(certa) : `${eu.nickname} nao rankeou a tempo — ninguem pontua`;
+    this.avisar(certa ? `O ranking de ${eu.nickname}: ${texto}` : texto, true);
 
     this.emitir('rodada:resultado', {
       rodada: this.rodada,
@@ -2497,6 +2547,7 @@ class Sala {
     }
 
     const conta = pontuarMaria(listas);
+    const juntas = agruparMaria(conta.porJogador);
     // O top 3 de cada um vira dado do Senso Comum (a lista ja sem repetidas).
     senso.registrar(maria.pergunta, [...conta.porJogador.values()].map((d) => d.lista.slice(0, 3)));
     for (const [id, dele] of conta.porJogador) {
@@ -2539,6 +2590,8 @@ class Sala {
           lista: dele ? dele.lista : null,
           iguais: dele ? dele.iguais : null,
           noLugar: dele ? dele.noLugar : null,
+          // Linha a linha, qual das `repetidas` esta ali (null: so ele escreveu).
+          grupo: dele ? juntas.grupoDe(jogador.id) : null,
           confirmou: maria.travados.has(jogador.id)
         }
       };
@@ -2558,6 +2611,8 @@ class Sala {
       maria: {
         pergunta: maria.pergunta,
         daMesa: conta.daMesa,
+        // O que mais de uma pessoa escreveu, e em que lugar coincidiu.
+        repetidas: juntas.repetidas,
         pontosIgual: PONTOS_IGUAL_MARIA,
         pontosLugar: PONTOS_LUGAR_MARIA
       },
@@ -2859,8 +2914,12 @@ class Sala {
     const novas = candidatas.filter((l) => !this.listasUsadas.has(l.pergunta));
     const bolo = novas.length ? novas : candidatas;
 
-    const lista = bolo[Math.floor(Math.random() * bolo.length)];
+    // Rodizio entre partidas: a lista que ja saiu mais vezes perde peso. As
+    // fatias "com a letra X" de uma mesma fonte contam juntas, para "paises
+    // com B" nao vir logo depois de "paises com C" em outra partida.
+    const lista = usos.embaralharPorUso(bolo, idDeLista)[0];
     this.listasUsadas.add(lista.pergunta);
+    usos.registrar(idDeLista(lista));
     const enunciado = lista.pergunta.replace('{n}', String(necessarias));
     this.ultimoTema = lista.tema || null;
     const id = dificuldade.idDe('escalada', enunciado, String(necessarias));
@@ -3335,8 +3394,8 @@ class Sala {
     // 1 eh bom 2 ok 3 eh demais: o relogio que aparece e o da janela de palpite, nao o
     // da rodada inteira — sao tres janelas iguais, uma por dica.
     if (this.ehVeni()) return MS_FASE_VENI;
-    // Eu te conheço: o relogio da pergunta e o de quem rankeia primeiro.
-    if (this.ehEuTeConheco()) return MS_ESCOLHA_EU;
+    // Eu te conheço: todo mundo rankeia ao mesmo tempo.
+    if (this.ehEuTeConheco()) return MS_RANKING_EU;
     // Maria vai com as outras: um minuto para pensar no top 5.
     if (this.ehMaria()) return MS_MARIA;
     // Senso Comum: o relogio e o de cada vez de chutar, nao o da rodada.
@@ -3454,7 +3513,7 @@ class Sala {
     if (this.ehCarrossel()) this.iniciarVez();
     else if (this.ehSecreta()) this.iniciarVezSecreta();
     else if (this.ehVeni()) this.abrirFaseVeni(0);
-    else if (this.ehEuTeConheco()) this.agendar(() => this.abrirPalpiteEu(), duracaoMs);
+    else if (this.ehEuTeConheco()) this.abrirEu();
     else if (this.ehMaria()) this.abrirMaria(duracaoMs);
     else if (this.ehSenso()) this.abrirVezSenso(new Set(this.jogam.keys()));
     else this.agendar(() => this.encerrarRodada(), duracaoMs);
@@ -3937,8 +3996,10 @@ class Sala {
       for (const q of banco) this.secretasUsadas.delete(q.pergunta);
       livres = banco;
     }
-    const q = livres[Math.floor(Math.random() * livres.length)];
+    // Rodizio entre partidas: a que ja saiu mais vezes perde peso no sorteio.
+    const q = usos.embaralharPorUso(livres, (s) => 'secreta:' + s.pergunta)[0];
     this.secretasUsadas.add(q.pergunta);
+    usos.registrar('secreta:' + q.pergunta);
 
     const id = dificuldade.idDe('pergunta-secreta', q.pergunta, q.resposta);
     const difBase = 50;
@@ -5061,10 +5122,11 @@ class Sala {
    * antes de ser jogada.
    */
   revelacaoSimples(pergunta) {
-    // Eu te conheço: o ranking de quem rankeou, se ja deu tempo de ele sair.
+    // Eu te conheço: o ranking da base, se ela ja tinha mexido nas cartas.
     if (this.ehEuTeConheco() && this.eu) {
-      return this.eu.ordemDele
-        ? { texto: this.textoRankingEu(this.eu.ordemDele), lista: [], parcial: false }
+      const base = this.rankingDaBaseEu();
+      return base
+        ? { texto: this.textoRankingEu(base), lista: [], parcial: false }
         : { texto: `${this.eu.nickname} ainda nao tinha rankeado`, lista: [], parcial: false };
     }
     // Maria vai com as outras nao tem resposta: era so a pergunta.

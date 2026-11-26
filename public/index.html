@@ -412,7 +412,7 @@
       <span class="conta-regressiva" id="revelacao-num"></span>
       <p class="revelacao__espera" id="revelacao-espera" hidden></p>
       <button class="btn btn--fantasma btn--pausar" id="btn-pausar-rev" type="button" title="Pausar o jogo" hidden>
-        <span class="btn__icone">⏸</span> Pausar
+        <span class="btn__icone">⏸</span><span class="btn--pausar__rotulo"> Pausar</span>
       </button>
       <button class="btn btn--fantasma btn--pular" id="btn-pular-rev" type="button">
         <span class="btn__icone">⏭</span> Pular categoria
@@ -429,11 +429,15 @@
       <ul class="sorteio__equipes" id="sorteio-equipes" hidden></ul>
       <div class="revelacao__barra"><i id="sorteio-barra"></i></div>
       <button class="btn btn--fantasma btn--pausar" id="btn-pausar-sorteio" type="button" title="Pausar o jogo" hidden>
-        <span class="btn__icone">⏸</span> Pausar
+        <span class="btn__icone">⏸</span><span class="btn--pausar__rotulo"> Pausar</span>
       </button>
     </div>
 
-    <!-- Jogo pausado: cobre a pergunta para ninguem pensar com o relogio parado. -->
+    <!-- Jogo pausado: um aviso pequeno no topo, sem cobrir nada — a tela fica
+         como estava, para dar para ler com calma. -->
+    <p class="pausa-aviso" id="pausa-aviso" hidden role="status"></p>
+
+    <!-- Bagunca, modo novo na partida: a caixa traz a regra dele, com calma. -->
     <div class="pausa" id="pausa" hidden role="dialog" aria-modal="true" aria-labelledby="pausa-titulo">
       <div class="pausa__caixa">
         <div class="pausa__icone" aria-hidden="true">⏸</div>
@@ -524,10 +528,11 @@
           <div class="eu" id="eu" hidden>
             <p class="eu__vez" id="eu-vez"></p>
             <div class="eu__fila" id="eu-fila"></div>
-            <p class="eu__legenda"><span>😍 mais gosta</span><span>menos gosta 😒</span></p>
-            <div class="eu__meu" id="eu-meu" hidden>
-              <p class="eu__vez eu__vez--meu" id="eu-meu-titulo">Seu ranking</p>
-              <div class="eu__fila" id="eu-meu-fila"></div>
+            <p class="eu__legenda" id="eu-legenda"><span>😍 mais gosta</span><span>menos gosta 😒</span></p>
+            <!-- No resultado: a colocacao, o ranking e os pontos de cada um. -->
+            <div class="eu__todos" id="eu-todos" hidden>
+              <p class="eu__vez eu__vez--todos">Como cada um rankeou</p>
+              <ol class="eu-lista" id="eu-lista"></ol>
             </div>
             <button class="btn btn--primario eu__confirmar" id="eu-confirmar" type="button" hidden>
               Confirmar ranking

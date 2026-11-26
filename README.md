@@ -742,11 +742,12 @@ pessoa chega a acertar, e com quatro opções um em cada quatro acerta no chute.
 
 ### Eu te conheço
 
-Não tem pergunta: um jogador recebe **5 coisas** — comidas, lugares, programas,
-manias, objetos (*hambúrguer, banho gelado, praia, viagem da escola, andar de
-mãos dadas*) — e **arrasta as cartas** para rankear, do 1º (o que mais gosta) ao
-5º (o que menos gosta). Enquanto isso os outros esperam, vendo as cartas
-apagadas. Quando ele confirma, é a vez dos outros: **rankear igual a ele**.
+Não tem pergunta: saem **5 coisas** — comidas, lugares, programas, manias,
+objetos (*hambúrguer, banho gelado, praia, viagem da escola, andar de mãos
+dadas*) — e um jogador é **a base** da rodada. **Todo mundo rankeia ao mesmo
+tempo**, arrastando as cartas do 1º ao 5º: a base do jeito dela (do que mais
+gosta ao que menos gosta), e os outros tentando **rankear igual à base**. No
+fim, o ranking de cada um é comparado com o dela.
 
 - **As cartas ficam lado a lado**, com o lugar (1º a 5º) em cima de cada uma.
   **Cada coisa tem a sua cor**, que anda junto com a carta: no resultado dá para
@@ -754,19 +755,24 @@ apagadas. Quando ele confirma, é a vez dos outros: **rankear igual a ele**.
 - **Arrastar** é o jeito principal; **tocar numa carta e depois noutra** troca as
   duas de lugar (mais fácil no celular, com o dedo cobrindo a carta). Nas cartas
   estreitas do celular a letra diminui até a palavra caber, em vez de quebrá-la.
-- **Cada coisa no lugar certo vale 2** — acertar as 5 dá os 10 de sempre. Quem
-  rankeou leva **a média** do que a mesa fez: ser fácil de adivinhar também é
-  mérito.
-- **O relógio**: 60 s para quem rankeia, 45 s para os outros. Quem não confirma
-  a tempo vale **como as cartas ficaram na tela** (cada mexida já vai para o
-  servidor). Quem nem mexeu leva zero. Todo mundo confirmou, a rodada fecha.
-- Quem adivinha **começa de uma ordem diferente** da de quem rankeou — senão
-  confirmar sem mexer acertaria tudo.
-- **A vez gira** por ordem de chegada e só recomeça quando todo mundo já
-  rankeou. As coisas (175, em [`server/coisas.js`](server/coisas.js)) não se
-  repetem na partida.
-- Precisa de **2 jogadores** ou mais. Quem rankeia e sai antes de confirmar
-  derruba a rodada; quem adivinha e sai só deixa de ser esperado.
+- **Cada coisa no lugar certo vale 2** — acertar as 5 dá os 10 de sempre. A base
+  leva **a média** do que a mesa fez: ser fácil de adivinhar também é mérito.
+- **O relógio**: 60 s para todo mundo. Quem não confirma a tempo vale **como as
+  cartas ficaram na tela** (cada mexida já vai para o servidor); quem nem mexeu
+  leva zero. Todo mundo confirmou, a rodada fecha. Se a base nem mexeu, não há
+  com o que comparar e ninguém pontua.
+- **Cada um começa de uma ordem sorteada no próprio navegador** — se todos
+  começassem da mesma, quem não mexesse acertaria a base que também não mexeu.
+- **O resultado** mostra o ranking da base em cartas grandes e, embaixo, **como
+  cada um rankeou**, uma linha curta por pessoa: o nome, as cinco cartas dela
+  (com ✓ e ✗ no que bateu com a base) e os pontos, de quem fez mais para quem
+  fez menos. A sua linha vem destacada.
+- **A base gira** por ordem de chegada e só recomeça quando todo mundo já foi.
+  As coisas (em [`server/coisas.js`](server/coisas.js)) não se repetem na
+  partida.
+- Precisa de **2 jogadores** ou mais. Quem chega no meio joga a próxima. A base
+  que sai antes de confirmar derruba a rodada (já confirmada, a rodada segue
+  com o ranking dela); os outros que saem só deixam de ser esperados.
 - O chat é só conversa. Não usa categorias, tempo por pergunta nem proporção de
   imagens e a rodada **não alimenta a dificuldade nem o perfil**.
 - **Na Bagunça** entra na roleta quando a sala tem **2 ou mais**. A vez de
@@ -799,10 +805,15 @@ quem pensa igual à mesa:
   primeira conta). Todo mundo confirmou, a rodada fecha.
 - **O chat fecha enquanto a mesa escreve** — senão o top de um vira cola para
   os outros — e volta no resultado.
-- **O resultado** mostra o **top 5 da mesa** (o que mais gente escreveu,
-  desempatado pela posição, na grafia mais usada) e o top de cada um, com cada
-  coisa pintada: verde se alguém escreveu igual, dourada se foi no mesmo lugar,
-  e o *×N* diz com quantos.
+- **O resultado** começa pelo que **mais de uma pessoa escreveu**: cada coisa
+  com quantas pessoas e em que lugar ela coincidiu (*Hambúrguer · 4 pessoas ·
+  📍 3 no 1º*). Embaixo, **o top de cada um lado a lado**, uma linha por pessoa
+  e uma coluna por lugar (1º a 5º), com os pontos no fim. A mesma coisa tem a
+  **mesma cor em todas as linhas**, então dá para ver quem pensou igual. O que
+  caiu **no mesmo lugar** para mais de uma pessoa vem cheio, com contorno e 📍;
+  o que só aquela pessoa escreveu fica cinza (`agruparMaria`, em
+  [`server/sala.js`](server/sala.js)). O **top 5 da mesa** (o que mais gente
+  escreveu, desempatado pela posição) aparece na linha da resposta.
 - Precisa de **2 jogadores** ou mais. Quem entra no meio da rodada escreve na
   próxima. As perguntas (117, em [`server/tops.js`](server/tops.js)) não se
   repetem na partida. Não usa categorias, **não alimenta a dificuldade nem o
@@ -943,14 +954,16 @@ responder, então ela não mede nada sobre a pergunta.
 ### Pausar o jogo
 
 O **líder** tem um botão **⏸ Pausar** no topo da pergunta (e na tela da
-categoria). No celular fica só o ícone.
+categoria e na do sorteio). No celular fica só o ícone.
 
 - **Tudo para onde estava:** o relógio da rodada, o da vez no Carrossel, o do
   lance no leilão, a contagem da tela de resultado e a espera da imagem. Cada
   um guarda quanto faltava (`pausar`, em [`server/sala.js`](server/sala.js)).
-- **A pergunta some:** a tela *"Jogo pausado"* cobre o jogo inteiro. Com o
-  relógio parado, ninguém fica olhando a imagem ou o enunciado com todo o
-  tempo do mundo.
+- **Nada cobre a tela:** ela fica exatamente como estava — a pergunta, o
+  resultado, o placar, as cartas —, para dar para ler com calma. Só aparece um
+  aviso pequeno no topo (*"Ana pausou o jogo"*), e o **mesmo botão vira ▶
+  Continuar**, em destaque. A única pausa que ainda abre uma caixa é a da
+  Bagunça quando sai um modo novo: ali a caixa é a regra do modo, para ler.
 - **Ninguém responde, vota ou dá lance.** O servidor recusa enquanto a pausa
   durar, e o chat fecha, como no leilão: senão daria para combinar a resposta.
   Se a música de *Ouvir músicas* estava tocando, para junto.
@@ -958,7 +971,7 @@ categoria). No celular fica só o ícone.
   início da pergunta anda o tempo que ficou parado: a pontuação por tempo não
   conta a pausa. O chat registra quem pausou e quem continuou.
 - **Se o líder sai pausado,** a coroa passa como sempre e quem herdou continua.
-  Quem entra durante a pausa já abre a tela de pausa.
+  Quem entra durante a pausa já abre com o aviso de pausa.
 - Se a partida acaba, ou a sala esvazia e alguém volta, a pausa some.
 
 Tudo o que seria agendado durante a pausa (alguém sai e a rodada fecharia, por
@@ -1911,6 +1924,11 @@ vale: *Faustão*, *Lady Di*, *Mr. Bean*, *Ye*.
 
 **Cenas de filmes** (`public/img/cena-*.jpg`) entram em Cinema & TV → Cenas,
 com *"Que filme é este?"* e o título em inglês valendo (*Inside Out*, *Ghostbusters*).
+O mesmo `cena-*.jpg` também serve para desenhos (*"Que desenho é este?"*, em
+Desenhos), séries (*"Que série é esta?"*, em Séries e TV) e animes (*"Que anime
+é este?"*, em Anime). As fotos do lote de desenhos, séries e animes vieram das
+imagens de fundo "sem idioma" do TMDB: cena limpa, sem título por cima para
+entregar a resposta.
 
 ### Geografia — pontos turísticos
 

@@ -185,6 +185,28 @@ const ultimo = (eventos, nome) => [...eventos].reverse().find((e) => e.evento ==
   conferir('31 rodadas, 31 perguntas diferentes', vistas.size, 31);
 }
 
+{
+  // O resultado diz o que mais de um escreveu, com quantos e em que lugar, e
+  // aponta em cada linha do top de cada um qual dessas coisas esta ali.
+  const { sala, eventos } = rodadaAberta(4);
+  sala.escreverMaria('ana', ['Cachorro', 'Gato', 'Coelho', 'Panda', 'Coala'], true);
+  sala.escreverMaria('bia', ['cachorros', 'Coelho', 'Gato', 'Pinguim', ''], true);
+  sala.escreverMaria('caio', ['Cachorro', 'Hamster', 'Gato', 'Lontra', 'Tigre'], true);
+  sala.escreverMaria('duda', ['Leao', 'Urso', 'Zebra', 'Foca', 'Lobo'], true);
+  sala.limparTemporizador();
+  sala.encerrarRodada();
+  sala.limparTemporizador();
+  const res = ultimo(eventos, 'rodada:resultado').dados;
+  const rep = res.maria.repetidas;
+  conferir('repetidas: de quem mais escreveu para quem menos',
+    rep.map((r) => [r.texto, r.pessoas]), [['Cachorro', 3], ['Gato', 3], ['Coelho', 2]]);
+  conferir('  e em que lugar coincidiu',
+    rep.map((r) => r.mesmoLugar), [[{ lugar: 1, pessoas: 3 }], [{ lugar: 3, pessoas: 2 }], []]);
+  const de = (id) => res.detalhes.find((d) => d.jogadorId === id).maria;
+  conferir('a linha de cada um aponta a coisa repetida', de('bia').grupo, [0, 2, 1, null, null]);
+  conferir('  e o que so ele escreveu fica sem grupo', de('duda').grupo, [null, null, null, null, null]);
+}
+
 /* ---------------- Na Bagunca ---------------- */
 
 /** Uma Bagunca que so sorteia o Maria, com o relogio na mao do teste. */
