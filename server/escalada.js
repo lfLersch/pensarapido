@@ -2278,6 +2278,11 @@ const LISTAS = [
     {
     pergunta: 'Cite {n} cores',
     tema: 'gerais', dif: 12,
+    // A cor que tem nome proprio vale pelo nome: "Esmeralda", "Vinho",
+    // "Ouro". A forma composta ("Verde-esmeralda") fica como variante — vale
+    // a mesma coisa, entao dizer as duas nao conta duas vezes. Composto so
+    // fica oficial quando a segunda palavra sozinha nao e cor (Verde-agua,
+    // Rosa-choque, Azul-claro).
     respostas: [
       'Preto',
       'Branco',
@@ -2286,25 +2291,22 @@ const LISTAS = [
       'Marrom',
       'Cinza',
       'Bege',
-      'Dourado',
-      'Prateado',
+      ['Ouro', 'Dourado', 'Amarelo-ouro'],
+      ['Prata', 'Prateado'],
       'Turquesa',
       'Ciano',
       'Magenta',
       'Lilás',
       'Índigo',
-      'Azul-marinho',
+      ['Marinho', 'Azul-marinho'],
       'Azul-claro',
-      'Azul-celeste',
+      ['Celeste', 'Azul-celeste'],
       'Verde-limão',
-      'Verde-oliva',
+      ['Oliva', 'Verde-oliva'],
       'Verde-água',
-      'Verde-esmeralda',
-      'Amarelo-ouro',
-      'Amarelo-mostarda',
-      'Vermelho-vinho',
-      'Vermelho-carmim',
-      'Vermelho-escarlate',
+      ['Esmeralda', 'Verde-esmeralda'],
+      ['Carmim', 'Vermelho-carmim'],
+      ['Escarlate', 'Vermelho-escarlate'],
       'Rosa-choque',
       'Rosa-bebê',
       'Salmão',
@@ -2316,14 +2318,14 @@ const LISTAS = [
       'Marfim',
       'Champanhe',
       'Bordô',
-      'Vinho',
+      ['Vinho', 'Vermelho-vinho'],
       'Caramelo',
       'Cobre',
       'Bronze',
       'Fúcsia',
       'Lavanda',
       'Ameixa',
-      'Mostarda'
+      ['Mostarda', 'Amarelo-mostarda']
     ]
   },
     {
