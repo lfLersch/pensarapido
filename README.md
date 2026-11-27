@@ -1634,7 +1634,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**7172 perguntas em 25 categorias**, mais 647 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**7232 perguntas em 25 categorias**, mais 647 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -2019,7 +2019,14 @@ Uma categoria que só existe nesse arquivo nasce ali, vazia.
 - **Quadros:** a parte Pintura e arquitetura mostra 32 quadros do Wikimedia
   Commons — *"Qual é o nome deste quadro?"* e, para 18 pintores que ainda não
   eram resposta, *"Quem pintou este quadro?"*. Só entram obras em domínio
-  público: Tarsila, Portinari, Frida, Dalí e Picasso ficam de fora.
+  público: Portinari, Frida, Dalí e Picasso ficam de fora. Romero Britto
+  entra por uma escultura (*Garden Butterfly*, em Praga), fotografada e
+  liberada em CC0 no Commons. A
+  exceção é o *Abaporu*, de Tarsila: a imagem vem da Wikipedia em inglês, onde
+  é domínio público pelas regras dos Estados Unidos (publicado em 1928).
+- **Livros:** 58 perguntas novas de clássicos brasileiros (*A Moreninha*, *O
+  Cortiço*, *Memórias Póstumas*, *Macunaíma*…) e mundiais (*Crime e Castigo*,
+  *O Processo*, *A Revolução dos Bichos*, *Odisseia*…).
 
 Ficaram de fora as perguntas de contagem ("Quantos apóstolos…?"): número
 pequeno se chuta no chat.
