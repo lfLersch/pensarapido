@@ -50,6 +50,41 @@ async function main() {
   await semBanco.usos.pronto;
   conferir('sem banco os modulos sobem normalmente', typeof semBanco.usos.usosDe('x'), 'number');
 
+  /* ------------------- Banco fora do ar na subida: nao apaga ------------------- */
+
+  {
+    // Um servidor que sobe sem conseguir ler comeca do zero. Se gravasse
+    // assim mesmo, escreveria "vezes = 1" por cima do historico do banco.
+    process.env.BANCO_ESPERA_MS = '5';
+    for (const m of MODULOS) delete require.cache[m];
+    process.env.DATABASE_URL = 'postgresql://u:s@127.0.0.1:1/x?sslmode=disable';
+    const falso = require('../server/banco.js');
+    let foraDoAr = true;
+    const gravados = [];
+    falso.consultar = async (sql, parametros) => {
+      if (/^\s*SELECT/i.test(sql)) {
+        if (foraDoAr) throw new Error('banco fora do ar');
+        return { rows: /perguntas_usos/.test(sql) ? [{ id: 'p1', vezes: 5 }] : [] };
+      }
+      gravados.push(parametros);
+      return { rows: [] };
+    };
+    const usosFora = require('../server/usos.js');
+    const subiu = await usosFora.pronto;
+    conferir('com o banco fora, o jogo sobe assim mesmo', subiu, false);
+    usosFora.registrar('p1');
+    await usosFora.salvar();
+    conferir('  e nao grava nada por cima do banco', gravados.length, 0);
+
+    // O banco volta: a leitura de fundo junta o jogado com o historico.
+    foraDoAr = false;
+    for (let i = 0; i < 100 && usosFora.usosDe('p1') < 6; i++) await new Promise((r) => setTimeout(r, 10));
+    conferir('quando o banco volta, soma o historico com o jogado', usosFora.usosDe('p1'), 6);
+    await usosFora.salvar();
+    conferir('  e so entao grava, ja com a soma', gravados.map((p) => p[1]), [[6]]);
+    delete process.env.BANCO_ESPERA_MS;
+  }
+
   /* --------------------------- Com banco: reinicio --------------------------- */
 
   const url = process.env.TESTE_DATABASE_URL;

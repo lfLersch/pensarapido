@@ -80,30 +80,34 @@ function lerArquivo() {
   }
 }
 
+/** So grava no banco depois de ler: gravar sem ter lido apagaria o historico. */
+let lido = !banco.ativo();
+
 async function lerBanco() {
-  try {
-    const { rows } = await banco.consultar(
-      'SELECT id, vezes, jogadores, acertos, dificuldade, tempo_medio FROM perguntas_stats'
-    );
-    for (const linha of rows) {
-      // Rodada registrada antes da leitura terminar ganha: ela ja partiu da base.
-      if (estatisticas.has(linha.id)) continue;
-      estatisticas.set(linha.id, {
-        vezes: linha.vezes,
-        jogadores: linha.jogadores,
-        acertos: linha.acertos,
-        dificuldade: linha.dificuldade,
-        tempoMedio: linha.tempo_medio
-      });
-    }
-  } catch (erro) {
-    console.warn('Não consegui ler as estatísticas do banco, começando do zero:', erro.message);
+  const { rows } = await banco.consultar(
+    'SELECT id, vezes, jogadores, acertos, dificuldade, tempo_medio FROM perguntas_stats'
+  );
+  for (const linha of rows) {
+    // Rodada registrada antes da leitura terminar fica so se ja partiu de
+    // mais historico que o banco; senao (o banco estava fora e ela comecou
+    // do zero) vale o banco, que sabe muito mais sobre a pergunta.
+    const atual = estatisticas.get(linha.id);
+    if (atual && atual.vezes >= linha.vezes) continue;
+    estatisticas.set(linha.id, {
+      vezes: linha.vezes,
+      jogadores: linha.jogadores,
+      acertos: linha.acertos,
+      dificuldade: linha.dificuldade,
+      tempoMedio: linha.tempo_medio
+    });
   }
+  lido = true;
+  if (sujos.size) agendarSalvamento();
 }
 
 /** Resolve quando as estatísticas já foram lidas (do banco ou do arquivo). */
 function carregar() {
-  if (banco.ativo()) return lerBanco();
+  if (banco.ativo()) return banco.lerComInsistencia('as estatisticas das perguntas', lerBanco);
   lerArquivo();
   return Promise.resolve();
 }
@@ -118,7 +122,7 @@ function gravarArquivo() {
 }
 
 async function gravarBanco() {
-  if (!sujos.size) return;
+  if (!sujos.size || !lido) return;
   const ids = [...sujos];
   sujos.clear();
   const linhas = ids.map((id) => estatisticas.get(id));

@@ -53,20 +53,21 @@ function lerArquivo() {
   }
 }
 
+/** So grava no banco depois de ler: gravar sem ter lido apagaria o rodizio. */
+let lido = !banco.ativo();
+
 async function lerBanco() {
-  try {
-    const { rows } = await banco.consultar('SELECT id, vezes FROM perguntas_usos');
-    // Soma em vez de sobrescrever: o que entrou em jogo antes da leitura
-    // terminar nao se perde.
-    for (const { id, vezes } of rows) usos.set(id, (usos.get(id) || 0) + vezes);
-  } catch (erro) {
-    console.warn('Nao consegui ler os usos do banco, comecando do zero:', erro.message);
-  }
+  const { rows } = await banco.consultar('SELECT id, vezes FROM perguntas_usos');
+  // Soma em vez de sobrescrever: o que entrou em jogo antes da leitura
+  // terminar (ou enquanto o banco estava fora) nao se perde.
+  for (const { id, vezes } of rows) usos.set(id, (usos.get(id) || 0) + vezes);
+  lido = true;
+  if (sujos.size) agendarSalvamento();
 }
 
 /** Resolve quando os contadores ja foram lidos (do banco ou do arquivo). */
 function carregar() {
-  if (banco.ativo()) return lerBanco();
+  if (banco.ativo()) return banco.lerComInsistencia('os usos das perguntas', lerBanco);
   lerArquivo();
   return Promise.resolve();
 }
@@ -81,7 +82,7 @@ function gravarArquivo() {
 }
 
 async function gravarBanco() {
-  if (!sujos.size) return;
+  if (!sujos.size || !lido) return;
   const ids = [...sujos];
   sujos.clear();
   try {

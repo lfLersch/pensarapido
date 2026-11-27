@@ -1398,8 +1398,13 @@ Como funciona:
   mudou;
 - no deploy o Render manda `SIGTERM`, e o servidor grava o que falta antes de
   sair;
-- se o banco estiver fora do ar, o jogo **sobe assim mesmo** (começando do
-  zero) e tenta gravar de novo na próxima vez.
+- se o banco não responder, a subida **tenta ler 4 vezes** (esperando 3, 6 e
+  9 s entre elas). Se continuar fora, o jogo **sobe assim mesmo**, mas **não
+  grava nada no banco** até conseguir ler. A leitura segue tentando a cada 30 s,
+  e quando dá certo junta o que foi jogado no meio-tempo com o que estava lá.
+  (Antes ele subia do zero e gravava por cima: como as gravações escrevem o
+  valor inteiro, isso apagava o rodízio, a dificuldade, os perfis e o Senso
+  Comum de quem jogou.)
 
 O teste `testes/banco.test.js` simula um reinício contra um Postgres de
 verdade quando existe `TESTE_DATABASE_URL`, apontando para um banco
