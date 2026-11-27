@@ -102,6 +102,30 @@ app.get('/api/estatisticas', (req, res) => {
   res.json(estatisticas.consultar(indiceDasPerguntas, req.query));
 });
 
+// O que o Senso Comum ja tem: quantas pessoas responderam cada pergunta do
+// Maria vai com as outras, e quais ja dao quadro. Sem as respostas.
+app.get('/api/senso', (_req, res) => {
+  const perguntas = senso.resumo();
+  res.json({ minimo: senso.MIN_PESSOAS_SENSO, prontas: perguntas.filter((p) => p.pronta).length, perguntas });
+});
+
+// O mesmo, COM o quadro inteiro de cada pergunta (as respostas e as
+// porcentagens). As respostas sao o jogo, entao a rota so abre com a chave
+// no cabecalho `x-chave`. O repositorio e publico: aqui fica so o SHA-256
+// da chave, e a chave mora no .env do PC do dono (fora do git).
+const HASH_CHAVE_SENSO = Buffer.from('0300325afabdc312404628624a7367ab362a10ae085b1bf40931af0340230aa5', 'hex');
+app.get('/api/senso/completo', (req, res) => {
+  const chave = String(req.get('x-chave') || '');
+  const hash = require('crypto').createHash('sha256').update(chave).digest();
+  if (!chave || !require('crypto').timingSafeEqual(hash, HASH_CHAVE_SENSO)) {
+    return res.status(404).end();   // para quem nao tem a chave, a rota nem existe
+  }
+  res.json(senso.resumo().map((p) => ({
+    ...p,
+    quadro: senso.quadroDaPergunta(p.pergunta).map((r) => ({ texto: r.texto, porcento: r.porcento, pontos: r.pontos }))
+  })));
+});
+
 // Os que mais venceram, de todas as salas e de sempre.
 app.get('/api/melhores', (_req, res) => {
   res.json({ jogadores: perfis.melhores(10) });

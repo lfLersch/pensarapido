@@ -148,6 +148,16 @@ function prontas() {
   return [...respostas.keys()].filter((p) => pessoasDe(p) >= MIN_PESSOAS_SENSO);
 }
 
+/**
+ * Quanta gente ja respondeu cada pergunta, da mais respondida para a menos.
+ * So a contagem: as respostas sao o proprio jogo.
+ */
+function resumo() {
+  return [...respostas.keys()]
+    .map((pergunta) => ({ pergunta, pessoas: pessoasDe(pergunta), pronta: pessoasDe(pergunta) >= MIN_PESSOAS_SENSO }))
+    .sort((a, b) => b.pessoas - a.pessoas || a.pergunta.localeCompare(b.pergunta));
+}
+
 /** A pergunta mais perto de ficar pronta: { pergunta, pessoas } ou null. */
 function maisPerto() {
   let melhor = null;
@@ -247,7 +257,7 @@ const pronto = carregar();
 process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 
 module.exports = {
-  registrar, pessoasDe, prontas, maisPerto, quadroDe, quadroDaPergunta, respostaDoChute,
+  registrar, pessoasDe, prontas, maisPerto, resumo, quadroDe, quadroDaPergunta, respostaDoChute,
   inteirosQueSomam100, salvar, pronto, _zerar,
   PESOS_SENSO, MIN_PESSOAS_SENSO
 };
