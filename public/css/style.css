@@ -4006,6 +4006,7 @@ select.est-campo option { color: var(--texto); background: var(--fundo-2); }
 
   /* A pergunta pega o espaco do meio e rola por dentro se for grande. */
   html.jogando .pergunta {
+    position: relative;
     flex: 1 1 auto;
     min-height: 0;
     padding: 12px 14px;
@@ -4024,6 +4025,9 @@ select.est-campo option { color: var(--texto); background: var(--fundo-2); }
   html.jogando .pergunta__texto--longa { font-size: clamp(16px, 4.4vw, 19px); }
   html.jogando .pergunta__texto--enorme { font-size: clamp(14.5px, 3.9vw, 17px); }
   html.jogando .pergunta__figura { margin-bottom: 10px; }
+  html.jogando .status-respostas { margin-top: 8px; }
+  html.jogando .status-respostas:empty { display: none; }
+  html.jogando .resultado { margin-top: 12px; padding-top: 12px; }
   html.jogando .pergunta__figura img { max-height: calc(var(--vv-altura, 100dvh) * 0.3); }
 
   /* Teclado aberto: o espaco e pouco, tudo aperta mais um pouco. */

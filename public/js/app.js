@@ -4744,6 +4744,21 @@ if (window.ResizeObserver) {
   }).observe(chatJogo);
 }
 
+/*
+ * No celular, com o teclado aberto, o resultado nasce abaixo da dobra da
+ * caixa da pergunta: ela rola sozinha ate a resposta certa aparecer.
+ */
+function mostrarResultadoNoCelular() {
+  if (!telaTravada()) return;
+  // Depois que o resto da tela do resultado se arrumou. offsetTop (a caixa e
+  // position: relative no celular) nao conta o deslize de entrada.
+  setTimeout(() => {
+    const caixa = document.querySelector('#jogo .pergunta');
+    const topo = $('resultado').offsetTop - 10;
+    if (topo - caixa.scrollTop > caixa.clientHeight * 0.45) caixa.scrollTo({ top: topo, behavior: 'smooth' });
+  }, 60);
+}
+
 // Pergunta comprida ganha letra menor no celular, para caber sem rolar.
 const textoPergunta = $('pergunta-texto');
 function medirPergunta() {
@@ -4974,6 +4989,7 @@ socket.on('rodada:resultado', (dados) => {
   }
 
   $('resultado').hidden = false;
+  mostrarResultadoNoCelular();
   $('proxima').hidden = Boolean(dados.acabou);
   if (!dados.acabou) contarSegundos($('resultado-num'), dados.duracaoMs);
   $('status-respostas').textContent = dados.acabou ? 'Alguem bateu a meta!' : '';
