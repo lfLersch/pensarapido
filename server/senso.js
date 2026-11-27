@@ -57,23 +57,24 @@ function lerArquivo() {
   }
 }
 
+/** So grava no banco depois de ler: gravar sem ter lido apagaria as respostas. */
+let lido = !banco.ativo();
+
 async function lerBanco() {
-  try {
-    const { rows } = await banco.consultar('SELECT pergunta, listas FROM senso_respostas');
-    // Junta em vez de sobrescrever: o que foi gravado antes da leitura fica.
-    for (const { pergunta, listas } of rows) {
-      const novas = respostas.get(pergunta) || [];
-      respostas.delete(pergunta);
-      guardar(pergunta, listas || []);
-      guardar(pergunta, novas);
-    }
-  } catch (erro) {
-    console.warn('Nao consegui ler o Senso Comum do banco, comecando do zero:', erro.message);
+  const { rows } = await banco.consultar('SELECT pergunta, listas FROM senso_respostas');
+  // Junta em vez de sobrescrever: o que foi gravado antes da leitura fica.
+  for (const { pergunta, listas } of rows) {
+    const novas = respostas.get(pergunta) || [];
+    respostas.delete(pergunta);
+    guardar(pergunta, listas || []);
+    guardar(pergunta, novas);
   }
+  lido = true;
+  if (sujos.size) agendarSalvamento();
 }
 
 function carregar() {
-  if (banco.ativo()) return lerBanco();
+  if (banco.ativo()) return banco.lerComInsistencia('as respostas do Senso Comum', lerBanco);
   lerArquivo();
   return Promise.resolve();
 }
@@ -88,7 +89,7 @@ function gravarArquivo() {
 }
 
 async function gravarBanco() {
-  if (!sujos.size) return;
+  if (!sujos.size || !lido) return;
   const perguntas = [...sujos];
   sujos.clear();
   try {

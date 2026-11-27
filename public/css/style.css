@@ -1065,6 +1065,33 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   letter-spacing: normal;
 }
 
+/* Quem disse?: a citacao desce para um bloco proprio, entre aspas grandes,
+   com a cor da categoria. */
+.pergunta__frase {
+  position: relative;
+  display: block;
+  margin-top: 14px;
+  padding: 14px 20px 14px 40px;
+  font-size: 0.82em;
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: normal;
+  color: var(--texto, #fff);
+  background: color-mix(in srgb, var(--cor-categoria, var(--primaria)) 14%, transparent);
+  border-left: 4px solid var(--cor-categoria, var(--primaria));
+  border-radius: 0 var(--raio-peq) var(--raio-peq) 0;
+}
+.pergunta__frase::before {
+  content: '\201C';
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  font-size: 2em;
+  line-height: 1;
+  color: color-mix(in srgb, var(--cor-categoria, var(--primaria)) 70%, transparent);
+}
+
 /* Trecho de letra de música */
 
 .letra {

@@ -332,28 +332,29 @@ function lerArquivo() {
   }
 }
 
+/** So grava no banco depois de ler: gravar sem ter lido zeraria os perfis. */
+let lidos = !banco.ativo();
+
 async function lerBanco() {
-  try {
-    const [jogadores, ligacoes] = await Promise.all([
-      banco.consultar('SELECT cliente, dados FROM jogadores'),
-      banco.consultar('SELECT cliente, conta FROM vinculos')
-    ]);
-    for (const { cliente, dados } of jogadores.rows) {
-      // Quem jogou antes da leitura terminar ja esta no mapa: fica o que tiver mais partidas.
-      const atual = perfis.get(cliente);
-      const lido = normalizarPerfil(dados);
-      if (!atual || lido.partidas > atual.partidas) perfis.set(cliente, lido);
-    }
-    for (const { cliente, conta } of ligacoes.rows) {
-      if (!vinculos.has(cliente)) vinculos.set(cliente, conta);
-    }
-  } catch (erro) {
-    console.warn('Nao consegui ler os perfis do banco, comecando do zero:', erro.message);
+  const [jogadores, ligacoes] = await Promise.all([
+    banco.consultar('SELECT cliente, dados FROM jogadores'),
+    banco.consultar('SELECT cliente, conta FROM vinculos')
+  ]);
+  for (const { cliente, dados } of jogadores.rows) {
+    // Quem jogou antes da leitura terminar ja esta no mapa: fica o que tiver mais partidas.
+    const atual = perfis.get(cliente);
+    const lido = normalizarPerfil(dados);
+    if (!atual || lido.partidas > atual.partidas) perfis.set(cliente, lido);
   }
+  for (const { cliente, conta } of ligacoes.rows) {
+    if (!vinculos.has(cliente)) vinculos.set(cliente, conta);
+  }
+  lidos = true;
+  if (sujos.size || vinculosSujos.size) agendarSalvamento();
 }
 
 function carregar() {
-  if (banco.ativo()) return lerBanco();
+  if (banco.ativo()) return banco.lerComInsistencia('os perfis dos jogadores', lerBanco);
   lerArquivo();
   return Promise.resolve();
 }
@@ -371,7 +372,7 @@ function gravarArquivo() {
 }
 
 async function gravarBanco() {
-  if (!sujos.size && !vinculosSujos.size) return;
+  if ((!sujos.size && !vinculosSujos.size) || !lidos) return;
   const chaves = [...sujos];
   const ligacoes = [...vinculosSujos];
   sujos.clear();

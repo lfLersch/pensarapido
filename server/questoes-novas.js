@@ -47,16 +47,16 @@ const QUESTOES_NOVAS = {
   games: [
     { pergunta: 'Qual personagem da Capcom solta o golpe Hadouken?', resposta: 'Ryu', dif: 35 },
     { pergunta: 'Qual guerreiro espartano protagoniza a serie God of War?', resposta: 'Kratos', dif: 30 },
-    { pergunta: 'Qual empresa desenvolve League of Legends e Valorant?', resposta: 'Riot Games', aceita: ['Riot'], dif: 30 },
-    { pergunta: 'Qual battle royale de celular da Garena virou febre no Brasil?', resposta: 'Free Fire', dif: 25 },
-    { pergunta: 'Qual empresa criou a serie Grand Theft Auto?', resposta: 'Rockstar Games', aceita: ['Rockstar'], dif: 35 },
+    { pergunta: 'Qual empresa desenvolve League of Legends e Valorant?', sub: 'tiro', resposta: 'Riot Games', aceita: ['Riot'], dif: 30 },
+    { pergunta: 'Qual battle royale de celular da Garena virou febre no Brasil?', sub: 'mobile', resposta: 'Free Fire', dif: 25 },
+    { pergunta: 'Qual empresa criou a serie Grand Theft Auto?', sub: 'gta', resposta: 'Rockstar Games', aceita: ['Rockstar'], dif: 35 },
     { pergunta: 'Qual raposa de duas caudas e a melhor amiga do Sonic?', resposta: 'Tails', dif: 30 },
     { pergunta: 'Qual equidna vermelho e rival e amigo do Sonic?', resposta: 'Knuckles', dif: 40 },
     { pergunta: 'Qual fantasma vermelho persegue o Pac-Man junto com Pinky, Inky e Clyde?', resposta: 'Blinky', dif: 55 },
-    { pergunta: 'Qual console portatil da Nintendo tinha duas telas, uma delas sensivel ao toque?', resposta: 'Nintendo DS', aceita: ['DS'], dif: 35 },
+    { pergunta: 'Qual console portatil da Nintendo tinha duas telas, uma delas sensivel ao toque?', sub: 'nintendo', resposta: 'Nintendo DS', aceita: ['DS'], dif: 35 },
     { pergunta: 'Qual jogo de futebol da Konami era conhecido como Winning Eleven?', resposta: 'Pro Evolution Soccer', aceita: ['PES', 'eFootball'], dif: 40 },
     { pergunta: 'Qual jogo da Blizzard tem herois como Tracer e Mercy num jogo de tiro por equipes?', resposta: 'Overwatch', dif: 40 },
-    { pergunta: 'Qual jogo de 2017 da Nintendo tem Link explorando Hyrule em mundo aberto?', resposta: 'Breath of the Wild', aceita: ['Zelda Breath of the Wild', 'BOTW'], dif: 40 }
+    { pergunta: 'Qual jogo de 2017 da Nintendo tem Link explorando Hyrule em mundo aberto?', sub: 'nintendo', resposta: 'Breath of the Wild', aceita: ['Zelda Breath of the Wild', 'BOTW'], dif: 40 }
   ],
 
   animais: [
@@ -101,7 +101,7 @@ const QUESTOES_NOVAS = {
     { pergunta: 'Qual judoca brasileira ganhou ouro em Londres 2012, a primeira mulher do Brasil campea olimpica no judo?', sub: 'outros', resposta: 'Sarah Menezes', dif: 55 },
     { pergunta: 'Qual lutador brasileiro, ex-kickboxer rival de Israel Adesanya, foi campeao do UFC em duas categorias?', sub: 'outros', resposta: 'Alex Pereira', aceita: ['Poatan'], dif: 40 },
     { pergunta: 'Qual canoista brasileiro tem cinco medalhas olimpicas na canoagem de velocidade?', sub: 'outros', resposta: 'Isaquias Queiroz', dif: 50 },
-    { pergunta: 'Em qual cidade serao os Jogos Olimpicos de 2028?', resposta: 'Los Angeles', dif: 35 }
+    { pergunta: 'Em qual cidade serao os Jogos Olimpicos de 2028?', sub: 'olimpiadas', resposta: 'Los Angeles', dif: 35 }
   ],
 
   futebol: [
@@ -207,20 +207,20 @@ const LEVA_2 = {
   ],
 
   games: [
-    { pergunta: 'Qual jogo de 2017 tem Mario jogando o chapeu falante Cappy?', resposta: 'Super Mario Odyssey', aceita: ['Mario Odyssey'], dif: 40 },
+    { pergunta: 'Qual jogo de 2017 tem Mario jogando o chapeu falante Cappy?', sub: 'nintendo', resposta: 'Super Mario Odyssey', aceita: ['Mario Odyssey'], dif: 40 },
     { pergunta: 'Qual jogo de 2015 mistura futebol com carros turbinados?', resposta: 'Rocket League', dif: 35 },
-    { pergunta: 'Qual jogo de celular da Supercell tem duelos de cartas com torres do Rei e das Princesas?', resposta: 'Clash Royale', dif: 30 },
-    { pergunta: 'Qual jogo de celular da Supercell tem vilas, muralhas e barbaros atacando bases?', resposta: 'Clash of Clans', dif: 30 },
-    { pergunta: 'Qual jogo de celular tem um grafiteiro correndo nos trilhos do metro fugindo do guarda?', resposta: 'Subway Surfers', aceita: ['Subway Surf'], dif: 20 },
-    { pergunta: 'Qual jogo de celular consiste em cortar frutas com o dedo sem acertar bombas?', resposta: 'Fruit Ninja', dif: 25 },
-    { pergunta: 'Qual jogo de celular da King junta doces coloridos de tres em tres?', resposta: 'Candy Crush', aceita: ['Candy Crush Saga'], dif: 20 },
-    { pergunta: 'Qual bolinha rosa da Nintendo engole os inimigos e copia os poderes deles?', resposta: 'Kirby', dif: 30 },
-    { pergunta: 'Qual gorila de gravata vermelha e um dos primeiros personagens da Nintendo?', resposta: 'Donkey Kong', dif: 25 },
+    { pergunta: 'Qual jogo de celular da Supercell tem duelos de cartas com torres do Rei e das Princesas?', sub: 'mobile', resposta: 'Clash Royale', dif: 30 },
+    { pergunta: 'Qual jogo de celular da Supercell tem vilas, muralhas e barbaros atacando bases?', sub: 'mobile', resposta: 'Clash of Clans', dif: 30 },
+    { pergunta: 'Qual jogo de celular tem um grafiteiro correndo nos trilhos do metro fugindo do guarda?', sub: 'mobile', resposta: 'Subway Surfers', aceita: ['Subway Surf'], dif: 20 },
+    { pergunta: 'Qual jogo de celular consiste em cortar frutas com o dedo sem acertar bombas?', sub: 'mobile', resposta: 'Fruit Ninja', dif: 25 },
+    { pergunta: 'Qual jogo de celular da King junta doces coloridos de tres em tres?', sub: 'mobile', resposta: 'Candy Crush', aceita: ['Candy Crush Saga'], dif: 20 },
+    { pergunta: 'Qual bolinha rosa da Nintendo engole os inimigos e copia os poderes deles?', sub: 'nintendo', resposta: 'Kirby', dif: 30 },
+    { pergunta: 'Qual gorila de gravata vermelha e um dos primeiros personagens da Nintendo?', sub: 'nintendo', resposta: 'Donkey Kong', dif: 25 },
     { pergunta: 'Qual jogo de luta da Bandai Namco tem lutadores como Heihachi e Jin Kazama?', resposta: 'Tekken', dif: 40 },
-    { pergunta: 'Qual plataforma de jogos criados pelos proprios usuarios tem a moeda Robux?', resposta: 'Roblox', dif: 20 },
+    { pergunta: 'Qual plataforma de jogos criados pelos proprios usuarios tem a moeda Robux?', sub: 'mobile', resposta: 'Roblox', dif: 20 },
     { pergunta: 'Qual jogo da Ubisoft tem coreografias de musicas pop para dancar na frente da TV?', resposta: 'Just Dance', dif: 25 },
     { pergunta: 'Qual robo azul da Capcom atira com o braco canhao?', resposta: 'Mega Man', aceita: ['Megaman', 'Rockman'], dif: 35 },
-    { pergunta: 'Qual cacadora de recompensas da Nintendo usa armadura laranja em Metroid?', resposta: 'Samus', aceita: ['Samus Aran'], dif: 45 },
+    { pergunta: 'Qual cacadora de recompensas da Nintendo usa armadura laranja em Metroid?', sub: 'nintendo', resposta: 'Samus', aceita: ['Samus Aran'], dif: 45 },
     { pergunta: 'Qual jogo roguelike de 2020 tem Zagreus tentando fugir do submundo grego?', resposta: 'Hades', dif: 50 },
     { pergunta: 'Qual jogo indie de 2015 tem o esqueleto Sans e deixa voce poupar todos os monstros?', resposta: 'Undertale', dif: 45 },
     { pergunta: 'Qual lutador brasileiro de pele verde solta choques em Street Fighter?', resposta: 'Blanka', dif: 35 },
@@ -391,11 +391,11 @@ const LEVA_2 = {
   ],
 
   anime: [
-    { pergunta: 'Qual rei das maldicoes vive dentro do corpo de Itadori em Jujutsu Kaisen?', resposta: 'Sukuna', aceita: ['Ryomen Sukuna'], dif: 30 },
-    { pergunta: 'Qual cacador de Demon Slayer usa a respiracao do trovao e vive com medo?', resposta: 'Zenitsu', aceita: ['Zenitsu Agatsuma'], dif: 30 },
-    { pergunta: 'Qual cacador de Demon Slayer usa uma cabeca de javali?', resposta: 'Inosuke', aceita: ['Inosuke Hashibira'], dif: 30 },
-    { pergunta: 'Qual Hashira das chamas luta no trem Mugen em Demon Slayer?', resposta: 'Rengoku', aceita: ['Kyojuro Rengoku'], dif: 35 },
-    { pergunta: 'Qual e o rei dos onis em Demon Slayer?', resposta: 'Muzan', aceita: ['Muzan Kibutsuji'], dif: 40 },
+    { pergunta: 'Qual rei das maldicoes vive dentro do corpo de Itadori em Jujutsu Kaisen?', sub: 'jujutsu', resposta: 'Sukuna', aceita: ['Ryomen Sukuna'], dif: 30 },
+    { pergunta: 'Qual cacador de Demon Slayer usa a respiracao do trovao e vive com medo?', sub: 'demonslayer', resposta: 'Zenitsu', aceita: ['Zenitsu Agatsuma'], dif: 30 },
+    { pergunta: 'Qual cacador de Demon Slayer usa uma cabeca de javali?', sub: 'demonslayer', resposta: 'Inosuke', aceita: ['Inosuke Hashibira'], dif: 30 },
+    { pergunta: 'Qual Hashira das chamas luta no trem Mugen em Demon Slayer?', sub: 'demonslayer', resposta: 'Rengoku', aceita: ['Kyojuro Rengoku'], dif: 35 },
+    { pergunta: 'Qual e o rei dos onis em Demon Slayer?', sub: 'demonslayer', resposta: 'Muzan', aceita: ['Muzan Kibutsuji'], dif: 40 },
     { pergunta: 'Qual menina telepata de Spy x Family adora amendoim?', resposta: 'Anya', aceita: ['Anya Forger'], dif: 30 },
     { pergunta: 'Qual principe exilado tem o poder do Geass em Code Geass?', resposta: 'Lelouch', aceita: ['Lelouch Lamperouge', 'Lelouch vi Britannia'], dif: 45 },
     { pergunta: 'Qual cacador de recompensas de Cowboy Bebop luta jeet kune do?', resposta: 'Spike Spiegel', aceita: ['Spike'], dif: 50 },
@@ -403,8 +403,8 @@ const LEVA_2 = {
     { pergunta: 'Qual protagonista de Tokyo Ghoul vira meio-ghoul depois de um transplante?', resposta: 'Ken Kaneki', aceita: ['Kaneki'], dif: 40 },
     { pergunta: 'Qual garoto pilota o Eva-01 em Neon Genesis Evangelion?', resposta: 'Shinji Ikari', aceita: ['Shinji'], dif: 45 },
     { pergunta: 'Qual personagem de Chainsaw Man e a Demonia do Sangue?', resposta: 'Power', dif: 40 },
-    { pergunta: 'Qual pirata de One Piece tinha a fruta do tremor e era o homem mais forte do mundo?', resposta: 'Barba Branca', aceita: ['Whitebeard', 'Edward Newgate'], dif: 35 },
-    { pergunta: 'Qual irmao de Luffy usa a fruta do fogo e morre em Marineford?', resposta: 'Ace', aceita: ['Portgas D. Ace', 'Portgas'], dif: 30 },
+    { pergunta: 'Qual pirata de One Piece tinha a fruta do tremor e era o homem mais forte do mundo?', sub: 'onepiece', resposta: 'Barba Branca', aceita: ['Whitebeard', 'Edward Newgate'], dif: 35 },
+    { pergunta: 'Qual irmao de Luffy usa a fruta do fogo e morre em Marineford?', sub: 'onepiece', resposta: 'Ace', aceita: ['Portgas D. Ace', 'Portgas'], dif: 30 },
     { pergunta: 'Qual arqueologa dos Chapeus de Palha consegue ler os Poneglyphs?', resposta: 'Nico Robin', aceita: ['Robin'], dif: 35 },
     { pergunta: 'Qual pokemon inicial de fogo evolui para Charizard?', resposta: 'Charmander', dif: 20 }
   ],

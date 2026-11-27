@@ -1398,8 +1398,13 @@ Como funciona:
   mudou;
 - no deploy o Render manda `SIGTERM`, e o servidor grava o que falta antes de
   sair;
-- se o banco estiver fora do ar, o jogo **sobe assim mesmo** (começando do
-  zero) e tenta gravar de novo na próxima vez.
+- se o banco não responder, a subida **tenta ler 4 vezes** (esperando 3, 6 e
+  9 s entre elas). Se continuar fora, o jogo **sobe assim mesmo**, mas **não
+  grava nada no banco** até conseguir ler. A leitura segue tentando a cada 30 s,
+  e quando dá certo junta o que foi jogado no meio-tempo com o que estava lá.
+  (Antes ele subia do zero e gravava por cima: como as gravações escrevem o
+  valor inteiro, isso apagava o rodízio, a dificuldade, os perfis e o Senso
+  Comum de quem jogou.)
 
 O teste `testes/banco.test.js` simula um reinício contra um Postgres de
 verdade quando existe `TESTE_DATABASE_URL`, apontando para um banco
@@ -1634,7 +1639,7 @@ dentro das partes.
 
 ## Banco de perguntas
 
-**5895 perguntas em 18 categorias**, mais 647 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
+**7232 perguntas em 25 categorias**, mais 647 listas para o Modo Escalada. A resposta certa nunca é enviada ao cliente
 antes do fim da rodada — quem confere é o servidor.
 
 ### Formato
@@ -1978,6 +1983,58 @@ o primeiro nome e o sobrenome do personagem vão escritos no `aceita`. Cuidado
 com sobrenome solto ali: ele **tira o atalho de outra pergunta** que tenha o
 mesmo sobrenome — *"Cooper"* para Winnie Cooper fazia *"Cooper"* parar de valer
 para Sheldon Cooper. Na dúvida, deixe só o primeiro nome.
+
+### Quem disse? — frases famosas
+
+A categoria **Quem disse?** mostra uma frase de filme, série, desenho, novela,
+TV ou internet, e a pessoa digita **quem disse**: *"Ao infinito e além!"* →
+**Buzz Lightyear**. São quatro partes: Filmes, Séries e desenhos, Novelas e
+Internet e TV.
+
+A frase vai **no fim do enunciado, entre aspas duplas, depois do "?"**:
+
+```js
+{ pergunta: 'Quem disse esta frase? "Foi sem querer querendo."', sub: 'series',
+  resposta: 'Chaves', dif: 10 }
+```
+
+O cliente separa a citação (`FRASE_NO_FIM`, em `public/js/app.js`) e a mostra
+num bloco próprio, entre aspas grandes, na cor da categoria — como faz com os
+emojis das charadas. Por ser parte do enunciado, a frase chega também a quem lê
+a pergunta no leilão e sai palavra por palavra na Pergunta secreta. Como o
+enunciado começa por "Quem", o sobrenome sozinho vale (*Vader*, *Stark*).
+
+### A leva de temas populares
+
+As perguntas abaixo estão em [`server/questoes-temas.js`](server/questoes-temas.js),
+que `questions.js` junta ao banco antes de calcular os atalhos de sobrenome.
+Uma categoria que só existe nesse arquivo nasce ali, vazia.
+
+- **Categorias novas:** Quem disse?, Super-heróis (Marvel, DC), Reality shows
+  (BBB), Internet e memes, Brasil e nostalgia (Gírias e expressões, Anos 90 e
+  2000, Carnaval e festas), Arte e literatura (Pintura e arquitetura, Livros e
+  autores) e Bíblia — essa como categoria própria, para quem não quiser poder
+  desmarcar.
+- **Partes novas:** Anime ganhou One Piece, Demon Slayer, Jujutsu Kaisen,
+  Attack on Titan e Cavaleiros do Zodíaco; Games ganhou Minecraft, GTA, Free
+  Fire e mobile, Nintendo e Valorant e CS; Esportes ganhou Vôlei, Olimpíadas e
+  UFC e lutas. As perguntas que já existiam desses temas foram marcadas com a
+  parte nova — o id não muda, então a dificuldade aprendida continua.
+- **Novelas** ganhou vilãs, atrizes e novelas pelo enredo.
+- **Quadros:** a parte Pintura e arquitetura mostra 32 quadros do Wikimedia
+  Commons — *"Qual é o nome deste quadro?"* e, para 18 pintores que ainda não
+  eram resposta, *"Quem pintou este quadro?"*. Só entram obras em domínio
+  público: Portinari, Frida, Dalí e Picasso ficam de fora. Romero Britto
+  entra por uma escultura (*Garden Butterfly*, em Praga), fotografada e
+  liberada em CC0 no Commons. A
+  exceção é o *Abaporu*, de Tarsila: a imagem vem da Wikipedia em inglês, onde
+  é domínio público pelas regras dos Estados Unidos (publicado em 1928).
+- **Livros:** 58 perguntas novas de clássicos brasileiros (*A Moreninha*, *O
+  Cortiço*, *Memórias Póstumas*, *Macunaíma*…) e mundiais (*Crime e Castigo*,
+  *O Processo*, *A Revolução dos Bichos*, *Odisseia*…).
+
+Ficaram de fora as perguntas de contagem ("Quantos apóstolos…?"): número
+pequeno se chuta no chat.
 
 ### Criar uma categoria nova
 
