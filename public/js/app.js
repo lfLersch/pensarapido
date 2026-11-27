@@ -2616,8 +2616,22 @@ socket.on('rodada:aguardando', ({ prontos, total, duracaoMs } = {}) => {
 // O teclado numerico (1️⃣) e a bandeira (🇺🇸) tambem contam como emoji.
 const EMOJIS_NO_FIM = /^(.*?)\s*((?:[0-9#*]️?⃣|[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Modifier}‍️]|\s)+)$/u;
 
+// Quem disse? ('Quem disse esta frase? "Eu sou seu pai."'): a citacao do fim
+// do enunciado desce para um bloco proprio, entre aspas grandes, como as
+// charadas de emoji. Precisa vir depois de um "?" — so a categoria Quem disse?
+// escreve assim.
+const FRASE_NO_FIM = /^(.*\?)\s*"([^"]+)"$/;
+
 function escreverPergunta(texto) {
   const alvo = $('pergunta-texto');
+  const citacao = String(texto ?? '').match(FRASE_NO_FIM);
+  if (citacao) {
+    alvo.textContent = citacao[1];
+    const frase = criar('span', 'pergunta__frase');
+    frase.textContent = citacao[2];
+    alvo.appendChild(frase);
+    return;
+  }
   const partes = String(texto ?? '').match(EMOJIS_NO_FIM);
   if (!partes || !/\p{Extended_Pictographic}/u.test(partes[2])) {
     alvo.textContent = texto;
@@ -2652,6 +2666,8 @@ socket.on('rodada:pergunta', (dados) => {
 
   // A categoria fica pequena, logo acima da pergunta.
   $('pergunta-categoria').style.setProperty('--cor-categoria', dados.categoria.cor);
+  // A citacao do Quem disse? usa a mesma cor.
+  $('pergunta-texto').style.setProperty('--cor-categoria', dados.categoria.cor);
   $('pergunta-categoria-icone').textContent = dados.categoria.icone;
   $('pergunta-categoria-nome').textContent = dados.categoria.nome;
 
