@@ -2428,7 +2428,8 @@ input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; marg
   border-radius: var(--raio-peq);
   transition: all 320ms ease;
 }
-.placar__item.eu { border-color: var(--primaria); background: rgba(124, 92, 255, 0.14); }
+/* margin: 0 — senao herda a margem do .eu do modo Eu te conheco. */
+.placar__item.eu { margin: 0; border-color: var(--primaria); background: rgba(124, 92, 255, 0.14); }
 .placar__item.lider-placar { background: rgba(251, 191, 36, 0.12); }
 
 .placar__pos {
@@ -3879,4 +3880,190 @@ select.est-campo option { color: var(--texto); background: var(--fundo-2); }
 
 @media (prefers-reduced-motion: reduce) {
   .secreta__palavra { animation: none; }
+}
+
+/* ------------------------- Celular: tela travada ------------------------- */
+
+/* O campo trancado no aparelho de toque (ver "Celular" no app.js): parece
+   desabilitado, mas segura o foco para o teclado nao fechar. */
+.chat__form input.trancado { opacity: 0.5; }
+
+/*
+ * No celular a tela de jogo e um app: ocupa exatamente a area visivel (a que
+ * sobra acima do teclado, que o app.js mede) e nao rola. De cima para baixo:
+ * o topo, a faixa do placar (rola para o lado), a pergunta (rola por dentro
+ * se for grande) e o chat, com o campo de resposta grudado embaixo.
+ */
+@media (max-width: 860px) {
+  html.jogando,
+  html.jogando body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  html.jogando body { touch-action: manipulation; }
+
+  /* Campo com letra menor que 16px faz o iPhone dar zoom ao tocar. */
+  input, select, textarea { font-size: max(16px, 1em); }
+  .chat__form input { font-size: 16px; }
+
+  html.jogando .tela--jogo.ativa {
+    position: fixed;
+    top: var(--vv-topo, 0px);
+    left: 0;
+    right: 0;
+    height: var(--vv-altura, 100dvh);
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+             max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  html.jogando.teclado-aberto .tela--jogo.ativa { padding-bottom: 6px; }
+
+  /* O jogo fica sempre na tela — a categoria e a roleta passam por cima dele,
+     sem tirar o chat (e o teclado) do lugar. */
+  html.jogando .tela--jogo #jogo,
+  html.jogando .tela--jogo #jogo[hidden] {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-width: none;
+    animation: none;
+  }
+  html.jogando .tela--jogo .revelacao:not([hidden]) {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    align-content: center;
+    padding: 16px 16px calc(var(--altura-chat, 150px) + 16px);
+    overflow: hidden;
+    background: linear-gradient(160deg, var(--fundo) 0%, var(--fundo-2) 100%);
+  }
+  html.jogando .tela--jogo .chat { position: relative; z-index: 21; }
+  html.jogando.teclado-aberto .revelacao { gap: 8px; }
+  html.jogando.teclado-aberto .revelacao__icone { font-size: 44px; }
+
+  /* Topo: uma linha so. As etiquetas rolam para o lado se nao couberem. */
+  html.jogando .jogo__topo { flex: none; gap: 8px; margin-bottom: 8px; }
+  html.jogando .jogo__info {
+    flex-wrap: nowrap;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  html.jogando .jogo__info::-webkit-scrollbar { display: none; }
+  html.jogando .etiqueta { padding: 5px 10px; font-size: 12px; white-space: nowrap; }
+  html.jogando .jogo__canto { flex: none; gap: 6px; }
+  html.jogando .jogo__canto .btn { padding: 7px 10px; font-size: 12.5px; }
+  html.jogando .cronometro { width: 40px; height: 40px; font-size: 17px; }
+
+  html.jogando .jogo__corpo {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 8px;
+  }
+
+  /* O placar: uma faixa no topo, um jogador do lado do outro, rolando para
+     o lado quando tem muita gente. */
+  html.jogando .placar {
+    order: -1;
+    flex: none;
+    padding: 6px;
+    border-radius: 16px;
+  }
+  html.jogando .placar__titulo { display: none; }
+  html.jogando .placar__lista {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    gap: 6px;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+  html.jogando .placar__lista::-webkit-scrollbar { display: none; }
+  html.jogando .placar__item {
+    position: relative;
+    gap: 6px;
+    padding: 5px 10px;
+    font-size: 13px;
+    scroll-snap-align: start;
+  }
+  html.jogando .placar__pos { width: auto; font-size: 11.5px; }
+  html.jogando .placar__avatar { font-size: 16px; }
+  html.jogando .placar__nome { max-width: 92px; font-size: 13px; }
+  html.jogando .placar__ganho { top: -2px; right: 4px; font-size: 14px; }
+
+  /* A pergunta pega o espaco do meio e rola por dentro se for grande. */
+  html.jogando .pergunta {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 12px 14px;
+    border-radius: 18px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  html.jogando .pergunta__categoria { margin-bottom: 8px; padding: 4px 10px; font-size: 11.5px; }
+  html.jogando .pergunta__texto {
+    margin-bottom: 10px;
+    font-size: clamp(18px, 5.2vw, 23px);
+    line-height: 1.22;
+    letter-spacing: -0.3px;
+  }
+  html.jogando .pergunta__texto--longa { font-size: clamp(16px, 4.4vw, 19px); }
+  html.jogando .pergunta__texto--enorme { font-size: clamp(14.5px, 3.9vw, 17px); }
+  html.jogando .pergunta__figura { margin-bottom: 10px; }
+  html.jogando .pergunta__figura img { max-height: calc(var(--vv-altura, 100dvh) * 0.3); }
+
+  /* Teclado aberto: o espaco e pouco, tudo aperta mais um pouco. */
+  html.jogando.teclado-aberto .pergunta { padding: 10px 12px; }
+  html.jogando.teclado-aberto .pergunta__categoria { margin-bottom: 6px; }
+  html.jogando.teclado-aberto .pergunta__texto { font-size: clamp(16px, 4.6vw, 19px); margin-bottom: 8px; }
+  html.jogando.teclado-aberto .pergunta__texto--longa { font-size: clamp(14.5px, 4vw, 17px); }
+  html.jogando.teclado-aberto .pergunta__texto--enorme { font-size: clamp(13.5px, 3.6vw, 15.5px); }
+  html.jogando.teclado-aberto .pergunta__figura img { max-height: calc(var(--vv-altura, 100dvh) * 0.22); }
+
+  /* O chat embaixo: poucas mensagens e o campo de resposta, sempre ali. */
+  html.jogando .chat {
+    flex: none;
+    padding: 8px;
+    border-radius: 16px;
+  }
+  html.jogando .chat__titulo { display: none; }
+  html.jogando .chat__mensagens {
+    flex: none;
+    height: clamp(44px, calc(var(--vv-altura, 100dvh) * 0.15), 120px);
+    min-height: 0;
+    max-height: none;
+    font-size: 13.5px;
+    overscroll-behavior: contain;
+  }
+  html.jogando.teclado-aberto .chat__mensagens {
+    height: clamp(34px, calc(var(--vv-altura, 100dvh) * 0.11), 64px);
+  }
+
+  /* Os avisos que surgem (alguem entrou, acertou…) descem do topo: embaixo
+     cobririam o campo de resposta. */
+  html.jogando .brindes {
+    top: calc(var(--vv-topo, 0px) + max(64px, env(safe-area-inset-top) + 56px));
+    bottom: auto;
+    width: max-content;
+    max-width: calc(100vw - 24px);
+  }
+  html.jogando .brinde { padding: 8px 14px; font-size: 13px; text-align: center; }
+  html.jogando .chat__form { margin-top: 6px; }
+  html.jogando .chat__form input { padding: 10px 12px; }
+  html.jogando .chat__enviar { width: 44px; }
+
 }

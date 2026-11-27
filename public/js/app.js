@@ -57,6 +57,8 @@ const criar = (tag, classe) => {
 
 function mostrarTela(id) {
   document.querySelectorAll('.tela').forEach((t) => t.classList.toggle('ativa', t.id === id));
+  // No celular a tela de jogo fica travada no tamanho da tela (ver "Celular").
+  document.documentElement.classList.toggle('jogando', id === 'tela-jogo');
   sincronizarPresencial();
   // Voltou ao saguao: a lista de salas abertas atualiza na hora.
   if (id === 'tela-lobby') carregarSalasAbertas();
@@ -4623,6 +4625,134 @@ formChat.querySelector('.chat__enviar').addEventListener('touchstart', (evento) 
   evento.preventDefault();
   enviarDoChat();
 }, { passive: false });
+
+/*
+ * Celular: a tela de jogo travada.
+ *
+ * No celular a tela de jogo ocupa exatamente a area visivel — a que sobra
+ * acima do teclado — e nao rola, nem para os lados nem para cima e para
+ * baixo: o placar fica numa faixa no topo, a pergunta rola por dentro se for
+ * grande, e o campo de resposta fica grudado embaixo, colado no teclado.
+ *
+ * O Safari do iPhone nao encolhe a pagina quando o teclado abre: ele desliza a
+ * pagina para cima. Entao a altura e o topo da area visivel (visualViewport)
+ * vao para o CSS, e a tela acompanha.
+ */
+const celular = window.matchMedia('(max-width: 860px)');
+const telaTravada = () => celular.matches && document.documentElement.classList.contains('jogando');
+const ehCampo = (el) => Boolean(el && el.closest && el.closest('input, textarea, select, [contenteditable="true"]'));
+
+let alturaCheia = 0;
+function ajustarAreaVisivel() {
+  const vv = window.visualViewport;
+  const altura = vv ? vv.height : window.innerHeight;
+  const topo = vv ? vv.offsetTop : 0;
+  const raiz = document.documentElement;
+  raiz.style.setProperty('--vv-altura', `${Math.round(altura)}px`);
+  raiz.style.setProperty('--vv-topo', `${Math.round(topo)}px`);
+  // O teclado aberto rouba bem mais que a barra do navegador.
+  alturaCheia = Math.max(alturaCheia, altura);
+  raiz.classList.toggle('teclado-aberto', altura < alturaCheia - 140);
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', ajustarAreaVisivel);
+  window.visualViewport.addEventListener('scroll', ajustarAreaVisivel);
+}
+window.addEventListener('resize', ajustarAreaVisivel);
+window.addEventListener('orientationchange', () => { alturaCheia = 0; setTimeout(ajustarAreaVisivel, 300); });
+ajustarAreaVisivel();
+
+// Por baixo da tela travada a pagina nao rola: se o Safari a deslizou, volta.
+window.addEventListener('scroll', () => {
+  if (telaTravada() && !document.documentElement.classList.contains('teclado-aberto')) window.scrollTo(0, 0);
+});
+
+/*
+ * Nada de arrastar a tela. So rola o que tem rolagem propria e algo a rolar
+ * (a pergunta grande, o chat, a faixa do placar); o resto do dedo nao mexe
+ * a pagina. Pinca tambem nao: a tela nao da zoom.
+ */
+let toqueRola = false;
+function temRolagem(el) {
+  for (; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+    const estilo = getComputedStyle(el);
+    if (/(auto|scroll)/.test(estilo.overflowY) && el.scrollHeight > el.clientHeight + 1) return true;
+    if (/(auto|scroll)/.test(estilo.overflowX) && el.scrollWidth > el.clientWidth + 1) return true;
+  }
+  return false;
+}
+document.addEventListener('touchstart', (evento) => {
+  if (!telaTravada()) return;
+  toqueRola = ehCampo(evento.target) || temRolagem(evento.target);
+}, { passive: true, capture: true });
+document.addEventListener('touchmove', (evento) => {
+  if (!telaTravada() || !evento.cancelable) return;
+  if (evento.touches.length > 1 || !toqueRola) evento.preventDefault();
+}, { passive: false });
+document.addEventListener('gesturestart', (evento) => {
+  if (telaTravada()) evento.preventDefault();
+});
+
+/*
+ * O teclado nao fecha.
+ *
+ * Tocar num botao (pular, uma opcao, uma carta) tiraria o foco do campo e o
+ * teclado fecharia — e reabriria no proximo toque no campo, empurrando a tela.
+ * Com o campo em foco, o toque fora dele nao leva o foco embora (o clique
+ * continua valendo). So outro campo de texto pode pegar o foco.
+ */
+document.addEventListener('mousedown', (evento) => {
+  if (!telaTravada() || document.activeElement !== inputChat) return;
+  if (ehCampo(evento.target) || evento.target.closest('label')) return;
+  evento.preventDefault();
+}, true);
+inputChat.addEventListener('blur', (evento) => {
+  if (!telaTravada() || ehCampo(evento.relatedTarget)) return;
+  if (!inputChat.offsetParent) return; // o campo sumiu da tela (saiu da sala)
+  inputChat.focus({ preventScroll: true });
+});
+
+/*
+ * Pelo mesmo motivo, no aparelho de toque o campo nunca fica "disabled" de
+ * verdade: campo desabilitado perde o foco e o teclado fecha a cada pergunta.
+ * Trancado, ele so fica apagado e nao envia (enviarDoChat confere o
+ * inputChat.disabled) — da ate para ir escrevendo enquanto a pergunta nao vem.
+ */
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+  let trancado = inputChat.hasAttribute('disabled');
+  inputChat.removeAttribute('disabled');
+  Object.defineProperty(inputChat, 'disabled', {
+    configurable: true,
+    get: () => trancado,
+    set(valor) {
+      trancado = Boolean(valor);
+      inputChat.classList.toggle('trancado', trancado);
+      inputChat.setAttribute('aria-disabled', String(trancado));
+    },
+  });
+}
+
+/*
+ * A categoria (e a roleta da Bagunca) cobre a pergunta, mas o chat continua
+ * embaixo, com o teclado: o CSS precisa saber a altura dele para centralizar
+ * a categoria no espaco que sobra.
+ */
+if (window.ResizeObserver) {
+  const chatJogo = document.querySelector('#tela-jogo .chat');
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--altura-chat', `${chatJogo.offsetHeight}px`);
+  }).observe(chatJogo);
+}
+
+// Pergunta comprida ganha letra menor no celular, para caber sem rolar.
+const textoPergunta = $('pergunta-texto');
+function medirPergunta() {
+  const tamanho = textoPergunta.textContent.length;
+  textoPergunta.classList.toggle('pergunta__texto--longa', tamanho > 90);
+  textoPergunta.classList.toggle('pergunta__texto--enorme', tamanho > 170);
+}
+new MutationObserver(medirPergunta).observe(textoPergunta, { childList: true, characterData: true, subtree: true });
+medirPergunta();
 
 function enviarDoChat() {
   const texto = inputChat.value.trim();
