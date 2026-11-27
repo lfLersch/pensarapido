@@ -121,7 +121,8 @@ function montar(config = {}) {
 
   /* ---------------- 6. Esperando a imagem ---------------- */
   {
-    const { sala } = montar({ categorias: ['bandeiras'] });
+    // So imagens: Bandeiras tem perguntas so de texto, e o rodizio as sorteia.
+    const { sala } = montar({ categorias: ['bandeiras'], proporcaoImagem: 'so-imagem' });
     sala.proximaRodada();
     sala.abrirPergunta(); // fim da tela da categoria, ninguem pronto
     conferir('esperando a imagem', [sala.estado, sala.esperandoImagem], ['categoria', true]);

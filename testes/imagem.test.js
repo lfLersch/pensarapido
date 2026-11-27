@@ -25,7 +25,8 @@ const conferir = (nome, obtido, esperado) => {
 function montar(config = {}) {
   const eventos = [];
   const sala = new Sala('IMG1', Object.assign({
-    modo: 'tempo', categorias: ['bandeiras'], metaPontos: 999, segundosPorPergunta: 20
+    // So imagens: Bandeiras tem perguntas so de texto, e o rodizio as sorteia.
+    modo: 'tempo', categorias: ['bandeiras'], proporcaoImagem: 'so-imagem', metaPontos: 999, segundosPorPergunta: 20
   }, config), (evento, dados) => eventos.push({ evento, dados }));
   // O que a sala agendar fica guardado aqui, sem correr sozinho.
   sala.agendado = null;

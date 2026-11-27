@@ -149,6 +149,19 @@ function prontas() {
 }
 
 /**
+ * Quantas perguntas prontas o modo precisa para aparecer no site. Com uma ou
+ * duas, toda partida cairia nas mesmas e o quadro viraria decoreba. Ate la o
+ * modo fica "Em breve", e se libera sozinho quando chegar (sem deploy).
+ * Os testes mudam com SENSO_MIN_PERGUNTAS.
+ */
+const minimoDePerguntas = () => Number(process.env.SENSO_MIN_PERGUNTAS) || 10;
+
+/** O modo ja pode ser jogado? */
+function liberado() {
+  return prontas().length >= minimoDePerguntas();
+}
+
+/**
  * Quanta gente ja respondeu cada pergunta, da mais respondida para a menos.
  * So a contagem: as respostas sao o proprio jogo.
  */
@@ -257,7 +270,7 @@ const pronto = carregar();
 process.on('exit', () => { if (pendente && !banco.ativo()) gravarArquivo(); });
 
 module.exports = {
-  registrar, pessoasDe, prontas, maisPerto, resumo, quadroDe, quadroDaPergunta, respostaDoChute,
+  registrar, pessoasDe, prontas, liberado, minimoDePerguntas, maisPerto, resumo, quadroDe, quadroDaPergunta, respostaDoChute,
   inteirosQueSomam100, salvar, pronto, _zerar,
   PESOS_SENSO, MIN_PESSOAS_SENSO
 };

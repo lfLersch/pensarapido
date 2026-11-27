@@ -419,7 +419,10 @@ const MODOS = [
     nome: 'Senso Comum',
     icone: '📊',
     descricao: 'O quadro sai do que todo mundo respondeu no Maria vai com as outras: o top 3 de cada um, com peso 4 para o 1o lugar, 3 para o 2o e 2 para o 3o, somando 100%. Todos chutam juntos (13s no primeiro chute, 10s nos outros), escondido ate o tempo fechar. Cada acerto vale a porcentagem dividida por 10. Quem acertou a resposta mais alta continua chutando; quem errou sai.',
-    disponivel: true,
+    // "Em breve" ate o Maria juntar 10 perguntas com 7 pessoas ou mais. E
+    // lido a cada vez (o /api/config manda o valor da hora), entao o modo
+    // aparece sozinho quando o dado chegar.
+    get disponivel() { return senso.liberado(); },
     // As perguntas e o quadro vem de senso.js, nao do banco.
     semCategorias: true,
     // Precisa de dado acumulado: numa roleta, podia sair sem quadro nenhum.
@@ -1301,13 +1304,14 @@ class Sala {
     if (this.ehMaria() && this.jogam.size < 2) {
       return { erro: 'O Maria vai com as outras precisa de pelo menos dois jogadores: o ponto e pensar igual a alguem.' };
     }
-    if (this.ehSenso() && !senso.prontas().length) {
-      const perto = senso.maisPerto();
+    if (this.ehSenso() && !senso.liberado()) {
+      const perto = senso.prontas().length ? null : senso.maisPerto();
       return {
-        erro: `Ainda falta dado para o Senso Comum: ele usa as respostas do Maria vai com as outras, e cada pergunta precisa de ${
-          senso.MIN_PESSOAS_SENSO} pessoas. ${perto
+        erro: `Ainda falta dado para o Senso Comum: ele usa as respostas do Maria vai com as outras, e precisa de ${
+          senso.minimoDePerguntas()} perguntas com ${senso.MIN_PESSOAS_SENSO} pessoas ou mais. Ja tem ${
+          senso.prontas().length}. ${perto
           ? `A mais perto e "${perto.pergunta}", com ${perto.pessoas}.`
-          : 'Nenhuma pergunta foi jogada ainda.'}`
+          : ''}`.trim()
       };
     }
 
