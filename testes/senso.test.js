@@ -11,6 +11,9 @@ const os = require('os');
 const path = require('path');
 // Os testes nao podem sujar o dado de verdade.
 process.env.SENSO_ARQUIVO = path.join(os.tmpdir(), `senso-teste-${process.pid}.json`);
+// No site o modo so aparece com 10 perguntas prontas; aqui basta uma, para as
+// rodadas poderem usar uma pergunta so. O minimo de 10 tem um bloco proprio.
+process.env.SENSO_MIN_PERGUNTAS = '1';
 
 const { Sala, MODOS, MODOS_SORTEAVEIS } = require('../server/sala.js');
 const senso = require('../server/senso.js');
@@ -37,7 +40,8 @@ function novaSala(modo, quantos = 3) {
 /* ---------------- O modo ---------------- */
 {
   const modo = MODOS.find((m) => m.id === 'senso-comum');
-  conferir('o modo existe e esta disponivel', Boolean(modo && modo.disponivel), true);
+  conferir('o modo existe', Boolean(modo), true);
+  conferir('  e sem dado fica "Em breve"', modo.disponivel, false);
   conferir('nao usa categorias', Boolean(modo.semCategorias), true);
   conferir('fica fora da roleta da Bagunca', MODOS_SORTEAVEIS.includes('senso-comum'), false);
 }
@@ -89,6 +93,23 @@ senso._zerar();
   conferir('  e o aviso diz quanto falta', /Top 5 cores", com 6/.test(sala.iniciar().erro), true);
   senso.registrar('Top 5 cores', [['vermelho', 'azul', 'preto']]);
   conferir('com 7 a pergunta fica pronta', senso.prontas(), ['Top 5 cores']);
+}
+
+/* ---------------- No site: so com 10 perguntas prontas ---------------- */
+{
+  delete process.env.SENSO_MIN_PERGUNTAS;
+  senso._zerar();
+  const modo = MODOS.find((m) => m.id === 'senso-comum');
+  const pronta = (pergunta) => { for (let i = 0; i < 7; i++) senso.registrar(pergunta, [['a', 'b', 'c']]); };
+  for (let n = 1; n <= 9; n++) pronta(`Top 5 coisa ${n}`);
+  conferir('com 9 prontas o modo continua "Em breve"', modo.disponivel, false);
+  conferir('  e o /api/config manda isso', JSON.parse(JSON.stringify(modo)).disponivel, false);
+  const { sala } = novaSala('senso-comum');
+  conferir('  e a sala nao comeca, dizendo quantas faltam', /10 perguntas.*Ja tem 9/.test(sala.iniciar().erro), true);
+  pronta('Top 5 coisa 10');
+  conferir('com 10 prontas o modo se libera sozinho', modo.disponivel, true);
+  conferir('  e o /api/config manda isso', JSON.parse(JSON.stringify(modo)).disponivel, true);
+  process.env.SENSO_MIN_PERGUNTAS = '1';
 }
 
 /* ---------------- O Maria grava o top 3 ---------------- */
